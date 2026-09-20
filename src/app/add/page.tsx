@@ -12,7 +12,7 @@ export default function AddPage() {
   return (
     <>
       <NavHeader label="Journal" href="/" />
-      <PageTitle title="Ajouter un aliment" description="Quatre façons, au choix." />
+      <PageTitle title="Ajouter un aliment" description="Cinq façons, au choix." />
       <div className="mt-5">
         <AddModes />
       </div>

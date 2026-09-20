@@ -1,12 +1,24 @@
 import Link from 'next/link';
-import { BarcodeIcon, CameraIcon, ChevronRightIcon, PencilIcon, SearchIcon } from 'lucide-react';
+import {
+  BarcodeIcon,
+  CameraIcon,
+  ChevronRightIcon,
+  CookingPotIcon,
+  PencilIcon,
+  SearchIcon,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 
 /**
- * Les quatre chemins d'ajout, partagés entre la feuille du journal et l'écran
+ * Les cinq chemins d'ajout, partagés entre la feuille du journal et l'écran
  * /add. L'ordre est celui de la fréquence d'usage réelle, pas celui de
  * l'implémentation.
+ *
+ * Les quatre premiers cherchent un aliment ; le dernier part d'un plat déjà
+ * écrit dans le carnet. Il vient après la recherche et avant la photo : on
+ * mange ses propres recettes plus souvent qu'on ne photographie une assiette,
+ * mais moins souvent qu'on ne scanne un produit.
  */
 
 interface Mode {
@@ -30,6 +42,12 @@ const MODES: Mode[] = [
     label: 'Rechercher',
     hint: 'CIQUAL et produits scannés',
     icon: <SearchIcon />,
+  },
+  {
+    href: '/add/recipe',
+    label: 'Mes recettes',
+    hint: 'Un plat du carnet, en parts',
+    icon: <CookingPotIcon />,
   },
   {
     href: '/add/photo',

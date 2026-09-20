@@ -35,7 +35,7 @@ export function AddSheet({
         <div aria-hidden className="mx-auto mb-3.5 h-1 w-11 rounded-full bg-border" />
         <SheetHeader className="p-0 pr-10">
           <SheetTitle className="text-[17px]">Ajouter un aliment</SheetTitle>
-          <SheetDescription>Quatre façons, au choix.</SheetDescription>
+          <SheetDescription>Cinq façons, au choix.</SheetDescription>
         </SheetHeader>
         <div className="mt-4">
           <AddModes onNavigate={() => onOpenChange(false)} />
