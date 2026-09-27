@@ -138,6 +138,17 @@ export async function exerciseCatalog(userId: number): Promise<Exercise[]> {
   return listExercises(preferences.gymId);
 }
 
+/**
+ * Tout le catalogue, salle ou non.
+ *
+ * Sert à nommer ce qui a été fait : une séance remplacée dans une autre salle
+ * que celle choisie aujourd'hui doit garder le nom de son exercice.
+ */
+export async function fullExerciseCatalog(): Promise<Exercise[]> {
+  await ensureCatalog();
+  return listExercises(null);
+}
+
 export function removeTemplate(userId: number, id: number): Promise<boolean> {
   return archiveTemplate(userId, id);
 }
