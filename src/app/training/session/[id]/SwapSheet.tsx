@@ -1,14 +1,14 @@
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet";
-import { normalizeExerciseName } from "@/lib/workout-log";
-import { EQUIPMENT_LABELS, swapCandidates, type Exercise } from "@/lib/workout";
+} from '@/components/ui/sheet';
+import { normalizeExerciseName } from '@/lib/workout-log';
+import { EQUIPMENT_LABELS, swapCandidates, type Exercise } from '@/lib/workout';
 
 /**
  * Choisir l'exercice qui en remplace un autre, devant la machine occupée.
@@ -33,22 +33,20 @@ export function SwapSheet({
   onPick: (exercise: Exercise) => void;
   onClose: () => void;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
 
   const needle = normalizeExerciseName(query);
   const matches = (exercise: Exercise) =>
-    needle === "" ||
+    needle === '' ||
     [exercise.name, ...exercise.aliases].some((name) =>
       normalizeExerciseName(name).includes(needle),
     );
   const { closest, others } =
-    target === null
-      ? { closest: [], others: [] }
-      : swapCandidates(target, catalog, excluded);
+    target === null ? { closest: [], others: [] } : swapCandidates(target, catalog, excluded);
   const groups = [
-    { label: "Même groupe musculaire", items: closest.filter(matches) },
+    { label: 'Même groupe musculaire', items: closest.filter(matches) },
     {
-      label: closest.length > 0 ? "Autres exercices" : "Exercices de la salle",
+      label: closest.length > 0 ? 'Autres exercices' : 'Exercices de la salle',
       items: others.filter(matches),
     },
   ].filter((group) => group.items.length > 0);
@@ -58,7 +56,7 @@ export function SwapSheet({
       open={target !== null}
       onOpenChange={(next) => {
         if (!next) {
-          setQuery("");
+          setQuery('');
           onClose();
         }
       }}
@@ -67,16 +65,11 @@ export function SwapSheet({
         side="bottom"
         className="mx-auto max-h-[88dvh] max-w-lg gap-0 overflow-y-auto rounded-t-[20px] px-5 pt-2.5 pb-[calc(1.75rem+var(--safe-bottom))]"
       >
-        <div
-          aria-hidden
-          className="mx-auto mb-3.5 h-1 w-11 rounded-full bg-border"
-        />
+        <div aria-hidden className="mx-auto mb-3.5 h-1 w-11 rounded-full bg-border" />
         <SheetHeader className="p-0 pr-10">
           <SheetTitle className="text-[17px]">Remplacer l’exercice</SheetTitle>
           <SheetDescription>
-            {target === null
-              ? ""
-              : `À la place de ${target.name}, pour cette séance seulement.`}
+            {target === null ? '' : `À la place de ${target.name}, pour cette séance seulement.`}
           </SheetDescription>
         </SheetHeader>
 
@@ -97,23 +90,19 @@ export function SwapSheet({
 
         {groups.map((group) => (
           <section key={group.label} className="mt-5">
-            <h3 className="mb-1 text-[12.5px] font-medium text-muted-foreground">
-              {group.label}
-            </h3>
+            <h3 className="mb-1 text-[12.5px] font-medium text-muted-foreground">{group.label}</h3>
             <ul className="divide-y">
               {group.items.map((exercise) => (
                 <li key={exercise.id}>
                   <button
                     type="button"
                     onClick={() => {
-                      setQuery("");
+                      setQuery('');
                       onPick(exercise);
                     }}
                     className="flex w-full items-baseline justify-between gap-3 py-3 text-left"
                   >
-                    <span className="text-[15px] font-medium tracking-tight">
-                      {exercise.name}
-                    </span>
+                    <span className="text-[15px] font-medium tracking-tight">{exercise.name}</span>
                     <span className="flex-none text-[12.5px] text-muted-foreground">
                       {EQUIPMENT_LABELS[exercise.equipment]}
                     </span>

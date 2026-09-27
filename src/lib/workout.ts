@@ -9,10 +9,10 @@
  */
 
 /** Ce qu'une série enregistre, selon la nature de l'exercice. */
-export type ExerciseKind = "strength" | "hold" | "cardio";
+export type ExerciseKind = 'strength' | 'hold' | 'cardio';
 
 export function isExerciseKind(value: unknown): value is ExerciseKind {
-  return value === "strength" || value === "hold" || value === "cardio";
+  return value === 'strength' || value === 'hold' || value === 'cardio';
 }
 
 /**
@@ -27,18 +27,15 @@ export function isExerciseKind(value: unknown): value is ExerciseKind {
  * mais elle ne change ni la disponibilité ni le choix qu'on fait entre poids
  * libre et machine guidée, qui est la seule question posée.
  */
-export type ExerciseEquipment =
-  "free" | "machine" | "cable" | "bodyweight" | "cardio";
+export type ExerciseEquipment = 'free' | 'machine' | 'cable' | 'bodyweight' | 'cardio';
 
-export function isExerciseEquipment(
-  value: unknown,
-): value is ExerciseEquipment {
+export function isExerciseEquipment(value: unknown): value is ExerciseEquipment {
   return (
-    value === "free" ||
-    value === "machine" ||
-    value === "cable" ||
-    value === "bodyweight" ||
-    value === "cardio"
+    value === 'free' ||
+    value === 'machine' ||
+    value === 'cable' ||
+    value === 'bodyweight' ||
+    value === 'cardio'
   );
 }
 
@@ -49,15 +46,10 @@ export function isExerciseEquipment(
  * minimum de bas » : il faudrait pour cela connaître par cœur de quel côté
  * tombent les mollets et les lombaires. La colonne le dit.
  */
-export type ExerciseRegion = "upper" | "lower" | "core" | "full";
+export type ExerciseRegion = 'upper' | 'lower' | 'core' | 'full';
 
 export function isExerciseRegion(value: unknown): value is ExerciseRegion {
-  return (
-    value === "upper" ||
-    value === "lower" ||
-    value === "core" ||
-    value === "full"
-  );
+  return value === 'upper' || value === 'lower' || value === 'core' || value === 'full';
 }
 
 export interface Exercise {
@@ -81,19 +73,17 @@ export interface Exercise {
 }
 
 /** Ce que l'utilisateur veut travailler, et ce qu'il accepte de ne pas perdre. */
-export type TrainingFocus = "upper" | "lower" | "full";
+export type TrainingFocus = 'upper' | 'lower' | 'full';
 
 export function isTrainingFocus(value: unknown): value is TrainingFocus {
-  return value === "upper" || value === "lower" || value === "full";
+  return value === 'upper' || value === 'lower' || value === 'full';
 }
 
 /** Poids libre, machine guidée, ou indifférent. */
-export type EquipmentPreference = "free" | "machine" | "any";
+export type EquipmentPreference = 'free' | 'machine' | 'any';
 
-export function isEquipmentPreference(
-  value: unknown,
-): value is EquipmentPreference {
-  return value === "free" || value === "machine" || value === "any";
+export function isEquipmentPreference(value: unknown): value is EquipmentPreference {
+  return value === 'free' || value === 'machine' || value === 'any';
 }
 
 /** Une salle, avec le matériel qu'on y trouve. */
@@ -114,8 +104,8 @@ export interface TrainingPreferences {
 
 export const DEFAULT_PREFERENCES: TrainingPreferences = {
   gymId: null,
-  focus: "full",
-  equipment: "any",
+  focus: 'full',
+  equipment: 'any',
   sessionsPerWeek: 3,
 };
 
@@ -123,26 +113,25 @@ export const MIN_SESSIONS_PER_WEEK = 2;
 export const MAX_SESSIONS_PER_WEEK = 6;
 
 export const FOCUS_LABELS: Record<TrainingFocus, string> = {
-  upper: "Haut du corps, avec un minimum de bas",
-  lower: "Bas du corps, avec un minimum de haut",
-  full: "Les deux à parts égales",
+  upper: 'Haut du corps, avec un minimum de bas',
+  lower: 'Bas du corps, avec un minimum de haut',
+  full: 'Les deux à parts égales',
 };
 
 /** Le matériel d'un exercice, tel qu'on le nomme en salle. */
 export const EQUIPMENT_LABELS: Record<ExerciseEquipment, string> = {
-  free: "Barre ou haltères",
-  machine: "Machine guidée",
-  cable: "Poulie",
-  bodyweight: "Poids du corps",
-  cardio: "Cardio",
+  free: 'Barre ou haltères',
+  machine: 'Machine guidée',
+  cable: 'Poulie',
+  bodyweight: 'Poids du corps',
+  cardio: 'Cardio',
 };
 
-export const EQUIPMENT_PREFERENCE_LABELS: Record<EquipmentPreference, string> =
-  {
-    free: "Poids libres",
-    machine: "Machines guidées",
-    any: "Indifférent",
-  };
+export const EQUIPMENT_PREFERENCE_LABELS: Record<EquipmentPreference, string> = {
+  free: 'Poids libres',
+  machine: 'Machines guidées',
+  any: 'Indifférent',
+};
 
 /** Un exercice prescrit dans une séance modèle. */
 export interface TemplateExercise {
@@ -230,7 +219,7 @@ export function formatPrescription(exercise: TemplateExercise): string {
         ? `${Math.round(exercise.targetSeconds / 60)} min`
         : `${exercise.targetSeconds} s`;
     // Un cardio n'a pas de séries : « 1×20 min » se lirait comme une erreur.
-    return exercise.exercise.kind === "cardio"
+    return exercise.exercise.kind === 'cardio'
       ? duration
       : `${exercise.targetSets}×${duration}`;
   }
@@ -239,12 +228,7 @@ export function formatPrescription(exercise: TemplateExercise): string {
   if (min === null && max === null) {
     return `${exercise.targetSets} séries`;
   }
-  const reps =
-    min === null
-      ? `${max}`
-      : max === null || max === min
-        ? `${min}`
-        : `${min}-${max}`;
+  const reps = min === null ? `${max}` : max === null || max === min ? `${min}` : `${min}-${max}`;
   return `${exercise.targetSets}×${reps}`;
 }
 
@@ -255,21 +239,19 @@ export function formatSet(set: {
   seconds: number | null;
   toFailure?: boolean;
 }): string {
-  const failure = set.toFailure === true ? " (échec)" : "";
+  const failure = set.toFailure === true ? ' (échec)' : '';
   if (set.seconds !== null) {
     const duration =
-      set.seconds >= 60
-        ? `${Math.round(set.seconds / 60)} min`
-        : `${set.seconds} s`;
+      set.seconds >= 60 ? `${Math.round(set.seconds / 60)} min` : `${set.seconds} s`;
     return `${duration}${failure}`;
   }
   if (set.reps === null) {
-    return "—";
+    return '—';
   }
   if (set.weightKg === null || set.weightKg === 0) {
     return `${set.reps} reps${failure}`;
   }
-  return `${set.weightKg.toLocaleString("fr-FR")} kg × ${set.reps}${failure}`;
+  return `${set.weightKg.toLocaleString('fr-FR')} kg × ${set.reps}${failure}`;
 }
 
 /**
@@ -285,19 +267,14 @@ export function formatSet(set: {
  * de la série, et l'inventer fausserait la comparaison plus sûrement que de
  * l'omettre.
  */
-export function setVolume(set: {
-  weightKg: number | null;
-  reps: number | null;
-}): number {
+export function setVolume(set: { weightKg: number | null; reps: number | null }): number {
   if (set.weightKg === null || set.reps === null) {
     return 0;
   }
   return set.weightKg * set.reps;
 }
 
-export function sessionVolume(
-  sets: readonly { weightKg: number | null; reps: number | null }[],
-): number {
+export function sessionVolume(sets: readonly { weightKg: number | null; reps: number | null }[]): number {
   return Math.round(sets.reduce((total, set) => total + setVolume(set), 0));
 }
 
@@ -308,9 +285,9 @@ export function sessionVolume(
  * charge prime sur les répétitions : monter de 60 à 62,5 kg pour une
  * répétition de moins est une progression, l'inverse ne l'est pas.
  */
-export function bestSet<
-  T extends { weightKg: number | null; reps: number | null },
->(sets: readonly T[]): T | null {
+export function bestSet<T extends { weightKg: number | null; reps: number | null }>(
+  sets: readonly T[],
+): T | null {
   let best: T | null = null;
   for (const set of sets) {
     if (set.weightKg === null && set.reps === null) {
@@ -322,10 +299,7 @@ export function bestSet<
     }
     const weight = set.weightKg ?? 0;
     const bestWeight = best.weightKg ?? 0;
-    if (
-      weight > bestWeight ||
-      (weight === bestWeight && (set.reps ?? 0) > (best.reps ?? 0))
-    ) {
+    if (weight > bestWeight || (weight === bestWeight && (set.reps ?? 0) > (best.reps ?? 0))) {
       best = set;
     }
   }
@@ -339,9 +313,7 @@ export function bestSet<
  * ensemble. Ceux qui n'en portent pas forment chacun leur propre groupe : le
  * résultat est une liste de blocs, qu'ils comptent un exercice ou deux.
  */
-export function groupBySuperset(
-  exercises: readonly TemplateExercise[],
-): TemplateExercise[][] {
+export function groupBySuperset(exercises: readonly TemplateExercise[]): TemplateExercise[][] {
   const blocks: TemplateExercise[][] = [];
   const byGroup = new Map<number, TemplateExercise[]>();
 
@@ -378,19 +350,16 @@ export function formatClock(totalSeconds: number): string {
   const seconds = Math.max(0, Math.floor(totalSeconds));
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  const rest = String(seconds % 60).padStart(2, "0");
-  return hours > 0
-    ? `${hours}:${String(minutes).padStart(2, "0")}:${rest}`
-    : `${minutes}:${rest}`;
+  const rest = String(seconds % 60).padStart(2, '0');
+  return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${rest}` : `${minutes}:${rest}`;
 }
 
 /**
  * Un exercice tel qu'il se fait dans la séance, et non tel qu'il est prescrit.
  *
  * `planned` porte l'exercice du programme quand un autre l'a remplacé ; il vaut
- * `null` sinon. `locked` dit que le remplacement est déjà inscrit dans des
- * séries : il ne se défait plus, puisque ces séries ont été faites sur cet
- * appareil-là.
+ * `null` sinon. `locked` dit que le rang a déjà des séries : son exercice ne
+ * se change plus, puisque ces séries ont été faites sur cet appareil-là.
  */
 export interface SessionExercise extends TemplateExercise {
   planned: Exercise | null;
@@ -412,7 +381,7 @@ export interface SessionExercise extends TemplateExercise {
  */
 export function resolveSessionExercises(
   planned: readonly TemplateExercise[],
-  sets: readonly Pick<WorkoutSet, "exerciseId" | "position" | "setIndex">[],
+  sets: readonly Pick<WorkoutSet, 'exerciseId' | 'position' | 'setIndex'>[],
   swaps: ReadonlyMap<number, number>,
   catalog: ReadonlyMap<number, Exercise>,
 ): SessionExercise[] {
@@ -437,12 +406,7 @@ export function resolveSessionExercises(
   const used = new Set(resolved.map((entry) => entry.exercise.id));
   return resolved.map((entry) => {
     const wanted = swaps.get(entry.position);
-    if (
-      entry.locked ||
-      wanted === undefined ||
-      wanted === entry.exercise.id ||
-      used.has(wanted)
-    ) {
+    if (entry.locked || wanted === undefined || wanted === entry.exercise.id || used.has(wanted)) {
       return entry;
     }
     const exercise = catalog.get(wanted);
@@ -462,11 +426,9 @@ export function resolveSessionExercises(
  * intention : il suffit qu'il survive au rechargement de l'écran. Dès la
  * première série, c'est elle qui le porte (voir `resolveSessionExercises`).
  */
-export function parseSwaps(
-  raw: string | readonly string[] | undefined,
-): Map<number, number> {
+export function parseSwaps(raw: string | readonly string[] | undefined): Map<number, number> {
   const swaps = new Map<number, number>();
-  const values = raw === undefined ? [] : typeof raw === "string" ? [raw] : raw;
+  const values = raw === undefined ? [] : typeof raw === 'string' ? [raw] : raw;
   for (const value of values) {
     const match = /^(\d{1,3}):(\d{1,12})$/.exec(value);
     if (match === null) {
@@ -486,8 +448,8 @@ export function parseSwaps(
  * Même nature d'abord : une planche ne remplace pas un développé, l'écran
  * demanderait une durée là où le programme prescrit des répétitions. Puis le
  * même groupe musculaire, puis la même moitié du corps, puis le reste — on
- * remplace un pec deck occupé par un autre travail des pectoraux quand on le
- * peut, et par ce qui est libre quand on ne le peut pas.
+ * remplace un pec deck occupé par un autre travail des mêmes muscles quand on
+ * le peut, et par ce qui est libre quand on ne le peut pas.
  */
 export function swapCandidates(
   target: Exercise,
@@ -496,26 +458,19 @@ export function swapCandidates(
 ): { closest: Exercise[]; others: Exercise[] } {
   const usable = catalog.filter(
     (exercise) =>
-      exercise.kind === target.kind &&
-      exercise.id !== target.id &&
-      !excluded.has(exercise.id),
+      exercise.kind === target.kind && exercise.id !== target.id && !excluded.has(exercise.id),
   );
   const sameGroup = (exercise: Exercise) =>
     target.muscleGroup !== null && exercise.muscleGroup === target.muscleGroup;
-  const closest = usable.filter(sameGroup);
+  const closest = usable
+    .filter(sameGroup)
+    .sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99) || a.name.localeCompare(b.name, 'fr'));
   const others = usable
     .filter((exercise) => !sameGroup(exercise))
     .sort(
       (a, b) =>
-        Number(b.region === target.region) -
-          Number(a.region === target.region) ||
-        a.name.localeCompare(b.name, "fr"),
+        Number(b.region === target.region) - Number(a.region === target.region) ||
+        a.name.localeCompare(b.name, 'fr'),
     );
-  return {
-    closest: closest.sort(
-      (a, b) =>
-        (a.rank ?? 99) - (b.rank ?? 99) || a.name.localeCompare(b.name, "fr"),
-    ),
-    others,
-  };
+  return { closest, others };
 }

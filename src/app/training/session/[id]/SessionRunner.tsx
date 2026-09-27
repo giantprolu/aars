@@ -1,18 +1,13 @@
-"use client";
+'use client';
 
-import {
-  ArrowLeftRightIcon,
-  CheckIcon,
-  FlameIcon,
-  TrendingUpIcon,
-} from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { BottomBar } from "@/components/BottomBar";
-import { ErrorAlert } from "@/components/ErrorAlert";
-import { ExerciseSheet, type SheetExercise } from "@/components/ExerciseSheet";
-import { NavHeader, PageTitle } from "@/components/ScreenHeader";
+import { ArrowLeftRightIcon, CheckIcon, FlameIcon, TrendingUpIcon } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { BottomBar } from '@/components/BottomBar';
+import { ErrorAlert } from '@/components/ErrorAlert';
+import { ExerciseSheet, type SheetExercise } from '@/components/ExerciseSheet';
+import { NavHeader, PageTitle } from '@/components/ScreenHeader';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,19 +18,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
-import { Toggle } from "@/components/ui/toggle";
-import { cn } from "@/lib/utils";
-import {
-  discardSession,
-  finishSession,
-  recordSet,
-} from "@/lib/client/training";
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+import { Toggle } from '@/components/ui/toggle';
+import { cn } from '@/lib/utils';
+import { discardSession, finishSession, recordSet } from '@/lib/client/training';
 import {
   bestSet,
   DEFAULT_REST_SECONDS,
@@ -48,9 +39,9 @@ import {
   type TemplateExercise,
   type WorkoutSession,
   type WorkoutSet,
-} from "@/lib/workout";
-import { SessionClock, type Rest } from "./SessionClock";
-import { SwapSheet } from "./SwapSheet";
+} from '@/lib/workout';
+import { SessionClock, type Rest } from './SessionClock';
+import { SwapSheet } from './SwapSheet';
 
 /**
  * Exécution d'une séance, série par série.
@@ -101,25 +92,20 @@ function initialDraft(
   entry: TemplateExercise,
   previous: WorkoutSet | null,
 ): Draft {
-  if (entry.exercise.kind === "hold" || entry.exercise.kind === "cardio") {
+  if (entry.exercise.kind === 'hold' || entry.exercise.kind === 'cardio') {
     return {
-      weightKg: "",
-      reps: "",
-      seconds: String(previous?.seconds ?? entry.targetSeconds ?? ""),
+      weightKg: '',
+      reps: '',
+      seconds: String(previous?.seconds ?? entry.targetSeconds ?? ''),
       toFailure: false,
     };
   }
   return {
-    weightKg:
-      previous?.weightKg === null || previous === null
-        ? ""
-        : String(previous.weightKg),
+    weightKg: previous?.weightKg === null || previous === null ? '' : String(previous.weightKg),
     // La borne haute de la fourchette, pas la basse : c'est elle qu'on vise,
     // et l'atteindre sur toutes les séries est le signal qu'il faut charger.
-    reps: String(
-      previous?.reps ?? entry.targetRepsMax ?? entry.targetRepsMin ?? "",
-    ),
-    seconds: "",
+    reps: String(previous?.reps ?? entry.targetRepsMax ?? entry.targetRepsMin ?? ''),
+    seconds: '',
     toFailure: false,
   };
 }
@@ -160,9 +146,9 @@ export function SessionRunner({
     const recorded = doneSets.get(key);
     if (recorded !== undefined) {
       return {
-        weightKg: recorded.weightKg === null ? "" : String(recorded.weightKg),
-        reps: recorded.reps === null ? "" : String(recorded.reps),
-        seconds: recorded.seconds === null ? "" : String(recorded.seconds),
+        weightKg: recorded.weightKg === null ? '' : String(recorded.weightKg),
+        reps: recorded.reps === null ? '' : String(recorded.reps),
+        seconds: recorded.seconds === null ? '' : String(recorded.seconds),
         toFailure: recorded.toFailure,
       };
     }
@@ -175,12 +161,7 @@ export function SessionRunner({
     setDrafts((current) => ({
       ...current,
       [key]: {
-        ...(current[key] ?? {
-          weightKg: "",
-          reps: "",
-          seconds: "",
-          toFailure: false,
-        }),
+        ...(current[key] ?? { weightKg: '', reps: '', seconds: '', toFailure: false }),
         ...change,
       },
     }));
@@ -195,25 +176,18 @@ export function SessionRunner({
   function applySwap(position: number, exerciseId: number | null) {
     const params = new URLSearchParams();
     for (const entry of exercises) {
-      if (
-        entry.position === position ||
-        entry.planned === null ||
-        entry.locked
-      ) {
+      if (entry.position === position || entry.planned === null || entry.locked) {
         continue;
       }
-      params.append("swap", `${entry.position}:${entry.exercise.id}`);
+      params.append('swap', `${entry.position}:${entry.exercise.id}`);
     }
     if (exerciseId !== null) {
-      params.append("swap", `${position}:${exerciseId}`);
+      params.append('swap', `${position}:${exerciseId}`);
     }
     const query = params.toString();
-    router.replace(
-      `/training/session/${session.id}${query === "" ? "" : `?${query}`}`,
-      {
-        scroll: false,
-      },
-    );
+    router.replace(`/training/session/${session.id}${query === '' ? '' : `?${query}`}`, {
+      scroll: false,
+    });
   }
 
   /**
@@ -224,9 +198,7 @@ export function SessionRunner({
     if (
       entry.supersetGroup !== null &&
       exercises.some(
-        (other) =>
-          other.supersetGroup === entry.supersetGroup &&
-          other.position > entry.position,
+        (other) => other.supersetGroup === entry.supersetGroup && other.position > entry.position,
       )
     ) {
       return null;
@@ -237,8 +209,7 @@ export function SessionRunner({
   async function save(entry: TemplateExercise, setIndex: number) {
     const draft = readDraft(entry, setIndex);
     const isCorrection = doneSets.has(draftKey(entry.exercise.id, setIndex));
-    const isTimed =
-      entry.exercise.kind === "hold" || entry.exercise.kind === "cardio";
+    const isTimed = entry.exercise.kind === 'hold' || entry.exercise.kind === 'cardio';
 
     setBusy(true);
     setError(null);
@@ -247,16 +218,14 @@ export function SessionRunner({
       exerciseId: entry.exercise.id,
       position: entry.position,
       setIndex,
-      weightKg:
-        isTimed || draft.weightKg.trim() === "" ? null : Number(draft.weightKg),
-      reps: isTimed || draft.reps.trim() === "" ? null : Number(draft.reps),
-      seconds:
-        isTimed && draft.seconds.trim() !== "" ? Number(draft.seconds) : null,
+      weightKg: isTimed || draft.weightKg.trim() === '' ? null : Number(draft.weightKg),
+      reps: isTimed || draft.reps.trim() === '' ? null : Number(draft.reps),
+      seconds: isTimed && draft.seconds.trim() !== '' ? Number(draft.seconds) : null,
       toFailure: draft.toFailure,
     });
     setBusy(false);
 
-    if (outcome.kind === "ok") {
+    if (outcome.kind === 'ok') {
       const seconds = isCorrection ? null : restAfter(entry);
       if (seconds !== null) {
         setRest({ endsAt: Date.now() + seconds * 1000 });
@@ -264,55 +233,48 @@ export function SessionRunner({
       router.refresh();
       return;
     }
-    setError("Série non enregistrée. Vérifie les valeurs.");
+    setError('Série non enregistrée. Vérifie les valeurs.');
   }
 
   async function finish() {
     setBusy(true);
     const outcome = await finishSession(session.id);
     setBusy(false);
-    if (outcome.kind === "ok") {
-      router.replace("/training");
+    if (outcome.kind === 'ok') {
+      router.replace('/training');
       router.refresh();
       return;
     }
-    setError("La séance n’a pas pu être terminée.");
+    setError('La séance n’a pas pu être terminée.');
   }
 
   async function discard() {
     setBusy(true);
     await discardSession(session.id);
     setBusy(false);
-    router.replace("/training");
+    router.replace('/training');
     router.refresh();
   }
 
   const closed = session.finishedAt !== null;
-  const plannedSets = exercises.reduce(
-    (total, entry) => total + entry.targetSets,
-    0,
-  );
+  const plannedSets = exercises.reduce((total, entry) => total + entry.targetSets, 0);
   const recordedSets = session.sets.length;
   const duration =
     session.finishedAt === null
       ? null
-      : (new Date(session.finishedAt).getTime() -
-          new Date(session.startedAt).getTime()) /
-        1000;
+      : (new Date(session.finishedAt).getTime() - new Date(session.startedAt).getTime()) / 1000;
 
   return (
     <>
       <NavHeader label="Sport" href="/training" />
 
       <PageTitle
-        title={session.templateName ?? "Séance libre"}
+        title={session.templateName ?? 'Séance libre'}
         description={
           <span className="tabular">
-            {plannedSets > 0
-              ? `${recordedSets} séries sur ${plannedSets}`
-              : `${recordedSets} série${recordedSets > 1 ? "s" : ""}`}{" "}
-            · {sessionVolume(session.sets).toLocaleString("fr-FR")} kg soulevés
-            {duration !== null ? ` · terminée en ${formatClock(duration)}` : ""}
+            {plannedSets > 0 ? `${recordedSets} séries sur ${plannedSets}` : `${recordedSets} série${recordedSets > 1 ? 's' : ''}`}{' '}
+            · {sessionVolume(session.sets).toLocaleString('fr-FR')} kg soulevés
+            {duration !== null ? ` · terminée en ${formatClock(duration)}` : ''}
           </span>
         }
       />
@@ -328,8 +290,7 @@ export function SessionRunner({
 
       {exercises.length === 0 ? (
         <p className="mt-6 text-muted-foreground">
-          Cette séance ne suit aucun modèle : ses séries ne peuvent pas être
-          préremplies.
+          Cette séance ne suit aucun modèle : ses séries ne peuvent pas être préremplies.
         </p>
       ) : null}
 
@@ -337,12 +298,8 @@ export function SessionRunner({
         {exercises.map((entry) => {
           const history = previous[entry.exercise.id] ?? [];
           const reference = bestSet(history);
-          const isTimed =
-            entry.exercise.kind === "hold" || entry.exercise.kind === "cardio";
-          const indices = Array.from(
-            { length: entry.targetSets },
-            (_, index) => index + 1,
-          );
+          const isTimed = entry.exercise.kind === 'hold' || entry.exercise.kind === 'cardio';
+          const indices = Array.from({ length: entry.targetSets }, (_, index) => index + 1);
           const doneCount = indices.filter((setIndex) =>
             doneSets.has(draftKey(entry.exercise.id, setIndex)),
           ).length;
@@ -378,7 +335,7 @@ export function SessionRunner({
                         À la place de {entry.planned.name}
                         {!entry.locked && !closed ? (
                           <>
-                            {" · "}
+                            {' · '}
                             <button
                               type="button"
                               onClick={() => applySwap(entry.position, null)}
@@ -410,12 +367,7 @@ export function SessionRunner({
                       </Button>
                     ) : null}
                     {reference !== null ? (
-                      <Button
-                        asChild
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-muted-foreground"
-                      >
+                      <Button asChild variant="ghost" size="icon-sm" className="text-muted-foreground">
                         <Link
                           href={`/training/progress/${entry.exercise.id}`}
                           aria-label={`Progression sur ${entry.exercise.name}`}
@@ -425,9 +377,7 @@ export function SessionRunner({
                       </Button>
                     ) : null}
                     <Badge
-                      variant={
-                        doneCount === entry.targetSets ? "secondary" : "outline"
-                      }
+                      variant={doneCount === entry.targetSets ? 'secondary' : 'outline'}
                       className="tabular"
                     >
                       {doneCount}/{entry.targetSets}
@@ -436,15 +386,13 @@ export function SessionRunner({
                 </div>
 
                 {entry.notes !== null ? (
-                  <p className="mt-2 text-[12.5px] text-muted-foreground">
-                    {entry.notes}
-                  </p>
+                  <p className="mt-2 text-[12.5px] text-muted-foreground">{entry.notes}</p>
                 ) : null}
 
                 <p className="tabular mt-2.5 mb-1 text-[12.5px] text-muted-foreground">
                   {reference !== null
-                    ? `La dernière fois : ${formatSet(reference)}${history.length > 1 ? `, sur ${history.length} séries` : ""}`
-                    : "Première fois sur cet exercice."}
+                    ? `La dernière fois : ${formatSet(reference)}${history.length > 1 ? `, sur ${history.length} séries` : ''}`
+                    : 'Première fois sur cet exercice.'}
                 </p>
 
                 <ul>
@@ -457,10 +405,7 @@ export function SessionRunner({
                     return (
                       <li
                         key={setIndex}
-                        className={cn(
-                          "flex items-center gap-2 py-1.5",
-                          recorded && "opacity-60 focus-within:opacity-100",
-                        )}
+                        className={cn('flex items-center gap-2 py-1.5', recorded && 'opacity-60 focus-within:opacity-100')}
                       >
                         <span className="tabular w-5 flex-none text-[12px] text-muted-foreground">
                           {setIndex}
@@ -474,9 +419,7 @@ export function SessionRunner({
                               min={1}
                               aria-label={`Durée de la série ${setIndex} en secondes`}
                               value={draft.seconds}
-                              onChange={(event) =>
-                                patch(key, { seconds: event.target.value })
-                              }
+                              onChange={(event) => patch(key, { seconds: event.target.value })}
                               className="tabular pr-7"
                             />
                             <span
@@ -496,9 +439,7 @@ export function SessionRunner({
                                 step={0.5}
                                 aria-label={`Charge de la série ${setIndex} en kilogrammes`}
                                 value={draft.weightKg}
-                                onChange={(event) =>
-                                  patch(key, { weightKg: event.target.value })
-                                }
+                                onChange={(event) => patch(key, { weightKg: event.target.value })}
                                 className="tabular pr-8"
                               />
                               <span
@@ -515,9 +456,7 @@ export function SessionRunner({
                                 min={1}
                                 aria-label={`Répétitions de la série ${setIndex}`}
                                 value={draft.reps}
-                                onChange={(event) =>
-                                  patch(key, { reps: event.target.value })
-                                }
+                                onChange={(event) => patch(key, { reps: event.target.value })}
                                 className="tabular pr-9"
                               />
                               <span
@@ -540,9 +479,7 @@ export function SessionRunner({
                         <Toggle
                           variant="outline"
                           pressed={draft.toFailure}
-                          onPressedChange={(pressed) =>
-                            patch(key, { toFailure: pressed })
-                          }
+                          onPressedChange={(pressed) => patch(key, { toFailure: pressed })}
                           disabled={busy || closed}
                           aria-label={`Série ${setIndex} menée à l'échec`}
                           className="size-10 flex-none"
@@ -552,17 +489,11 @@ export function SessionRunner({
 
                         <Button
                           type="button"
-                          variant={
-                            recorded
-                              ? "secondary"
-                              : isNext
-                                ? "default"
-                                : "outline"
-                          }
+                          variant={recorded ? 'secondary' : isNext ? 'default' : 'outline'}
                           size="icon"
                           onClick={() => void save(entry, setIndex)}
                           disabled={busy || closed}
-                          aria-label={`${recorded ? "Corriger" : "Valider"} la série ${setIndex} de ${entry.exercise.name}`}
+                          aria-label={`${recorded ? 'Corriger' : 'Valider'} la série ${setIndex} de ${entry.exercise.name}`}
                           className="flex-none"
                         >
                           <CheckIcon />
@@ -579,20 +510,11 @@ export function SessionRunner({
 
       {!closed ? (
         <BottomBar surface="card">
-          <SessionClock
-            startedAt={session.startedAt}
-            rest={rest}
-            onRestChange={setRest}
-          />
+          <SessionClock startedAt={session.startedAt} rest={rest} onRestChange={setRest} />
           <div className="flex gap-2.5">
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={busy}
-                  className="flex-1"
-                >
+                <Button type="button" variant="outline" disabled={busy} className="flex-1">
                   Abandonner
                 </Button>
               </AlertDialogTrigger>
@@ -614,12 +536,7 @@ export function SessionRunner({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-            <Button
-              type="button"
-              onClick={() => void finish()}
-              disabled={busy}
-              className="flex-[1.4]"
-            >
+            <Button type="button" onClick={() => void finish()} disabled={busy} className="flex-[1.4]">
               Terminer la séance
             </Button>
           </div>
