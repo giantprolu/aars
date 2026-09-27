@@ -20,8 +20,11 @@ import {
   katchMcArdle,
   isValidBodyProfile,
   MAX_ACTIVE_KCAL_PER_BMR,
+  trainingShift,
   type BodyProfile,
 } from '../src/lib/energy';
+import { weeklyWeights, weightChange } from '../src/lib/weight';
+import { parseFavoriteItems, suggestFavoriteName, favoriteTotals } from '../src/lib/favorites';
 import {
   formatIngredientQuantity,
   formatServings,
@@ -1441,6 +1444,100 @@ assert.equal(
   const tractions = personalBest('strength', [serie(null, 8)]);
   assert.equal(tractions?.metric, 'reps', 'au poids du corps : repetitions');
   assert.ok(!beatsPersonalBest(tractions, serie(10, 5)), 'une serie lestee change de mesure');
+}
+
+// Cycle calorique : l'entrainement deplace des calories sans en ajouter a la semaine.
+{
+  const corps: BodyProfile = {
+    sex: 'male', ageYears: 30, heightCm: 180, weightKg: 75, activity: 'moderate',
+    goal: 'maintain', ratePercentPerWeek: 0,
+  };
+  const neutre = computeEnergyTarget(corps);
+  assert.equal(neutre.cycleKcal, 0, 'sans entrainement suivi, rien ne bouge');
+  assert.equal(neutre.trainingDay, null, 'ni jour d entrainement ni jour de repos');
+
+  const seance = computeEnergyTarget(corps, undefined, { trainingDay: true, sessionsPerWeek: 3 });
+  const repos = computeEnergyTarget(corps, undefined, { trainingDay: false, sessionsPerWeek: 3 });
+  assert.ok(seance.targetKcal > neutre.targetKcal, 'le jour de seance recoit plus');
+  assert.ok(repos.targetKcal < neutre.targetKcal, 'le jour de repos cede');
+  assert.equal(seance.trainingDay, true, 'jour d entrainement');
+  assert.ok(seance.carbsG > neutre.carbsG, 'le supplement va surtout aux glucides');
+  assert.equal(seance.proteinG, neutre.proteinG, 'les proteines suivent le poids, pas le jour');
+
+  // 3 x (+171) + 4 x (-129) : la semaine reste a peu pres neutre (arrondis a 10).
+  const semaine = 3 * trainingShift(75, { trainingDay: true, sessionsPerWeek: 3 })
+    + 4 * trainingShift(75, { trainingDay: false, sessionsPerWeek: 3 });
+  assert.ok(Math.abs(semaine) <= 40, `semaine neutre a l arrondi pres (${semaine})`);
+  assert.equal(
+    trainingShift(75, { trainingDay: true, sessionsPerWeek: 3 })
+      - trainingShift(75, { trainingDay: false, sessionsPerWeek: 3 }),
+    300,
+    'l ecart entre les deux jours vaut le cout de la seance',
+  );
+
+  const manuel = computeEnergyTarget(
+    { ...corps, manualTargetKcal: 2000 },
+    undefined,
+    { trainingDay: false, sessionsPerWeek: 5 },
+  );
+  assert.equal(manuel.targetKcal, 2000 + manuel.cycleKcal, 'la cible manuelle est la moyenne');
+
+  const plancher = computeEnergyTarget(
+    { ...corps, sex: 'female', manualTargetKcal: 1200 },
+    undefined,
+    { trainingDay: false, sessionsPerWeek: 5 },
+  );
+  assert.equal(plancher.targetKcal, 1200, 'jamais sous le minimum clinique');
+  assert.equal(plancher.cycleKcal, 0, 'le plancher annule la part cedee');
+}
+
+// Pesees : moyenne par semaine, trous laisses vides.
+{
+  const semaines = weeklyWeights(
+    [
+      { day: '2026-09-14', weightKg: 80 },
+      { day: '2026-09-16', weightKg: 81 },
+      { day: '2026-09-24', weightKg: 79.5 },
+    ],
+    3,
+    '2026-09-27',
+  );
+  assert.deepEqual(
+    semaines.map((week) => week.weekStart),
+    ['2026-09-07', '2026-09-14', '2026-09-21'],
+    'trois semaines, lundi en tete',
+  );
+  assert.equal(semaines[0]?.weightKg, null, 'semaine sans pesee : vide');
+  assert.equal(semaines[1]?.weightKg, 80.5, 'moyenne de la semaine');
+  assert.equal(semaines[1]?.count, 2, 'deux pesees');
+  assert.equal(weightChange(semaines), -1, 'ecart premiere-derniere semaine pesee');
+  assert.equal(weightChange(semaines.slice(0, 2)), null, 'une seule semaine : pas d ecart');
+}
+
+// Favoris : lecture defensive du JSON, nom propose.
+{
+  const items = parseFavoriteItems([
+    {
+      foodLabel: 'Flocons d avoine, complets',
+      quantityG: 60,
+      macros: { kcal: 220, proteinG: 8, carbsG: 36, fatG: 4 },
+      sourceKind: 'ciqual',
+      sourceRef: '9310',
+    },
+    {
+      foodLabel: 'Skyr',
+      quantityG: 150,
+      macros: { kcal: 95, proteinG: 16, carbsG: 6, fatG: 0 },
+      sourceKind: 'product',
+      sourceRef: null,
+    },
+    { foodLabel: 'Casse', quantityG: 0, macros: {}, sourceKind: 'ciqual', sourceRef: null },
+    'nimporte quoi',
+  ]);
+  assert.equal(items.length, 2, 'les elements abimes sont ecartes');
+  assert.equal(suggestFavoriteName(items), 'Flocons d avoine, Skyr', 'les deux plus caloriques');
+  assert.equal(favoriteTotals({ items }).kcal, 315, 'total du repas');
+  assert.deepEqual(parseFavoriteItems({ pas: 'un tableau' }), [], 'pas un tableau : vide');
 }
 
 console.log('Toutes les verifications pures passent.');

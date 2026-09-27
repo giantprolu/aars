@@ -1009,3 +1009,22 @@ export async function updateTemplateExercise(
     .returning({ id: schema.workoutTemplateExercises.id });
   return rows.length > 0;
 }
+
+/**
+ * Les jours où l'utilisateur a ouvert une séance depuis une date, sans doublon.
+ *
+ * Sert au calcul de la cible : un jour d'entraînement reçoit plus, et la
+ * fréquence réellement tenue décide combien.
+ */
+export async function trainingDates(userId: number, sinceDate: string): Promise<string[]> {
+  const rows = await db()
+    .selectDistinct({ day: schema.workoutSessions.sessionDate })
+    .from(schema.workoutSessions)
+    .where(
+      and(
+        eq(schema.workoutSessions.userId, userId),
+        gte(schema.workoutSessions.sessionDate, sinceDate),
+      ),
+    );
+  return rows.map((row) => String(row.day).slice(0, 10));
+}

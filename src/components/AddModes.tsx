@@ -6,12 +6,13 @@ import {
   CookingPotIcon,
   PencilIcon,
   SearchIcon,
+  StarIcon,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 
 /**
- * Les cinq chemins d'ajout, partagés entre la feuille du journal et l'écran
+ * Les chemins d'ajout, partagés entre la feuille du journal et l'écran
  * /add. L'ordre est celui de la fréquence d'usage réelle, pas celui de
  * l'implémentation.
  *
@@ -19,6 +20,9 @@ import { Card } from '@/components/ui/card';
  * écrit dans le carnet. Il vient après la recherche et avant la photo : on
  * mange ses propres recettes plus souvent qu'on ne photographie une assiette,
  * mais moins souvent qu'on ne scanne un produit.
+ *
+ * Les favoris passent en tête : quand un repas s'y trouve, c'est qu'on le
+ * refait presque chaque jour, et c'est alors le chemin le plus court de tous.
  */
 
 interface Mode {
@@ -30,6 +34,12 @@ interface Mode {
 }
 
 const MODES: Mode[] = [
+  {
+    href: '/add/favorites',
+    label: 'Mes favoris',
+    hint: 'Un repas déjà noté, d’un appui',
+    icon: <StarIcon />,
+  },
   {
     href: '/add/scan',
     label: 'Scanner',

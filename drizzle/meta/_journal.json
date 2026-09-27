@@ -99,6 +99,13 @@
       "when": 1789587400937,
       "tag": "0013_training_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790537440492,
+      "tag": "0014_nutrition_weights_favorites",
+      "breakpoints": true
     }
   ]
 }

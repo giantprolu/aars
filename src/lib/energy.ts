@@ -131,6 +131,30 @@ const FAT_ENERGY_SHARE = { lose: 0.25, maintain: 0.28, gain: 0.3 } as const;
  */
 const FAT_FLOOR_G_PER_KG = 0.5;
 
+/**
+ * Coût net d'une séance de musculation, en kilocalories par kilo de poids.
+ *
+ * Une heure de musculation vaut environ cinq MET (Compendium of Physical
+ * Activities, code 02054) ; le repos en vaut un, déjà compté dans le
+ * métabolisme de base. Il reste quatre kilocalories par kilo et par heure,
+ * soit trois cents pour soixante-quinze kilos. C'est un ordre de grandeur, et
+ * il ne sert qu'à répartir la semaine, pas à la gonfler (voir plus bas).
+ */
+const TRAINING_KCAL_PER_KG = 4;
+
+/**
+ * Ce que le calcul sait de l'entraînement de la semaine.
+ *
+ * `sessionsPerWeek` est la fréquence réellement tenue, pas celle déclarée :
+ * c'est elle qui décide combien de jours prennent le supplément, et une
+ * fréquence rêvée creuserait les jours de repos pour des séances qui n'ont
+ * pas lieu.
+ */
+export interface TrainingCycle {
+  trainingDay: boolean;
+  sessionsPerWeek: number;
+}
+
 /** Mesures saisies au questionnaire. */
 export interface BodyProfile {
   sex: Sex;
@@ -192,6 +216,13 @@ export interface EnergyTarget {
   proteinG: number;
   carbsG: number;
   fatG: number;
+  /**
+   * Ce que le jour reçoit ou cède à cause de l'entraînement, en kilocalories.
+   * Zéro quand l'utilisateur ne s'entraîne pas.
+   */
+  cycleKcal: number;
+  /** Jour d'entraînement, jour de repos, ou `null` sans entraînement suivi. */
+  trainingDay: boolean | null;
 }
 
 /**
@@ -324,6 +355,7 @@ function splitMacros(
 export function computeEnergyTarget(
   profile: BodyProfile,
   measuredActiveKcal?: number,
+  cycle?: TrainingCycle,
 ): EnergyTarget {
   const useKatch = profile.bodyFatPercent !== undefined;
   const bmr = useKatch
@@ -358,7 +390,20 @@ export function computeEnergyTarget(
   // de `isValidBodyProfile` l'ont déjà gardé dans le raisonnable en amont.
   const manual = profile.manualTargetKcal;
   const manualUsed = manual !== undefined && Number.isFinite(manual);
-  const target = manualUsed ? Math.round(manual as number) : computed;
+  const weekly = manualUsed ? Math.round(manual as number) : computed;
+
+  // L'entraînement déplace des calories d'un jour à l'autre sans rien ajouter
+  // à la semaine. Le jour de séance reçoit la part de la séance que les jours
+  // de repos lui cèdent : la différence entre les deux vaut le coût de la
+  // séance, et la moyenne de la semaine reste la cible calculée. Ajouter le
+  // coût sans le reprendre ailleurs le compterait deux fois — une fois dans
+  // le niveau d'activité ou la dépense mesurée, qui l'incluent déjà, une fois
+  // ici.
+  //
+  // Le jour de repos ne descend jamais sous le minimum clinique : la semaine
+  // y perd un peu de sa neutralité, c'est le prix d'un plancher qui tient.
+  const cycleKcal = cycle === undefined ? 0 : trainingShift(profile.weightKg, cycle);
+  const target = Math.max(weekly + cycleKcal, ABSOLUTE_FLOOR_KCAL[profile.sex]);
 
   return {
     bmrKcal: Math.round(bmr),
@@ -370,5 +415,22 @@ export function computeEnergyTarget(
     basis: manualUsed ? 'manual' : measured ? 'measured' : 'declared',
     activityCapped,
     ...splitMacros(target, profile),
+    cycleKcal: target - weekly,
+    trainingDay: cycle === undefined ? null : cycle.trainingDay,
   };
+}
+
+/**
+ * Le supplément d'un jour d'entraînement, ou la part cédée par un jour de
+ * repos, arrondi à la dizaine.
+ *
+ * Avec t séances par semaine et une séance coûtant C : le jour de séance
+ * reçoit C × (7 − t) / 7, le jour de repos cède C × t / 7. Sur la semaine,
+ * t × C × (7 − t) / 7 − (7 − t) × C × t / 7 = 0.
+ */
+export function trainingShift(weightKg: number, cycle: TrainingCycle): number {
+  const sessions = Math.min(6, Math.max(1, Math.round(cycle.sessionsPerWeek)));
+  const cost = TRAINING_KCAL_PER_KG * weightKg;
+  const shift = cycle.trainingDay ? (cost * (7 - sessions)) / 7 : (-cost * sessions) / 7;
+  return Math.round(shift / 10) * 10;
 }

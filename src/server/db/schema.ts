@@ -6,6 +6,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   primaryKey,
@@ -899,3 +900,69 @@ export const workoutSets = pgTable(
 );
 
 export type WorkoutSetRow = typeof workoutSets.$inferSelect;
+
+/**
+ * Les pesées, une par jour au plus.
+ *
+ * Le profil ne garde que le dernier poids, celui qui sert au calcul de la
+ * cible. Or la seule question qui compte sur trois semaines — est-ce que le
+ * poids suit l'objectif ? — demande la suite des pesées, pas la dernière.
+ * Une nouvelle pesée le même jour remplace la précédente : on se pèse deux
+ * fois quand la première était habillée, pas pour avoir deux mesures.
+ */
+export const weightLogs = pgTable(
+  'weight_logs',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    userId: bigint('user_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** Jour de la pesée, en Europe/Paris comme le journal (AD-11). */
+    day: date('day').notNull(),
+    weightKg: numeric('weight_kg', { precision: 5, scale: 1 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique('weight_logs_user_day_key').on(table.userId, table.day),
+    check('weight_logs_weight_check', sql`${table.weightKg} between 30 and 300`),
+  ],
+);
+
+export type WeightLogRow = typeof weightLogs.$inferSelect;
+
+/**
+ * Un repas enregistré pour être refait d'un appui.
+ *
+ * Les aliments sont figés dans la ligne, macros comprises, exactement comme
+ * une entrée du journal (AD-1) : le petit-déjeuner qu'on a mis en favori est
+ * celui qu'on a mangé, et une fiche produit corrigée depuis ne doit pas le
+ * changer en douce.
+ *
+ * Un tableau JSON et non une table d'éléments : le favori se lit et s'écrit
+ * toujours en entier, jamais élément par élément, et une jointure de plus ne
+ * servirait qu'à le reconstituer.
+ */
+export const favoriteMeals = pgTable(
+  'favorite_meals',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    userId: bigint('user_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    /** Le repas d'où il vient, proposé par défaut quand on le refait. */
+    meal: text('meal').notNull(),
+    /** `FavoriteItem[]`, voir `@/lib/favorites`. */
+    items: jsonb('items').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('favorite_meals_user_idx').on(table.userId, table.createdAt),
+    check(
+      'favorite_meals_meal_check',
+      sql`${table.meal} in ('breakfast', 'lunch', 'dinner', 'snack')`,
+    ),
+  ],
+);
+
+export type FavoriteMealRow = typeof favoriteMeals.$inferSelect;

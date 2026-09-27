@@ -196,3 +196,35 @@ export async function recentQuantities(
 
   return rows.map((row) => Number(row.quantityG));
 }
+
+/**
+ * Écrit plusieurs entrées d'un coup, macros déjà figées.
+ *
+ * Refaire un repas favori ajoute ses aliments ensemble : une seule
+ * instruction, pour qu'une coupure au milieu ne laisse pas la moitié d'un
+ * petit-déjeuner dans le journal.
+ */
+export async function insertEntries(inputs: readonly InsertEntryInput[]): Promise<number> {
+  if (inputs.length === 0) {
+    return 0;
+  }
+  const rows = await db()
+    .insert(schema.entries)
+    .values(
+      inputs.map((input) => ({
+        userId: input.userId,
+        entryDate: input.entryDate,
+        meal: input.meal,
+        foodLabel: input.foodLabel,
+        quantityG: String(input.quantityG),
+        kcal: String(input.macros.kcal),
+        proteinG: String(input.macros.proteinG),
+        carbsG: String(input.macros.carbsG),
+        fatG: String(input.macros.fatG),
+        sourceKind: input.sourceKind,
+        sourceRef: input.sourceRef,
+      })),
+    )
+    .returning({ id: schema.entries.id });
+  return rows.length;
+}

@@ -1,4 +1,4 @@
-import { CalendarIcon, PlusIcon } from 'lucide-react';
+import { CalendarIcon, DumbbellIcon, PlusIcon } from 'lucide-react';
 import Link from 'next/link';
 import { AddFab } from '@/components/AddFab';
 import { DayDial } from '@/components/DayDial';
@@ -9,6 +9,7 @@ import { journalForToday } from '@/server/services/entries';
 import { requireUserId } from '@/server/guard';
 import { targetFor } from '@/server/services/profile';
 import { formatJournalDate, todayInParis } from '@/lib/date';
+import { formatKcal } from '@/lib/nutrition';
 
 // Le journal vient du serveur à chaque navigation : rien n'est mis en cache (AD-5).
 export const dynamic = 'force-dynamic';
@@ -62,6 +63,21 @@ export default async function JournalPage() {
         }
       />
 
+      {/*
+        La cible bouge avec l'entraînement : le dire, sinon un chiffre qui
+        change d'un jour à l'autre sans raison se lit comme un bug. La moyenne
+        de la semaine est rappelée, parce que c'est elle qui ne change pas.
+      */}
+      {target !== null && target.trainingDay !== null && target.cycleKcal !== 0 ? (
+        <p className="tabular mt-3 flex items-center justify-center gap-1.5 text-[12.5px] text-muted-foreground">
+          <DumbbellIcon aria-hidden className="size-3.5" />
+          {target.trainingDay
+            ? `Jour d’entraînement : +${formatKcal(target.cycleKcal)} kcal`
+            : `Jour de repos : −${formatKcal(-target.cycleKcal)} kcal`}
+          {` · ${formatKcal(target.targetKcal - target.cycleKcal)} kcal en moyenne`}
+        </p>
+      ) : null}
+
       {entries.length === 0 ? (
         <div className="py-10 text-center">
           <p className="mx-auto max-w-[26ch] text-lg font-semibold tracking-tight">
@@ -78,7 +94,7 @@ export default async function JournalPage() {
           </Button>
         </div>
       ) : (
-        <MealJournal entries={entries} deletable />
+        <MealJournal entries={entries} deletable favoritable />
       )}
 
       {target === null ? (

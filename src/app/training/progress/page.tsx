@@ -6,11 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireUserId } from '@/server/guard';
+import { weightHistory } from '@/server/services/profile';
 import { PROGRESS_WEEKS, progressOverview } from '@/server/services/workouts';
 import { formatRelativeJournalDate } from '@/lib/date';
 import { formatSet } from '@/lib/workout';
 import { formatChange } from '@/lib/workout-progress';
-import { WeeklyVolumeChart } from './ChartsLazy';
+import { weightChange } from '@/lib/weight';
+import { WeeklyVolumeChart, WeeklyWeightChart } from './ChartsLazy';
+import { WeighInForm } from './WeighInForm';
 
 // Les séances viennent du serveur à chaque navigation : rien n'est mis en cache (AD-5).
 export const dynamic = 'force-dynamic';
@@ -23,10 +26,40 @@ export const dynamic = 'force-dynamic';
  * chaque exercice, avec son écart sur la période : c'est là que se voit un
  * mouvement qui stagne alors que le reste avance.
  *
+ * Le poids est posé sous le tonnage, sur les mêmes semaines. Les deux courbes
+ * se lisent ensemble : un poids qui monte avec le tonnage est une prise de
+ * muscle probable, un poids qui monte seul ne l'est pas.
+ *
  * Composant serveur ; seuls les graphiques sont des composants client (AD-10).
  */
 export default async function ProgressPage() {
-  const { weeks, exercises } = await progressOverview(await requireUserId());
+  const userId = await requireUserId();
+  const [{ weeks, exercises }, weights] = await Promise.all([
+    progressOverview(userId),
+    weightHistory(userId, PROGRESS_WEEKS),
+  ]);
+  const weighed = weights.filter((week) => week.weightKg !== null);
+  const lastWeight = weighed[weighed.length - 1]?.weightKg ?? null;
+  const change = weightChange(weights);
+
+  const weightCard = (
+    <Card className="mt-3">
+      <CardHeader>
+        <CardTitle>Poids</CardTitle>
+        <CardDescription>
+          {weighed.length === 0
+            ? 'Aucune pesée sur la période. La première trace le départ de la courbe.'
+            : change === null
+              ? 'Moyenne de chaque semaine pesée.'
+              : `Moyenne par semaine, ${change > 0 ? '+' : ''}${change.toLocaleString('fr-FR')} kg sur la période.`}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {weighed.length > 0 ? <WeeklyWeightChart weeks={weights} /> : null}
+        <WeighInForm lastWeightKg={lastWeight} />
+      </CardContent>
+    </Card>
+  );
 
   const sessions = weeks.reduce((total, week) => total + week.sessions, 0);
   const activeWeeks = weeks.filter((week) => week.sessions > 0).length;
@@ -42,6 +75,7 @@ export default async function ProgressPage() {
           <Button asChild variant="outline" className="w-full">
             <Link href="/training">Revenir au programme</Link>
           </Button>
+          {weightCard}
         </>
       ) : (
         <>
@@ -78,6 +112,8 @@ export default async function ProgressPage() {
               <WeeklyVolumeChart weeks={weeks} />
             </CardContent>
           </Card>
+
+          {weightCard}
 
           <h2 className="mt-5 mb-1 text-[12.5px] text-muted-foreground">Par exercice</h2>
           <ul>

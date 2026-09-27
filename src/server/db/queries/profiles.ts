@@ -87,3 +87,20 @@ export async function saveProfile(userId: number, profile: Profile): Promise<voi
       },
     });
 }
+
+/**
+ * Reporte une pesée sur le profil, s'il existe.
+ *
+ * Le profil porte le poids qui sert au calcul de la cible ; une pesée plus
+ * récente doit le remplacer, sans quoi la cible resterait posée sur le poids
+ * d'il y a trois mois. Renvoie faux quand il n'y a pas de profil à mettre à
+ * jour : la pesée reste enregistrée, le questionnaire viendra plus tard.
+ */
+export async function updateProfileWeight(userId: number, weightKg: number): Promise<boolean> {
+  const rows = await db()
+    .update(schema.profiles)
+    .set({ weightKg: String(weightKg), updatedAt: new Date() })
+    .where(eq(schema.profiles.userId, userId))
+    .returning({ userId: schema.profiles.userId });
+  return rows.length > 0;
+}

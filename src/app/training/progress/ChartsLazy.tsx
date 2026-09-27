@@ -40,3 +40,8 @@ export const SessionVolumeChart = dynamic(
   () => import('./ProgressCharts').then((module) => module.SessionVolumeChart),
   { ssr: false, loading: placeholder('h-[130px]') },
 );
+
+export const WeeklyWeightChart = dynamic(
+  () => import('./ProgressCharts').then((module) => module.WeeklyWeightChart),
+  { ssr: false, loading: placeholder('h-[150px]') },
+);

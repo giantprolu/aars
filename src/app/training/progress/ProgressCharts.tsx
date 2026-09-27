@@ -15,6 +15,7 @@ import {
   type SessionPoint,
   type WeekPoint,
 } from '@/lib/workout-progress';
+import type { WeekWeight } from '@/lib/weight';
 
 /**
  * Les graphiques de la progression, sur le Chart de shadcn/ui.
@@ -174,6 +175,74 @@ export function SessionVolumeChart({ points }: { points: readonly SessionPoint[]
         />
         <Bar dataKey="volume" fill="var(--color-volume)" radius={3} />
       </BarChart>
+    </ChartContainer>
+  );
+}
+
+const weightConfig = {
+  weightKg: { label: 'Poids', color: 'var(--chart-3)' },
+} satisfies ChartConfig;
+
+/**
+ * Le poids moyen de chaque semaine, sur la même grille que le tonnage.
+ *
+ * Les semaines sans pesée restent des trous : `connectNulls` tirerait un trait
+ * entre deux mesures et montrerait un poids qu'on n'a jamais lu sur la balance.
+ * L'axe part des valeurs et non de zéro, sans quoi un kilo de variation sur
+ * quatre-vingts ne se verrait pas.
+ */
+export function WeeklyWeightChart({ weeks }: { weeks: readonly WeekWeight[] }) {
+  const data = weeks.map((week) => ({ ...week, label: formatShortDate(week.weekStart) }));
+
+  return (
+    <ChartContainer config={weightConfig} className="aspect-auto h-[150px] w-full">
+      <LineChart accessibilityLayer data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <CartesianGrid vertical={false} />
+        <XAxis
+          dataKey="label"
+          tickLine={false}
+          axisLine={false}
+          tickMargin={6}
+          interval="preserveStartEnd"
+          minTickGap={24}
+        />
+        <YAxis
+          tickLine={false}
+          axisLine={false}
+          width={36}
+          domain={['dataMin - 1', 'dataMax + 1']}
+          allowDecimals={false}
+          tickFormatter={(value: number) => Math.round(value).toLocaleString('fr-FR')}
+        />
+        <ChartTooltip
+          cursor={false}
+          content={
+            <ChartTooltipContent
+              labelFormatter={(_, payload) => {
+                const week = payload[0]?.payload as { label: string } | undefined;
+                return week === undefined ? '' : `Semaine du ${week.label}`;
+              }}
+              formatter={(value, _name, item) => {
+                const week = item.payload as WeekWeight;
+                return (
+                  <span className="tabular">
+                    {Number(value).toLocaleString('fr-FR')} kg · {week.count} pesée
+                    {week.count > 1 ? 's' : ''}
+                  </span>
+                );
+              }}
+            />
+          }
+        />
+        <Line
+          dataKey="weightKg"
+          type="monotone"
+          stroke="var(--color-weightKg)"
+          strokeWidth={2}
+          dot={{ r: 3, fill: 'var(--color-weightKg)' }}
+          activeDot={{ r: 5 }}
+        />
+      </LineChart>
     </ChartContainer>
   );
 }
