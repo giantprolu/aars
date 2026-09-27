@@ -2,6 +2,9 @@ import 'server-only';
 import { shiftDate, startOfWeek, todayInParis } from '@/lib/date';
 import {
   DEFAULT_PREFERENCES,
+  habitualSwaps,
+  MAX_REST_SECONDS,
+  MIN_REST_SECONDS,
   isValidReps,
   isValidSeconds,
   isValidWeight,
@@ -17,6 +20,8 @@ import {
 } from '@/lib/workout';
 import { buildProgram } from '@/lib/workout-plan';
 import {
+  personalBest,
+  type PersonalBest,
   exerciseProgress,
   progressByExercise,
   weeklyTotals,
@@ -50,6 +55,9 @@ import {
   insertSession,
   insertTemplate,
   lastPerformance,
+  historySets,
+  recentTemplateSessionSets,
+  updateTemplateExercise,
   listExercises,
   listGyms,
   listSessions,
@@ -570,4 +578,90 @@ export async function exerciseProgressFor(
   const { exercises, sets } = await progressSets(userId, { exerciseId });
   const exercise = exercises[0];
   return exercise === undefined ? null : exerciseProgress(exercise, sets);
+}
+
+/**
+ * Le record de chaque exercice avant la séance en cours.
+ *
+ * La séance en cours est exclue pour la même raison que la dernière
+ * performance : sinon la série qu'on vient de faire serait son propre record,
+ * et la suivante n'en battrait jamais aucun.
+ */
+export async function personalBests(
+  userId: number,
+  exercises: readonly Exercise[],
+  currentSessionId: number | null,
+): Promise<Map<number, PersonalBest | null>> {
+  const history = await historySets(
+    userId,
+    exercises.map((exercise) => exercise.id),
+    currentSessionId,
+  );
+  return new Map(
+    exercises.map((exercise) => [
+      exercise.id,
+      personalBest(exercise.kind, history.get(exercise.id) ?? []),
+    ]),
+  );
+}
+
+/** Nombre de séances regardées pour reconnaître un remplacement habituel. */
+const HABIT_SESSIONS = 2;
+
+/**
+ * Les remplacements que l'utilisateur a faits aux deux dernières séances de
+ * ce modèle, rang par rang (voir `habitualSwaps`).
+ */
+export async function habitualSwapsFor(
+  userId: number,
+  template: WorkoutTemplate,
+  currentSessionId: number,
+): Promise<Map<number, number>> {
+  const recent = await recentTemplateSessionSets(
+    userId,
+    template.id,
+    currentSessionId,
+    HABIT_SESSIONS,
+  );
+  return habitualSwaps(template.exercises, recent);
+}
+
+export type EditTemplateExerciseResult = { kind: 'saved' } | { kind: 'invalid' } | { kind: 'not_found' };
+
+/**
+ * Modifie un exercice du programme : le remplacer pour de bon, ou régler son
+ * repos.
+ *
+ * L'exercice de remplacement est vérifié au catalogue : son identifiant vient
+ * du client, et une référence inconnue ferait échouer l'écriture sur la clé
+ * étrangère avec une erreur serveur au lieu d'un refus lisible.
+ */
+export async function editTemplateExercise(
+  userId: number,
+  entryId: number,
+  patch: { exerciseId?: number; restSeconds?: number | null },
+): Promise<EditTemplateExerciseResult> {
+  if (patch.exerciseId === undefined && patch.restSeconds === undefined) {
+    return { kind: 'invalid' };
+  }
+  if (
+    patch.restSeconds !== undefined &&
+    patch.restSeconds !== null &&
+    (!Number.isInteger(patch.restSeconds) ||
+      patch.restSeconds < MIN_REST_SECONDS ||
+      patch.restSeconds > MAX_REST_SECONDS)
+  ) {
+    return { kind: 'invalid' };
+  }
+  if (patch.exerciseId !== undefined) {
+    await ensureCatalog();
+    const catalog = await listExercises(null);
+    if (!catalog.some((exercise) => exercise.id === patch.exerciseId)) {
+      return { kind: 'not_found' };
+    }
+  }
+
+  return (await updateTemplateExercise(userId, entryId, patch))
+    ? { kind: 'saved' }
+    : { kind: 'not_found' };
 }

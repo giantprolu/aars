@@ -133,6 +133,27 @@ export async function finishSession(id: number): Promise<SimpleOutcome> {
   }
 }
 
+/**
+ * Modifie un exercice du programme : l'inscrire à la place d'un autre, ou
+ * régler son repos (`null` revient au repos déduit de la prescription).
+ */
+export async function updateTemplateExercise(input: {
+  entryId: number;
+  exerciseId?: number;
+  restSeconds?: number | null;
+}): Promise<SimpleOutcome> {
+  try {
+    const response = await fetch('/api/training/templates/exercises', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    return response.ok ? { kind: 'ok' } : { kind: 'error' };
+  } catch {
+    return { kind: 'error' };
+  }
+}
+
 /** Abandonne une séance. Ses séries partent avec elle. */
 export async function discardSession(id: number): Promise<SimpleOutcome> {
   try {

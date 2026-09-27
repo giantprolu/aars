@@ -1,8 +1,14 @@
 'use client';
 
-import { ArrowLeftRightIcon, CheckIcon, FlameIcon, TrendingUpIcon } from 'lucide-react';
+import {
+  ArrowLeftRightIcon,
+  CheckIcon,
+  FlameIcon,
+  TrendingUpIcon,
+  TrophyIcon,
+} from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { BottomBar } from '@/components/BottomBar';
 import { ErrorAlert } from '@/components/ErrorAlert';
@@ -24,22 +30,39 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Toggle } from '@/components/ui/toggle';
 import { cn } from '@/lib/utils';
-import { discardSession, finishSession, recordSet } from '@/lib/client/training';
+import {
+  discardSession,
+  finishSession,
+  recordSet,
+  updateTemplateExercise,
+} from '@/lib/client/training';
 import {
   bestSet,
-  DEFAULT_REST_SECONDS,
   formatClock,
   formatPrescription,
   formatSet,
+  KEEP_PLANNED,
+  REST_CHOICES,
+  restSecondsFor,
   sessionVolume,
+  suggestLoad,
+  type LoadSuggestion,
   type Exercise,
   type SessionExercise,
   type TemplateExercise,
   type WorkoutSession,
   type WorkoutSet,
 } from '@/lib/workout';
+import { setMeasure, type PersonalBest } from '@/lib/workout-progress';
 import { SessionClock, type Rest } from './SessionClock';
 import { SwapSheet } from './SwapSheet';
 
@@ -66,6 +89,10 @@ import { SwapSheet } from './SwapSheet';
  *
  * Valider une nouvelle série lance le repos. Corriger une série déjà faite ne
  * le relance pas : on corrige après coup, pas entre deux séries.
+ *
+ * Les cases sont préremplies avec la proposition du jour quand il y en a une
+ * (voir `suggestLoad`) : la charge à mettre est celle qu'on valide d'un appui,
+ * la raison est écrite juste au-dessus.
  */
 
 /** L'état local d'une case de la grille, avant enregistrement. */
@@ -87,11 +114,23 @@ function draftKey(exerciseId: number, setIndex: number): string {
   return `${exerciseId}:${setIndex}`;
 }
 
-/** Ce qu'on propose dans une case vide : la dernière performance, ou la consigne. */
+/**
+ * Ce qu'on propose dans une case vide : la proposition du jour, sinon la
+ * dernière performance, sinon la consigne.
+ */
 function initialDraft(
   entry: TemplateExercise,
   previous: WorkoutSet | null,
+  suggestion: LoadSuggestion | null,
 ): Draft {
+  if (suggestion !== null) {
+    return {
+      weightKg: suggestion.weightKg === null ? '' : String(suggestion.weightKg),
+      reps: suggestion.reps === null ? '' : String(suggestion.reps),
+      seconds: suggestion.seconds === null ? '' : String(suggestion.seconds),
+      toFailure: false,
+    };
+  }
   if (entry.exercise.kind === 'hold' || entry.exercise.kind === 'cardio') {
     return {
       weightKg: '',
@@ -114,6 +153,8 @@ export function SessionRunner({
   session,
   exercises,
   previous,
+  bests,
+  habitual,
   catalog,
 }: {
   session: WorkoutSession;
@@ -121,16 +162,22 @@ export function SessionRunner({
   exercises: readonly SessionExercise[];
   /** Ce qui a été fait la dernière fois, par identifiant d'exercice. */
   previous: Record<number, WorkoutSet[]>;
+  /** Le record de chaque exercice avant cette séance, `null` sans historique. */
+  bests: Record<number, PersonalBest | null>;
+  /** Les rangs dont le remplacement reprend celui des deux dernières séances. */
+  habitual: readonly number[];
   /** Les exercices de la salle, parmi lesquels choisir un remplaçant. */
   catalog: readonly Exercise[];
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shown, setShown] = useState<SheetExercise | null>(null);
   const [swapping, setSwapping] = useState<SessionExercise | null>(null);
   const [rest, setRest] = useState<Rest | null>(null);
+  const [record, setRecord] = useState<string | null>(null);
 
   const doneSets = new Map(
     session.sets.map((set) => [draftKey(set.exerciseId, set.setIndex), set]),
@@ -154,7 +201,11 @@ export function SessionRunner({
     }
 
     const history = previous[entry.exercise.id] ?? [];
-    return initialDraft(entry, history[setIndex - 1] ?? bestSet(history));
+    return initialDraft(
+      entry,
+      history[setIndex - 1] ?? bestSet(history),
+      suggestLoad(entry, history),
+    );
   }
 
   function patch(key: string, change: Partial<Draft>) {
@@ -168,22 +219,20 @@ export function SessionRunner({
   }
 
   /**
-   * Écrit les remplacements encore révocables dans l'adresse, et recharge.
+   * Écrit un remplacement dans l'adresse, et recharge.
    *
-   * Ceux que des séries portent déjà n'y figurent pas : le serveur les relit
-   * dans les séries, et les laisser dans l'adresse n'ajouterait rien.
+   * Les autres rangs gardent ce que l'adresse disait d'eux. Revenir à
+   * l'exercice prévu s'écrit `rang:0` plutôt que par une absence : sans cela,
+   * un remplacement retenu des séances précédentes reviendrait aussitôt.
    */
   function applySwap(position: number, exerciseId: number | null) {
     const params = new URLSearchParams();
-    for (const entry of exercises) {
-      if (entry.position === position || entry.planned === null || entry.locked) {
-        continue;
+    for (const value of searchParams.getAll('swap')) {
+      if (!value.startsWith(`${position}:`)) {
+        params.append('swap', value);
       }
-      params.append('swap', `${entry.position}:${entry.exercise.id}`);
     }
-    if (exerciseId !== null) {
-      params.append('swap', `${position}:${exerciseId}`);
-    }
+    params.append('swap', `${position}:${exerciseId ?? KEEP_PLANNED}`);
     const query = params.toString();
     router.replace(`/training/session/${session.id}${query === '' ? '' : `?${query}`}`, {
       scroll: false,
@@ -203,13 +252,95 @@ export function SessionRunner({
     ) {
       return null;
     }
-    return entry.restSeconds ?? DEFAULT_REST_SECONDS;
+    return restSecondsFor(entry);
+  }
+
+  /** Règle le repos d'un exercice dans le programme, pour les séances suivantes aussi. */
+  async function changeRest(entry: TemplateExercise, value: string) {
+    setBusy(true);
+    const outcome = await updateTemplateExercise({
+      entryId: entry.id,
+      restSeconds: value === 'auto' ? null : Number(value),
+    });
+    setBusy(false);
+    if (outcome.kind === 'ok') {
+      router.refresh();
+      return;
+    }
+    setError('Le repos n’a pas pu être modifié.');
+  }
+
+  /** Inscrit au programme l'exercice qui a pris la place du prévu. */
+  async function adopt(entry: SessionExercise) {
+    setBusy(true);
+    const outcome = await updateTemplateExercise({
+      entryId: entry.id,
+      exerciseId: entry.exercise.id,
+    });
+    setBusy(false);
+    if (outcome.kind === 'ok') {
+      router.refresh();
+      return;
+    }
+    setError('Le programme n’a pas pu être modifié.');
+  }
+
+  /**
+   * La meilleure série de la séance sur cet exercice, si elle bat le record.
+   *
+   * Une seule par exercice : trois séries à la même charge record ne font
+   * qu'un record, et le trophée sur chacune n'en dirait pas plus.
+   */
+  function recordSetIndex(entry: TemplateExercise): number | null {
+    const best = bests[entry.exercise.id] ?? null;
+    if (best === null) {
+      return null;
+    }
+    let winner: { setIndex: number; value: number } | null = null;
+    for (const set of session.sets) {
+      if (set.exerciseId !== entry.exercise.id) {
+        continue;
+      }
+      const value = setMeasure(best.metric, set);
+      if (value !== null && value > best.value && (winner === null || value > winner.value)) {
+        winner = { setIndex: set.setIndex, value };
+      }
+    }
+    return winner?.setIndex ?? null;
+  }
+
+  /** Vrai si la série qu'on vient de valider devient le record de l'exercice. */
+  function isNewRecord(
+    entry: TemplateExercise,
+    setIndex: number,
+    set: { weightKg: number | null; reps: number | null; seconds: number | null },
+  ): boolean {
+    const best = bests[entry.exercise.id] ?? null;
+    if (best === null) {
+      return false;
+    }
+    const value = setMeasure(best.metric, set);
+    if (value === null || value <= best.value) {
+      return false;
+    }
+    return session.sets.every(
+      (other) =>
+        other.exerciseId !== entry.exercise.id ||
+        other.setIndex === setIndex ||
+        (setMeasure(best.metric, other) ?? 0) < value,
+    );
   }
 
   async function save(entry: TemplateExercise, setIndex: number) {
     const draft = readDraft(entry, setIndex);
     const isCorrection = doneSets.has(draftKey(entry.exercise.id, setIndex));
     const isTimed = entry.exercise.kind === 'hold' || entry.exercise.kind === 'cardio';
+
+    const measures = {
+      weightKg: isTimed || draft.weightKg.trim() === '' ? null : Number(draft.weightKg),
+      reps: isTimed || draft.reps.trim() === '' ? null : Number(draft.reps),
+      seconds: isTimed && draft.seconds.trim() !== '' ? Number(draft.seconds) : null,
+    };
 
     setBusy(true);
     setError(null);
@@ -218,14 +349,17 @@ export function SessionRunner({
       exerciseId: entry.exercise.id,
       position: entry.position,
       setIndex,
-      weightKg: isTimed || draft.weightKg.trim() === '' ? null : Number(draft.weightKg),
-      reps: isTimed || draft.reps.trim() === '' ? null : Number(draft.reps),
-      seconds: isTimed && draft.seconds.trim() !== '' ? Number(draft.seconds) : null,
+      ...measures,
       toFailure: draft.toFailure,
     });
     setBusy(false);
 
     if (outcome.kind === 'ok') {
+      setRecord(
+        isNewRecord(entry, setIndex, measures)
+          ? `Nouveau record sur ${entry.exercise.name} : ${formatSet(measures)}`
+          : null,
+      );
       const seconds = isCorrection ? null : restAfter(entry);
       if (seconds !== null) {
         setRest({ endsAt: Date.now() + seconds * 1000 });
@@ -288,6 +422,16 @@ export function SessionRunner({
 
       {error ? <ErrorAlert>{error}</ErrorAlert> : null}
 
+      {record !== null ? (
+        <div
+          role="status"
+          className="mt-4 flex items-center gap-2.5 rounded-xl border border-primary/30 bg-primary/10 px-3.5 py-2.5 text-[13.5px] font-medium"
+        >
+          <TrophyIcon aria-hidden className="size-[18px] flex-none text-primary" />
+          <span className="tabular">{record}</span>
+        </div>
+      ) : null}
+
       {exercises.length === 0 ? (
         <p className="mt-6 text-muted-foreground">
           Cette séance ne suit aucun modèle : ses séries ne peuvent pas être préremplies.
@@ -308,6 +452,10 @@ export function SessionRunner({
           const nextIndex = indices.find(
             (setIndex) => !doneSets.has(draftKey(entry.exercise.id, setIndex)),
           );
+          const suggestion = closed ? null : suggestLoad(entry, history);
+          const restSeconds = restSecondsFor(entry);
+          const trophy = recordSetIndex(entry);
+          const isHabit = habitual.includes(entry.position);
 
           return (
             <Card key={entry.id} role="region" aria-label={entry.exercise.name}>
@@ -333,6 +481,20 @@ export function SessionRunner({
                     {entry.planned !== null ? (
                       <p className="mt-0.5 text-[12.5px] text-muted-foreground">
                         À la place de {entry.planned.name}
+                        {isHabit ? ', comme les deux dernières fois' : ''}
+                        {isHabit && !closed ? (
+                          <>
+                            {' · '}
+                            <button
+                              type="button"
+                              onClick={() => void adopt(entry)}
+                              disabled={busy}
+                              className="underline underline-offset-4"
+                            >
+                              L’inscrire au programme
+                            </button>
+                          </>
+                        ) : null}
                         {!entry.locked && !closed ? (
                           <>
                             {' · '}
@@ -389,11 +551,59 @@ export function SessionRunner({
                   <p className="mt-2 text-[12.5px] text-muted-foreground">{entry.notes}</p>
                 ) : null}
 
-                <p className="tabular mt-2.5 mb-1 text-[12.5px] text-muted-foreground">
+                <p className="tabular mt-2.5 text-[12.5px] text-muted-foreground">
                   {reference !== null
                     ? `La dernière fois : ${formatSet(reference)}${history.length > 1 ? `, sur ${history.length} séries` : ''}`
                     : 'Première fois sur cet exercice.'}
                 </p>
+                {suggestion !== null ? (
+                  <p
+                    className={cn(
+                      'tabular mt-0.5 text-[12.5px] font-medium',
+                      suggestion.trend === 'up' ? 'text-primary' : 'text-foreground',
+                    )}
+                  >
+                    {suggestion.reason}
+                  </p>
+                ) : null}
+
+                {/*
+                  Le repos se règle ici, devant l'exercice, parce que c'est ici
+                  qu'on découvre qu'il est trop court. Le réglage est écrit dans
+                  le programme : il vaut pour les séances suivantes aussi.
+                */}
+                {restSeconds !== null && !closed ? (
+                  <div className="mt-1.5 mb-1 flex items-center gap-2 text-[12.5px] text-muted-foreground">
+                    <span>Repos</span>
+                    <Select
+                      value={entry.restSeconds === null ? 'auto' : String(entry.restSeconds)}
+                      onValueChange={(value) => void changeRest(entry, value)}
+                      disabled={busy}
+                    >
+                      <SelectTrigger
+                        size="sm"
+                        aria-label={`Repos après chaque série de ${entry.exercise.name}`}
+                        className="tabular h-7 px-2 text-[12.5px]"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">
+                          {entry.restSeconds === null
+                            ? `${formatClock(restSeconds)} (selon l’exercice)`
+                            : 'Selon l’exercice'}
+                        </SelectItem>
+                        {REST_CHOICES.map((seconds) => (
+                          <SelectItem key={seconds} value={String(seconds)}>
+                            {formatClock(seconds)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="mb-1" />
+                )}
 
                 <ul>
                   {indices.map((setIndex) => {
@@ -407,8 +617,12 @@ export function SessionRunner({
                         key={setIndex}
                         className={cn('flex items-center gap-2 py-1.5', recorded && 'opacity-60 focus-within:opacity-100')}
                       >
-                        <span className="tabular w-5 flex-none text-[12px] text-muted-foreground">
-                          {setIndex}
+                        <span className="tabular flex w-5 flex-none justify-center text-[12px] text-muted-foreground">
+                          {trophy === setIndex ? (
+                            <TrophyIcon aria-label="Record" className="size-3.5 text-primary" />
+                          ) : (
+                            setIndex
+                          )}
                         </span>
 
                         {isTimed ? (

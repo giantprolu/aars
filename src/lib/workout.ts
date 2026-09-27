@@ -406,7 +406,13 @@ export function resolveSessionExercises(
   const used = new Set(resolved.map((entry) => entry.exercise.id));
   return resolved.map((entry) => {
     const wanted = swaps.get(entry.position);
-    if (entry.locked || wanted === undefined || wanted === entry.exercise.id || used.has(wanted)) {
+    if (
+      entry.locked ||
+      wanted === undefined ||
+      wanted === KEEP_PLANNED ||
+      wanted === entry.exercise.id ||
+      used.has(wanted)
+    ) {
       return entry;
     }
     const exercise = catalog.get(wanted);
@@ -419,8 +425,13 @@ export function resolveSessionExercises(
   });
 }
 
+/** Dans un remplacement, « garder l'exercice prévu ». */
+export const KEEP_PLANNED = 0;
+
 /**
  * Lit les remplacements écrits dans l'adresse : `rang:exercice`, répétés.
+ * `rang:0` demande de garder l'exercice prévu (`KEEP_PLANNED`), ce qui
+ * l'emporte sur un remplacement retenu des séances précédentes.
  *
  * L'adresse et non la base, parce qu'un remplacement sans série n'est qu'une
  * intention : il suffit qu'il survive au rechargement de l'écran. Dès la
@@ -434,10 +445,7 @@ export function parseSwaps(raw: string | readonly string[] | undefined): Map<num
     if (match === null) {
       continue;
     }
-    const exerciseId = Number(match[2]);
-    if (exerciseId > 0) {
-      swaps.set(Number(match[1]), exerciseId);
-    }
+    swaps.set(Number(match[1]), Number(match[2]));
   }
   return swaps;
 }
@@ -473,4 +481,213 @@ export function swapCandidates(
         a.name.localeCompare(b.name, 'fr'),
     );
   return { closest, others };
+}
+
+/** Bornes d'un repos réglé à la main, en secondes. */
+export const MIN_REST_SECONDS = 15;
+export const MAX_REST_SECONDS = 600;
+
+/** Les durées proposées au réglage du repos, de la plus courte à la plus longue. */
+export const REST_CHOICES = [45, 60, 75, 90, 120, 150, 180, 240] as const;
+
+/**
+ * Le repos après une série de cet exercice.
+ *
+ * Celui du programme s'il en fixe un. Sinon, il se déduit de la prescription,
+ * parce que c'est elle qui dit la nature de l'effort : une série de huit
+ * lourde vide ce que trois minutes rechargent à peine, une série de quinze en
+ * isolation se reprend en une minute. Le cardio n'a pas de repos, il n'a
+ * qu'une série.
+ */
+export function restSecondsFor(entry: TemplateExercise): number | null {
+  if (entry.restSeconds !== null) {
+    return entry.restSeconds;
+  }
+  if (entry.exercise.kind === 'cardio') {
+    return null;
+  }
+  if (entry.exercise.kind === 'hold') {
+    return 60;
+  }
+  const top = entry.targetRepsMax ?? entry.targetRepsMin;
+  if (top === null) {
+    return DEFAULT_REST_SECONDS;
+  }
+  if (top <= 10) {
+    return 150;
+  }
+  return top <= 12 ? 120 : 75;
+}
+
+/**
+ * Ce que l'écran propose pour la séance du jour, avec la raison en clair.
+ *
+ * Les valeurs préremplissent les cases, la raison s'affiche sous l'exercice :
+ * une charge qui change sans explication se refuse, une charge expliquée se
+ * valide.
+ */
+export interface LoadSuggestion {
+  weightKg: number | null;
+  reps: number | null;
+  seconds: number | null;
+  /** Le sens de la proposition, pour l'accent visuel. */
+  trend: 'up' | 'same' | 'down';
+  reason: string;
+}
+
+/** L'écart de charge d'une marche : un kilo sous vingt kilos, deux et demi au-dessus. */
+function loadStep(weightKg: number): number {
+  return weightKg < 20 ? 1 : 2.5;
+}
+
+function roundLoad(weightKg: number, step: number): number {
+  return Math.round(weightKg / step) * step;
+}
+
+function kg(value: number): string {
+  return `${value.toLocaleString('fr-FR')} kg`;
+}
+
+/**
+ * La double progression : d'abord les répétitions, ensuite la charge.
+ *
+ * Tant que toutes les séries n'atteignent pas le haut de la fourchette, on
+ * garde la charge et on vise une répétition de plus. Quand elles l'atteignent
+ * toutes, on monte d'une marche et l'on repart du bas de la fourchette. Si
+ * aucune n'a atteint le bas, la charge était trop lourde : on redescend
+ * d'environ dix pour cent plutôt que de rater encore.
+ *
+ * C'est la règle que le programme sous-entend en écrivant « 4×8-10 » ; elle
+ * n'avait jusqu'ici que la mémoire de l'utilisateur pour s'appliquer.
+ */
+export function suggestLoad(
+  entry: TemplateExercise,
+  previous: readonly Pick<WorkoutSet, 'weightKg' | 'reps' | 'seconds'>[],
+): LoadSuggestion | null {
+  if (previous.length === 0 || entry.exercise.kind === 'cardio') {
+    return null;
+  }
+
+  if (entry.exercise.kind === 'hold') {
+    const target = entry.targetSeconds;
+    const held = previous.map((set) => set.seconds ?? 0);
+    if (target === null || held.every((seconds) => seconds === 0)) {
+      return null;
+    }
+    const weakest = Math.min(...held);
+    if (held.length >= entry.targetSets && weakest >= target) {
+      const seconds = Math.max(...held) + 5;
+      return {
+        weightKg: null,
+        reps: null,
+        seconds,
+        trend: 'up',
+        reason: `Toutes tenues ${target} s la dernière fois : vise ${seconds} s.`,
+      };
+    }
+    return {
+      weightKg: null,
+      reps: null,
+      seconds: target,
+      trend: 'same',
+      reason: `Vise ${target} s sur chaque série.`,
+    };
+  }
+
+  const top = entry.targetRepsMax ?? entry.targetRepsMin;
+  const bottom = entry.targetRepsMin ?? top;
+  const done = previous.filter((set) => set.reps !== null && set.reps > 0);
+  if (top === null || bottom === null || done.length === 0) {
+    return null;
+  }
+
+  const working = Math.max(...done.map((set) => set.weightKg ?? 0));
+  const atWorking = done.filter((set) => (set.weightKg ?? 0) === working);
+  const reps = atWorking.map((set) => set.reps ?? 0);
+  const weakest = Math.min(...reps);
+  const complete = done.length >= entry.targetSets;
+
+  // Au poids du corps, la charge n'existe pas : la progression passe par les
+  // répétitions, puis par le lest, que l'écran ne peut que suggérer.
+  if (working === 0) {
+    if (complete && weakest >= top) {
+      return {
+        weightKg: null,
+        reps: top,
+        seconds: null,
+        trend: 'up',
+        reason: `Toutes les séries à ${top} : ajoute du lest ou ralentis la descente.`,
+      };
+    }
+    const aim = Math.min(top, weakest + 1);
+    return {
+      weightKg: null,
+      reps: aim,
+      seconds: null,
+      trend: 'same',
+      reason: `Vise ${aim} répétitions sur chaque série.`,
+    };
+  }
+
+  if (complete && weakest >= top) {
+    const step = loadStep(working);
+    const next = roundLoad(working + step, step);
+    return {
+      weightKg: next,
+      reps: bottom,
+      seconds: null,
+      trend: 'up',
+      reason: `Toutes les séries à ${top} à ${kg(working)} : monte à ${kg(next)}.`,
+    };
+  }
+
+  if (Math.max(...reps) < bottom) {
+    const step = loadStep(working);
+    const next = Math.max(step, roundLoad(working * 0.9, step));
+    return {
+      weightKg: next,
+      reps: bottom,
+      seconds: null,
+      trend: 'down',
+      reason: `Aucune série à ${bottom} la dernière fois : redescends à ${kg(next)}.`,
+    };
+  }
+
+  const aim = Math.min(top, weakest + 1);
+  return {
+    weightKg: working,
+    reps: aim,
+    seconds: null,
+    trend: 'same',
+    reason: `Garde ${kg(working)} et vise ${aim} répétitions sur chaque série.`,
+  };
+}
+
+/**
+ * Les remplacements devenus des habitudes : le même exercice mis à la place
+ * du même rang lors des deux dernières séances de ce modèle.
+ *
+ * Deux fois et non une : une machine prise un soir ne dit rien, deux soirs de
+ * suite disent que la séance s'est déplacée. `recent` va de la plus récente à
+ * la plus ancienne séance.
+ */
+export function habitualSwaps(
+  planned: readonly TemplateExercise[],
+  recent: readonly (readonly Pick<WorkoutSet, 'exerciseId' | 'position'>[])[],
+): Map<number, number> {
+  const habits = new Map<number, number>();
+  const [last, before] = recent;
+  if (last === undefined || before === undefined) {
+    return habits;
+  }
+  const at = (sets: readonly Pick<WorkoutSet, 'exerciseId' | 'position'>[], position: number) =>
+    sets.find((set) => set.position === position)?.exerciseId;
+
+  for (const entry of planned) {
+    const now = at(last, entry.position);
+    if (now !== undefined && now !== entry.exercise.id && now === at(before, entry.position)) {
+      habits.set(entry.position, now);
+    }
+  }
+  return habits;
 }

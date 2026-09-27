@@ -1,8 +1,8 @@
-import { TimerIcon, XIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { DEFAULT_REST_SECONDS, formatClock } from "@/lib/workout";
+import { TimerIcon, XIcon } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { DEFAULT_REST_SECONDS, formatClock } from '@/lib/workout';
 
 /**
  * La durée de la séance et le repos entre deux séries.
@@ -44,10 +44,7 @@ export function SessionClock({
     return () => clearInterval(timer);
   }, []);
 
-  const remaining =
-    rest === null || now === null
-      ? null
-      : Math.ceil((rest.endsAt - now) / 1000);
+  const remaining = rest === null || now === null ? null : Math.ceil((rest.endsAt - now) / 1000);
   const over = remaining !== null && remaining <= 0;
 
   useEffect(() => {
@@ -67,15 +64,14 @@ export function SessionClock({
     onRestChange({ endsAt: Math.max(now, base + seconds * 1000) });
   }
 
-  const elapsed =
-    now === null ? null : (now - new Date(startedAt).getTime()) / 1000;
+  const elapsed = now === null ? null : (now - new Date(startedAt).getTime()) / 1000;
 
   return (
     <div className="mb-3 flex min-h-9 items-center justify-between gap-3">
       <p className="tabular text-[13px] text-muted-foreground">
-        Séance{" "}
+        Séance{' '}
         <span className="font-medium text-foreground">
-          {elapsed === null ? "—" : formatClock(elapsed)}
+          {elapsed === null ? '—' : formatClock(elapsed)}
         </span>
       </p>
 
@@ -84,9 +80,7 @@ export function SessionClock({
           type="button"
           variant="outline"
           size="sm"
-          onClick={() =>
-            onRestChange({ endsAt: Date.now() + DEFAULT_REST_SECONDS * 1000 })
-          }
+          onClick={() => onRestChange({ endsAt: Date.now() + DEFAULT_REST_SECONDS * 1000 })}
         >
           <TimerIcon />
           Repos {formatClock(DEFAULT_REST_SECONDS)}
@@ -95,15 +89,13 @@ export function SessionClock({
         <div className="flex items-center gap-1.5">
           <p
             role="timer"
-            aria-live={over ? "assertive" : "off"}
+            aria-live={over ? 'assertive' : 'off'}
             className={cn(
-              "tabular mr-1 text-[15px] font-semibold",
-              over ? "text-primary" : "text-foreground",
+              'tabular mr-1 text-[15px] font-semibold',
+              over ? 'text-primary' : 'text-foreground',
             )}
           >
-            {over
-              ? "Repos terminé"
-              : `Repos ${remaining === null ? "—" : formatClock(remaining)}`}
+            {over ? 'Repos terminé' : `Repos ${remaining === null ? '—' : formatClock(remaining)}`}
           </p>
           {over ? null : (
             <>
@@ -134,7 +126,7 @@ export function SessionClock({
             variant="ghost"
             size="icon-sm"
             onClick={() => onRestChange(null)}
-            aria-label={over ? "Fermer le repos" : "Passer le repos"}
+            aria-label={over ? 'Fermer le repos' : 'Passer le repos'}
           >
             <XIcon />
           </Button>

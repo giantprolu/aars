@@ -301,3 +301,61 @@ const shortDateFormatter = new Intl.DateTimeFormat('fr-FR', {
 export function formatShortDate(isoDate: string): string {
   return shortDateFormatter.format(new Date(`${isoDate}T00:00:00Z`));
 }
+
+/** Ce qu'une série mesure, sans son jour ni sa séance. */
+export type MeasuredSet = Pick<ProgressSet, 'weightKg' | 'reps' | 'seconds'>;
+
+/** Le record d'un exercice avant la séance du jour. */
+export interface PersonalBest {
+  metric: ProgressMetric;
+  value: number;
+}
+
+/** La valeur d'une série dans une mesure donnée, ou `null` si elle ne la porte pas. */
+export function setMeasure(metric: ProgressMetric, set: MeasuredSet): number | null {
+  switch (metric) {
+    case 'load':
+      return estimatedOneRepMax(set.weightKg, set.reps);
+    case 'reps':
+      return (set.weightKg ?? 0) === 0 && set.reps !== null && set.reps > 0 ? set.reps : null;
+    case 'time':
+      return set.seconds !== null && set.seconds > 0 ? set.seconds : null;
+  }
+}
+
+/**
+ * Le record d'un exercice, sur toutes les séances passées.
+ *
+ * `null` quand il n'y a rien avant : la première série sur un exercice n'est
+ * pas un record, elle est un point de départ, et la fêter chaque fois qu'on
+ * découvre une machine viderait le mot de son sens.
+ */
+export function personalBest(kind: ExerciseKind, history: readonly MeasuredSet[]): PersonalBest | null {
+  const metric = progressMetric(
+    kind,
+    history.map((set) => ({ ...set, sessionId: 0, sessionDate: '', exerciseId: 0, toFailure: false })),
+  );
+  let best: number | null = null;
+  for (const set of history) {
+    const value = setMeasure(metric, set);
+    if (value !== null && (best === null || value > best)) {
+      best = value;
+    }
+  }
+  return best === null ? null : { metric, value: best };
+}
+
+/**
+ * Vrai si la série dépasse le record.
+ *
+ * La mesure est celle du record : une traction lestée après des mois au poids
+ * du corps change de mesure, et la comparer à un nombre de répétitions n'aurait
+ * aucun sens. Elle ne compte donc pas, jusqu'à ce qu'un record lesté existe.
+ */
+export function beatsPersonalBest(best: PersonalBest | null, set: MeasuredSet): boolean {
+  if (best === null) {
+    return false;
+  }
+  const value = setMeasure(best.metric, set);
+  return value !== null && value > best.value;
+}

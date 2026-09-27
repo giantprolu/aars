@@ -874,3 +874,138 @@ export async function progressSets(
 
   return { exercises: [...exercises.values()], sets };
 }
+
+/**
+ * Toutes les séries passées de quelques exercices, réduites à leurs mesures.
+ *
+ * Sert au record : il se calcule sur toute l'histoire, pas sur la dernière
+ * séance, et c'est `@/lib/workout-progress` qui décide de la mesure. Quelques
+ * exercices sur des mois tiennent en quelques centaines de lignes.
+ */
+export async function historySets(
+  userId: number,
+  exerciseIds: readonly number[],
+  excludeSessionId: number | null,
+): Promise<Map<number, { weightKg: number | null; reps: number | null; seconds: number | null }[]>> {
+  const byExercise = new Map<
+    number,
+    { weightKg: number | null; reps: number | null; seconds: number | null }[]
+  >();
+  if (exerciseIds.length === 0) {
+    return byExercise;
+  }
+
+  const conditions = [
+    eq(schema.workoutSets.userId, userId),
+    inArray(schema.workoutSets.exerciseId, [...exerciseIds]),
+  ];
+  if (excludeSessionId !== null) {
+    conditions.push(sql`${schema.workoutSets.sessionId} <> ${excludeSessionId}`);
+  }
+
+  const rows = await db()
+    .select({
+      exerciseId: schema.workoutSets.exerciseId,
+      weightKg: schema.workoutSets.weightKg,
+      reps: schema.workoutSets.reps,
+      seconds: schema.workoutSets.seconds,
+    })
+    .from(schema.workoutSets)
+    .where(and(...conditions));
+
+  for (const row of rows) {
+    const list = byExercise.get(row.exerciseId) ?? [];
+    list.push({
+      weightKg: toNullableNumber(row.weightKg),
+      reps: row.reps,
+      seconds: row.seconds,
+    });
+    byExercise.set(row.exerciseId, list);
+  }
+  return byExercise;
+}
+
+/**
+ * Les séries des dernières séances terminées d'un modèle, la plus récente en
+ * tête. Ce qu'on y lit : quel exercice a occupé chaque rang, pour reconnaître
+ * un remplacement devenu habituel.
+ */
+export async function recentTemplateSessionSets(
+  userId: number,
+  templateId: number,
+  excludeSessionId: number,
+  limit: number,
+): Promise<{ exerciseId: number; position: number }[][]> {
+  const sessions = await db()
+    .select({ id: schema.workoutSessions.id })
+    .from(schema.workoutSessions)
+    .where(
+      and(
+        eq(schema.workoutSessions.userId, userId),
+        eq(schema.workoutSessions.templateId, templateId),
+        sql`${schema.workoutSessions.finishedAt} is not null`,
+        sql`${schema.workoutSessions.id} <> ${excludeSessionId}`,
+      ),
+    )
+    .orderBy(desc(schema.workoutSessions.sessionDate), desc(schema.workoutSessions.startedAt))
+    .limit(limit);
+
+  if (sessions.length === 0) {
+    return [];
+  }
+
+  const rows = await db()
+    .select({
+      sessionId: schema.workoutSets.sessionId,
+      exerciseId: schema.workoutSets.exerciseId,
+      position: schema.workoutSets.position,
+    })
+    .from(schema.workoutSets)
+    .where(
+      and(
+        eq(schema.workoutSets.userId, userId),
+        inArray(
+          schema.workoutSets.sessionId,
+          sessions.map((session) => session.id),
+        ),
+      ),
+    );
+
+  return sessions.map((session) =>
+    rows
+      .filter((row) => row.sessionId === session.id)
+      .map((row) => ({ exerciseId: row.exerciseId, position: row.position })),
+  );
+}
+
+/**
+ * Modifie un exercice d'une séance modèle : l'exercice lui-même, ou son repos.
+ *
+ * Le modèle doit appartenir à l'utilisateur. La condition passe par une
+ * sous-requête et non par une lecture préalable : l'identifiant de la ligne
+ * vient du client, et une seule instruction ne laisse aucun intervalle où la
+ * vérification et l'écriture divergeraient.
+ */
+export async function updateTemplateExercise(
+  userId: number,
+  entryId: number,
+  patch: { exerciseId?: number; restSeconds?: number | null },
+): Promise<boolean> {
+  const rows = await db()
+    .update(schema.workoutTemplateExercises)
+    .set(patch)
+    .where(
+      and(
+        eq(schema.workoutTemplateExercises.id, entryId),
+        inArray(
+          schema.workoutTemplateExercises.templateId,
+          db()
+            .select({ id: schema.workoutTemplates.id })
+            .from(schema.workoutTemplates)
+            .where(eq(schema.workoutTemplates.userId, userId)),
+        ),
+      ),
+    )
+    .returning({ id: schema.workoutTemplateExercises.id });
+  return rows.length > 0;
+}

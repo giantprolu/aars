@@ -57,7 +57,10 @@ import {
   formatPrescription,
   formatSet,
   groupBySuperset,
+  habitualSwaps,
   parseSwaps,
+  restSecondsFor,
+  suggestLoad,
   resolveSessionExercises,
   sessionVolume,
   setVolume,
@@ -73,10 +76,12 @@ import {
 } from '../src/lib/workout-log';
 import { buildProgram } from '../src/lib/workout-plan';
 import {
+  beatsPersonalBest,
   estimatedOneRepMax,
   exerciseProgress,
   formatChange,
   formatMetric,
+  personalBest,
   progressMetric,
   weeklyTotals,
   type ProgressSet,
@@ -1297,7 +1302,17 @@ assert.equal(
   });
   const prevu = [entree(10, 0, pecDeck), entree(11, 1, oiseau)];
 
-  assert.deepEqual([...parseSwaps(['0:2', 'x', '1:0', '2:abc'])], [[0, 2]], 'couples valides');
+  assert.deepEqual(
+    [...parseSwaps(['0:2', 'x', '1:0', '2:abc'])],
+    [
+      [0, 2],
+      [1, 0],
+    ],
+    'couples valides, 0 garde le prevu',
+  );
+  const garde = resolveSessionExercises(prevu, [], new Map([[0, 0]]), catalogue);
+  assert.equal(garde[0]?.exercise.id, 1, 'rang:0 garde l exercice prevu');
+  assert.equal(garde[0]?.planned, null, 'rien n est remplace');
   assert.deepEqual([...parseSwaps('3:7')], [[3, 7]], 'une valeur seule');
   assert.equal(parseSwaps(undefined).size, 0, 'rien dans l adresse');
 
@@ -1334,6 +1349,98 @@ assert.equal(
   assert.equal(formatClock(65), '1:05', 'minutes et secondes');
   assert.equal(formatClock(3727), '1:02:07', 'au-dela de l heure');
   assert.equal(formatClock(-3), '0:00', 'jamais negatif');
+}
+
+// Suggestion de charge : la double progression, d'abord les reps, puis la charge.
+{
+  const developpe: Exercise = {
+    id: 1, slug: 'dc', name: 'Developpe couche', kind: 'strength', muscleGroup: 'pecs',
+    region: 'upper', equipment: 'free', rank: 1, aliases: [],
+  };
+  const prescrit: TemplateExercise = {
+    id: 1, position: 0, exercise: developpe, targetSets: 3, targetRepsMin: 8, targetRepsMax: 10,
+    targetSeconds: null, supersetGroup: null, restSeconds: null, notes: null,
+  };
+  const serie = (weightKg: number | null, reps: number) => ({ weightKg, reps, seconds: null });
+
+  assert.equal(suggestLoad(prescrit, []), null, 'rien a proposer sans historique');
+
+  const monte = suggestLoad(prescrit, [serie(60, 10), serie(60, 10), serie(60, 10)]);
+  assert.equal(monte?.trend, 'up', 'haut de fourchette partout : on charge');
+  assert.equal(monte?.weightKg, 62.5, 'une marche de 2,5 kg');
+  assert.equal(monte?.reps, 8, 'on repart du bas de la fourchette');
+
+  const incomplet = suggestLoad(prescrit, [serie(60, 10), serie(60, 10)]);
+  assert.equal(incomplet?.trend, 'same', 'toutes les series prescrites doivent y etre');
+
+  const garde = suggestLoad(prescrit, [serie(60, 10), serie(60, 9), serie(60, 8)]);
+  assert.equal(garde?.weightKg, 60, 'on garde la charge');
+  assert.equal(garde?.reps, 9, 'une repetition de plus que la plus faible');
+
+  const baisse = suggestLoad(prescrit, [serie(60, 6), serie(60, 5), serie(60, 5)]);
+  assert.equal(baisse?.trend, 'down', 'aucune serie au bas : trop lourd');
+  assert.equal(baisse?.weightKg, 55, 'environ dix pour cent, arrondi a 2,5');
+
+  const leger = suggestLoad(prescrit, [serie(8, 10), serie(8, 10), serie(8, 10)]);
+  assert.equal(leger?.weightKg, 9, 'un kilo de marche sous vingt kilos');
+
+  const corps = suggestLoad(prescrit, [serie(null, 7), serie(null, 6), serie(null, 6)]);
+  assert.equal(corps?.weightKg, null, 'au poids du corps, pas de charge inventee');
+  assert.equal(corps?.reps, 7, 'une repetition de plus');
+
+  const gainage: TemplateExercise = {
+    ...prescrit,
+    exercise: { ...developpe, kind: 'hold' },
+    targetRepsMin: null,
+    targetRepsMax: null,
+    targetSeconds: 45,
+  };
+  const tenu = suggestLoad(gainage, [
+    { weightKg: null, reps: null, seconds: 45 },
+    { weightKg: null, reps: null, seconds: 50 },
+    { weightKg: null, reps: null, seconds: 45 },
+  ]);
+  assert.equal(tenu?.seconds, 55, 'cinq secondes de plus que la meilleure');
+
+  // Le repos suit la prescription quand le programme n'en fixe pas.
+  assert.equal(restSecondsFor(prescrit), 150, 'series lourdes : deux minutes et demie');
+  assert.equal(restSecondsFor({ ...prescrit, targetRepsMin: 12, targetRepsMax: 15 }), 75, 'isolation');
+  assert.equal(restSecondsFor({ ...prescrit, restSeconds: 200 }), 200, 'le reglage l emporte');
+  assert.equal(restSecondsFor(gainage), 60, 'gainage : une minute');
+  assert.equal(
+    restSecondsFor({ ...gainage, exercise: { ...developpe, kind: 'cardio' } }),
+    null,
+    'le cardio n a pas de repos',
+  );
+
+  // Remplacement retenu : deux seances de suite, meme rang, meme remplacant.
+  const recent = [
+    [{ exerciseId: 9, position: 0 }],
+    [{ exerciseId: 9, position: 0 }],
+  ];
+  assert.equal(habitualSwaps([prescrit], recent).get(0), 9, 'deux fois de suite : habitude');
+  assert.equal(habitualSwaps([prescrit], recent.slice(0, 1)).size, 0, 'une fois ne suffit pas');
+  assert.equal(
+    habitualSwaps([prescrit], [[{ exerciseId: 9, position: 0 }], [{ exerciseId: 8, position: 0 }]]).size,
+    0,
+    'deux remplacants differents : pas d habitude',
+  );
+  assert.equal(
+    habitualSwaps([prescrit], [[{ exerciseId: 1, position: 0 }], [{ exerciseId: 1, position: 0 }]]).size,
+    0,
+    'le prevu n est pas un remplacement',
+  );
+
+  // Records.
+  const avant = personalBest('strength', [serie(60, 8), serie(62.5, 6)]);
+  assert.equal(avant?.metric, 'load', 'charge : 1RM estime');
+  assert.ok(beatsPersonalBest(avant, serie(62.5, 8)), 'plus de reps a la meme charge : record');
+  assert.ok(!beatsPersonalBest(avant, serie(60, 8)), 'egaler n est pas battre');
+  assert.equal(personalBest('strength', []), null, 'pas de record sans historique');
+  assert.ok(!beatsPersonalBest(null, serie(100, 10)), 'la premiere fois n est pas un record');
+  const tractions = personalBest('strength', [serie(null, 8)]);
+  assert.equal(tractions?.metric, 'reps', 'au poids du corps : repetitions');
+  assert.ok(!beatsPersonalBest(tractions, serie(10, 5)), 'une serie lestee change de mesure');
 }
 
 console.log('Toutes les verifications pures passent.');
