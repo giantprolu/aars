@@ -228,3 +228,23 @@ export async function insertEntries(inputs: readonly InsertEntryInput[]): Promis
     .returning({ id: schema.entries.id });
   return rows.length;
 }
+
+/** Vrai si le journal d'un jour porte au moins une entrée à ce repas. */
+export async function hasEntriesForMeal(
+  userId: number,
+  entryDate: string,
+  meal: Meal,
+): Promise<boolean> {
+  const rows = await db()
+    .select({ id: schema.entries.id })
+    .from(schema.entries)
+    .where(
+      and(
+        eq(schema.entries.userId, userId),
+        eq(schema.entries.entryDate, entryDate),
+        eq(schema.entries.meal, meal),
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
+}

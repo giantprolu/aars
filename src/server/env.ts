@@ -38,6 +38,28 @@ const schema = z.object({
    * variable inlinée à la compilation. Une seule porte vers process.env.
    */
   HEALTH_SHORTCUT_URL: z.string().url().optional(),
+  /**
+   * Envoi du courriel de réinitialisation, par l'API de Resend.
+   *
+   * Les trois vont ensemble : sans l'un d'eux, la réinitialisation par
+   * courriel disparaît de l'écran et seul le code de secours reste proposé.
+   * `APP_URL` est l'adresse publique de l'application, écrite ici et non lue
+   * dans la requête : un lien bâti sur l'en-tête Host enverrait le jeton vers
+   * le domaine de qui a forgé la requête.
+   */
+  RESEND_API_KEY: z.string().min(1).optional(),
+  MAIL_FROM: z.string().min(3).optional(),
+  APP_URL: z.string().url().optional(),
+  /**
+   * Notifications. La clé publique descend au navigateur, qui en a besoin
+   * pour s'abonner ; la privée signe les envois et ne quitte pas le serveur.
+   * `VAPID_SUBJECT` est le contact que les services de notification exigent.
+   */
+  VAPID_PUBLIC_KEY: z.string().min(1).optional(),
+  VAPID_PRIVATE_KEY: z.string().min(1).optional(),
+  VAPID_SUBJECT: z.string().min(1).optional(),
+  /** Secret que Vercel joint aux appels de ses tâches planifiées. */
+  CRON_SECRET: z.string().min(16).optional(),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   OFF_USER_AGENT: z
     .string()
@@ -108,6 +130,23 @@ export const env = {
   },
   get healthShortcutUrl(): string | undefined {
     return read().HEALTH_SHORTCUT_URL;
+  },
+  /** La configuration du courriel, ou `null` si elle est incomplète. */
+  get mail(): { apiKey: string; from: string; appUrl: string } | null {
+    const { RESEND_API_KEY, MAIL_FROM, APP_URL } = read();
+    return RESEND_API_KEY && MAIL_FROM && APP_URL
+      ? { apiKey: RESEND_API_KEY, from: MAIL_FROM, appUrl: APP_URL.replace(/\/$/, '') }
+      : null;
+  },
+  /** La configuration des notifications, ou `null` si elle est incomplète. */
+  get push(): { publicKey: string; privateKey: string; subject: string } | null {
+    const { VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT } = read();
+    return VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY && VAPID_SUBJECT
+      ? { publicKey: VAPID_PUBLIC_KEY, privateKey: VAPID_PRIVATE_KEY, subject: VAPID_SUBJECT }
+      : null;
+  },
+  get cronSecret(): string | undefined {
+    return read().CRON_SECRET;
   },
   /** Vrai sur Vercel, faux sous `next dev`. Sert aux attributs du cookie. */
   get isProduction(): boolean {

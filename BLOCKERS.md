@@ -260,3 +260,29 @@ importer CIQUAL deux fois de suite pour confirmer l'idempotence, puis lancer
 un `EXPLAIN ANALYZE` sur la requête de recherche pour confirmer que l'index
 GIN est bien retenu. Si un balayage séquentiel apparaît, l'expression de la
 requête a divergé de celle de l'index de la migration 0003.
+
+## B-12 — Variables Vercel des rappels et du courriel non posées — **ouvert le 27/09/2026**
+
+**Constat.** Le connecteur Vercel répond `403 forbidden` à la lecture comme à
+l'écriture des variables du projet `nutri` : il n'a pas le droit de les gérer.
+Les clés ont été générées et posées dans `.env.local`, mais pas en production.
+
+**Ce qui marche sans elles.** Tout le reste. L'interrupteur « Rappel du
+déjeuner » affiche « Non configuré », la tâche planifiée
+`/api/cron/reminders` répond 401, et l'onglet « Par courriel » de la
+récupération n'apparaît pas : le code de secours suffit.
+
+**À faire côté humain**, dans Vercel → projet `nutri` → Settings →
+Environment Variables (Production et Preview), en recopiant les valeurs de
+`.env.local` :
+
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (sensible), `VAPID_SUBJECT`
+- `CRON_SECRET` (sensible) — Vercel le joint lui-même aux appels planifiés
+- `APP_URL` = `https://nutri-rosy-one.vercel.app`
+
+Puis, pour la réinitialisation par courriel : créer un compte Resend, vérifier
+un domaine d'envoi, et poser `RESEND_API_KEY` (sensible) et `MAIL_FROM`
+(par exemple `NutriPerso <noreply@ton-domaine.fr>`). Redéployer ensuite.
+
+Les tâches planifiées sont déclarées dans `vercel.json` (12 h et 13 h UTC,
+seule celle qui tombe à 14 h à Paris envoie).

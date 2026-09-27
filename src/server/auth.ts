@@ -210,3 +210,59 @@ export function sessionCookieOptions(maxAge: number) {
     maxAge,
   };
 }
+
+/**
+ * Alphabet des codes de secours : base 32 de Crockford, sans I, L, O ni U.
+ * Un code se recopie à la main depuis un papier, et « 0 » contre « O » ou
+ * « 1 » contre « l » sont exactement les erreurs qu'on y fait.
+ */
+const RECOVERY_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+const RECOVERY_GROUPS = 4;
+const RECOVERY_GROUP_LENGTH = 4;
+
+/**
+ * Tire un code de secours : seize caractères en quatre groupes, 80 bits.
+ *
+ * C'est assez pour qu'aucune suite d'essais ne le trouve, même sans limite de
+ * tentatives, et assez court pour se recopier sans erreur. Le tirage rejette
+ * les octets hors de la plage utile plutôt que de prendre un modulo, qui
+ * favoriserait les premiers caractères de l'alphabet.
+ */
+export function generateRecoveryCode(): string {
+  const length = RECOVERY_GROUPS * RECOVERY_GROUP_LENGTH;
+  const limit = 256 - (256 % RECOVERY_ALPHABET.length);
+  let code = '';
+  while (code.length < length) {
+    for (const byte of crypto.getRandomValues(new Uint8Array(length))) {
+      if (byte < limit && code.length < length) {
+        code += RECOVERY_ALPHABET[byte % RECOVERY_ALPHABET.length];
+      }
+    }
+  }
+  return code.match(new RegExp(`.{${RECOVERY_GROUP_LENGTH}}`, 'g'))?.join('-') ?? code;
+}
+
+/**
+ * La forme canonique d'un code saisi : majuscules, sans tirets ni espaces, et
+ * les confusions usuelles corrigées (O en 0, I et L en 1). C'est elle qu'on
+ * hache, à la création comme à la vérification.
+ */
+export function normalizeRecoveryCode(input: string): string {
+  return input
+    .toUpperCase()
+    .replace(/[\s-]/g, '')
+    .replaceAll('O', '0')
+    .replaceAll('I', '1')
+    .replaceAll('L', '1');
+}
+
+/** Un jeton aléatoire de 256 bits, en base64url, pour les liens de réinitialisation. */
+export function generateResetToken(): string {
+  return toBase64Url(crypto.getRandomValues(new Uint8Array(32)));
+}
+
+/** L'empreinte SHA-256 d'un jeton, en base64url. Seule elle est stockée. */
+export async function hashResetToken(token: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(token));
+  return toBase64Url(new Uint8Array(digest));
+}

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -102,7 +103,7 @@ export function UnlockForm() {
           <p className="text-[12.5px] text-muted-foreground">
             {tooShort
               ? `Encore ${remaining} caractère${remaining > 1 ? 's' : ''}.`
-              : `${MIN_PASSWORD_LENGTH} caractères minimum. Aucune récupération n'est possible : note-le.`}
+              : `${MIN_PASSWORD_LENGTH} caractères minimum. Une fois connecté, tire un code de secours dans Réglages : il permet de le changer si tu l'oublies.`}
           </p>
         ) : null}
         {error ? (
@@ -120,6 +121,17 @@ export function UnlockForm() {
         {pending ? 'Vérification…' : isRegister ? 'Créer le compte' : 'Se connecter'}
       </Button>
 
+      {isRegister ? null : (
+        <p className="text-center">
+          <Link
+            href="/recover"
+            className="text-[13px] text-muted-foreground underline underline-offset-[3px]"
+          >
+            Mot de passe oublié ?
+          </Link>
+        </p>
+      )}
+
       <p className="mt-2 text-center text-muted-foreground">
         {isRegister ? 'Déjà un compte ?' : 'Pas encore de compte ?'}{' '}
         <Button
@@ -136,7 +148,7 @@ export function UnlockForm() {
 }
 
 /** Le message du serveur quand il y en a un : lui seul sait pourquoi il refuse. */
-function readMessage(body: unknown): string | null {
+export function readMessage(body: unknown): string | null {
   if (
     typeof body === 'object' &&
     body !== null &&

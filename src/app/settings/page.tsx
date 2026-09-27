@@ -1,7 +1,10 @@
 import {
   ActivityIcon,
+  BellIcon,
   ChevronRightIcon,
   DatabaseIcon,
+  DownloadIcon,
+  KeyRoundIcon,
   LockIcon,
   SmartphoneIcon,
   SunMoonIcon,
@@ -15,9 +18,12 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { AppearanceForm } from './appearance/AppearanceForm';
 import { LockButton } from './LockButton';
+import { DeleteAccountButton, RecoveryCodeButton, ReminderSwitch } from './AccountRows';
 import { currentUserId } from '@/server/guard';
 import { hasIngestToken } from '@/server/db/queries/users';
 import { bridgeStatus, targetFor } from '@/server/services/profile';
+import { recoveryCodeExists } from '@/server/services/account';
+import { pushPublicKey } from '@/server/services/reminders';
 import { APP_VERSION } from '@/lib/version';
 import { formatStampDate } from '@/lib/date';
 import { formatKcal } from '@/lib/nutrition';
@@ -129,13 +135,14 @@ export default async function SettingsPage() {
   const store = await cookies();
   const appearance = readAppearance(store.get(THEME_COOKIE)?.value);
 
-  const [ciqual, tokenExists, status, target] = await Promise.all([
+  const [ciqual, tokenExists, status, target, recoveryCode] = await Promise.all([
     readCiqual(),
     userId === null ? Promise.resolve(false) : hasIngestToken(userId),
     userId === null
       ? Promise.resolve(EMPTY_STATUS)
       : bridgeStatus(userId).catch(() => EMPTY_STATUS),
     userId === null ? Promise.resolve(null) : targetFor(userId).catch(() => null),
+    userId === null ? Promise.resolve(false) : recoveryCodeExists(userId).catch(() => false),
   ]);
 
   const bridgeLabel = !tokenExists
@@ -197,6 +204,55 @@ export default async function SettingsPage() {
           </li>
         </ul>
       </Card>
+
+      {/*
+        Le compte : ce qui protège l'accès (code de secours), ce qui rappelle
+        de noter, et ce que le RGPD garantit — emporter ses données et les
+        effacer. La suppression reste sous la carte, à part, comme le
+        verrouillage : un geste qui ne se rattrape pas ne s'aligne pas avec
+        des réglages ordinaires.
+      */}
+      <h2 className="mt-5 mb-2 text-[12.5px] text-muted-foreground">Compte</h2>
+      <Card className="gap-0 overflow-hidden py-0">
+        <ul>
+          <li className={ROW}>
+            <RowBody
+              icon={<BellIcon />}
+              label="Rappel du déjeuner"
+              hint="À 14 h, si rien n'est noté ce midi"
+            >
+              <ReminderSwitch publicKey={pushPublicKey()} />
+            </RowBody>
+          </li>
+          <li className={ROW}>
+            <RowBody
+              icon={<KeyRoundIcon />}
+              label="Code de secours"
+              hint={
+                recoveryCode
+                  ? 'Actif · permet de changer un mot de passe oublié'
+                  : 'Aucun · sans lui, un mot de passe oublié ferme le compte'
+              }
+            >
+              <RecoveryCodeButton exists={recoveryCode} />
+            </RowBody>
+          </li>
+          <li className="border-b last:border-b-0">
+            <a
+              href="/api/account/export"
+              download
+              className={cn(ROW, 'border-b-0 transition-colors active:bg-accent')}
+            >
+              <RowBody
+                icon={<DownloadIcon />}
+                label="Exporter mes données"
+                hint="Journal, pesées, recettes et séances, en JSON"
+              />
+            </a>
+          </li>
+        </ul>
+      </Card>
+      <DeleteAccountButton />
 
       <h2 className="mt-5 mb-2 text-[12.5px] text-muted-foreground">Table de référence</h2>
       <Card className="gap-0 overflow-hidden py-0">

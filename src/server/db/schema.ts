@@ -49,6 +49,14 @@ export const users = pgTable('users', {
    * route, en écriture, et se régénère à la demande.
    */
   ingestToken: text('ingest_token').unique(),
+  /**
+   * Empreinte PBKDF2 du code de secours, ou `null` s'il n'en a pas été tiré.
+   *
+   * Le code remplace le courriel de réinitialisation quand il n'y en a pas :
+   * noté une fois, il permet de choisir un nouveau mot de passe. Il est à
+   * usage unique et se hache comme un mot de passe, parce qu'il en ouvre un.
+   */
+  recoveryCodeHash: text('recovery_code_hash'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 export type UserRow = typeof users.$inferSelect;
@@ -966,3 +974,51 @@ export const favoriteMeals = pgTable(
 );
 
 export type FavoriteMealRow = typeof favoriteMeals.$inferSelect;
+
+/**
+ * Jetons de réinitialisation du mot de passe envoyés par courriel.
+ *
+ * Seule l'empreinte SHA-256 du jeton est stockée : une fuite de la table ne
+ * doit pas donner de quoi prendre un compte. Le jeton est long et aléatoire,
+ * un hachage lent n'ajouterait rien. Il expire vite et ne sert qu'une fois.
+ */
+export const passwordResetTokens = pgTable(
+  'password_reset_tokens',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    userId: bigint('user_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull().unique(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('password_reset_tokens_user_idx').on(table.userId)],
+);
+
+export type PasswordResetTokenRow = typeof passwordResetTokens.$inferSelect;
+
+/**
+ * Les abonnements aux notifications, un par appareil.
+ *
+ * L'adresse du service de notification est unique : un même téléphone qui se
+ * réabonne remplace sa ligne au lieu d'en ajouter une, et recevrait sinon le
+ * rappel en double.
+ */
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    userId: bigint('user_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    endpoint: text('endpoint').notNull().unique(),
+    p256dh: text('p256dh').notNull(),
+    auth: text('auth').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('push_subscriptions_user_idx').on(table.userId)],
+);
+
+export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;

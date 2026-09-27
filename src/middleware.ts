@@ -6,7 +6,7 @@ import { SESSION_COOKIE, isValidSessionToken } from '@/server/auth';
  * Les routes /api ne passent pas par ici : elles doivent répondre 401 et non
  * rediriger, ce que fait le garde partagé de src/server/guard.ts.
  */
-const PUBLIC_PATHS = ['/unlock'];
+const PUBLIC_PATHS = ['/unlock', '/recover'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

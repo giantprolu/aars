@@ -17,8 +17,10 @@ d'une seule personne. Poids, âge et repas de tiers sont des données de santé.
 - Postgres (Neon) + Drizzle ORM, extensions `pg_trgm` et `unaccent`
 - Déploiement Vercel
 - Auth : comptes en base, empreinte PBKDF2 via Web Crypto, session signée en
-  HMAC portant l'identifiant. Pas de vérification d'adresse ni de récupération
-  de mot de passe, faute de service d'envoi de courriel
+  HMAC portant l'identifiant. Pas de vérification d'adresse. Récupération du mot
+  de passe par code de secours (haché comme un mot de passe, usage unique), et
+  par courriel via Resend seulement si `RESEND_API_KEY`, `MAIL_FROM` et `APP_URL`
+  sont posées
 
 ## Definition of Done (obligatoire, chaque story)
 1. `npm run build` passe sans erreur ni warning TypeScript
