@@ -1,8 +1,9 @@
 import 'server-only';
 import webpush, { WebPushError } from 'web-push';
 import { todayInParis } from '@/lib/date';
+import type { Meal } from '@/lib/meal';
 import { env } from '../env';
-import { hasEntriesForMeal } from '../db/queries/entries';
+import { hasEntriesForMeals } from '../db/queries/entries';
 import {
   deleteSubscription,
   subscriptionCount,
@@ -23,6 +24,13 @@ import {
 
 /** L'heure du rappel, à Paris. */
 export const REMINDER_HOUR = 14;
+
+/**
+ * Les repas qui font taire le rappel. Le dîner compte aussi : un repas de midi
+ * rangé sous le mauvais repas reste un repas noté, et c'est l'oubli qu'on
+ * cherche à rattraper, pas le classement.
+ */
+const MEALS_THAT_COUNT: readonly Meal[] = ['lunch', 'dinner'];
 
 export function pushPublicKey(): string | null {
   return env.push?.publicKey ?? null;
@@ -48,7 +56,8 @@ export interface ReminderReport {
 }
 
 /**
- * Envoie le rappel du déjeuner à chaque compte abonné qui n'a rien noté.
+ * Envoie le rappel du déjeuner à chaque compte abonné qui n'a noté ni
+ * déjeuner ni dîner.
  *
  * Le journal de chaque compte est lu avec son utilisateur, un par un : même
  * une tâche planifiée ne balaie pas les entrées de tout le monde d'un coup.
@@ -71,7 +80,7 @@ export async function sendLunchReminders(): Promise<ReminderReport> {
 
   for (const [userId, targets] of await subscriptionsByUser()) {
     report.users += 1;
-    if (await hasEntriesForMeal(userId, today, 'lunch')) {
+    if (await hasEntriesForMeals(userId, today, MEALS_THAT_COUNT)) {
       report.skipped += 1;
       continue;
     }

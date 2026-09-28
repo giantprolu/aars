@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db, schema } from '../client';
 import type { DayTotals, Entry, Macros, SourceKind } from '@/lib/types';
 import { type Meal, isMeal } from '@/lib/meal';
@@ -229,11 +229,11 @@ export async function insertEntries(inputs: readonly InsertEntryInput[]): Promis
   return rows.length;
 }
 
-/** Vrai si le journal d'un jour porte au moins une entrée à ce repas. */
-export async function hasEntriesForMeal(
+/** Vrai si le journal d'un jour porte au moins une entrée à l'un de ces repas. */
+export async function hasEntriesForMeals(
   userId: number,
   entryDate: string,
-  meal: Meal,
+  meals: readonly Meal[],
 ): Promise<boolean> {
   const rows = await db()
     .select({ id: schema.entries.id })
@@ -242,7 +242,7 @@ export async function hasEntriesForMeal(
       and(
         eq(schema.entries.userId, userId),
         eq(schema.entries.entryDate, entryDate),
-        eq(schema.entries.meal, meal),
+        inArray(schema.entries.meal, [...meals]),
       ),
     )
     .limit(1);
