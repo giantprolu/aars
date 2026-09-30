@@ -9,6 +9,7 @@ import {
   type PublicPerson,
   type SessionVisibility,
   type SharedExercise,
+  type WeekBoardRow,
 } from '@/lib/social';
 import {
   answerFollowRequest,
@@ -163,6 +164,7 @@ export async function feedFor(
       author: row.author,
       name: row.name ?? 'Séance',
       sessionDate: row.sessionDate,
+      startedAt: row.startedAt.toISOString(),
       durationSeconds:
         row.finishedAt === null
           ? null
@@ -181,4 +183,42 @@ export async function feedFor(
     sessions,
     next: rows.length === FEED_PAGE ? (rows[rows.length - 1]?.id ?? null) : null,
   };
+}
+
+/** Séances du fil relues pour compter la semaine : largement plus qu'un groupe d'amis n'en fait. */
+const BOARD_WINDOW = 200;
+
+/**
+ * Le classement de la semaine : les séances terminées depuis lundi, par
+ * personne suivie, et les miennes.
+ *
+ * Chez les autres, seules comptent les séances qu'ils ont partagées : une
+ * séance restée privée ne doit pas se deviner à un chiffre qui bouge. Les
+ * miennes comptent toutes, puisque c'est moi qui regarde.
+ */
+export async function weekBoard(
+  viewerId: number,
+  weekStart: string,
+  me: PublicPerson,
+  myFinishedThisWeek: number,
+): Promise<WeekBoardRow[]> {
+  const [rows, following] = await Promise.all([
+    listFeed(viewerId, BOARD_WINDOW, null),
+    listFollowing(viewerId),
+  ]);
+  const counts = new Map<number, number>();
+  for (const row of rows) {
+    if (!row.mine && row.finishedAt !== null && row.sessionDate >= weekStart) {
+      counts.set(row.author.id, (counts.get(row.author.id) ?? 0) + 1);
+    }
+  }
+  const board: WeekBoardRow[] = following
+    .filter((person) => person.state === 'following')
+    .map((person) => ({
+      person: { id: person.id, handle: person.handle, displayName: person.displayName },
+      sessions: counts.get(person.id) ?? 0,
+      mine: false,
+    }));
+  board.push({ person: me, sessions: myFinishedThisWeek, mine: true });
+  return board.sort((a, b) => b.sessions - a.sessions);
 }

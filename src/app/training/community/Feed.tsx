@@ -1,38 +1,52 @@
 'use client';
 
-import { HandHeartIcon } from 'lucide-react';
+import { HeartIcon, TrendingUpIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { ErrorAlert } from '@/components/ErrorAlert';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { loadFeed, setKudos } from '@/lib/client/social';
-import { formatRelativeJournalDate } from '@/lib/date';
-import { personLabel, type FeedSession } from '@/lib/social';
+import { formatRecentDay } from '@/lib/date';
+import { avatarTone, initialsOf, personLabel, type FeedSession } from '@/lib/social';
 import { cn } from '@/lib/utils';
-import { formatClock, formatSet, bestSet } from '@/lib/workout';
+import { bestSet, formatSet } from '@/lib/workout';
+import { formatTonnage } from '@/lib/workout-progress';
 
-function initials(session: FeedSession): string {
-  const label = personLabel(session.author).replace(/^@/, '');
-  return label.slice(0, 2).toUpperCase();
+const timeFormatter = new Intl.DateTimeFormat('fr-FR', {
+  timeZone: 'Europe/Paris',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
+/** « Hier, 18 h 40 », « jeudi, 7 h 05 ». */
+function formatWhen(session: FeedSession): string {
+  const time = timeFormatter.format(new Date(session.startedAt)).replace(':', ' h ');
+  return `${formatRecentDay(session.sessionDate)}, ${time}`;
 }
 
-function formatVolume(kg: number): string {
-  return kg >= 1000
-    ? `${(Math.round(kg / 100) / 10).toLocaleString('fr-FR')} t`
-    : `${kg.toLocaleString('fr-FR')} kg`;
+/** La meilleure série de la séance, charge la plus lourde en tête : « Squat 80 kg × 5 ». */
+function strongest(session: FeedSession): string | null {
+  let pick: { name: string; weight: number; label: string } | null = null;
+  for (const exercise of session.exercises) {
+    const best = bestSet(exercise.sets);
+    if (best === null || best.weightKg === null) {
+      continue;
+    }
+    if (pick === null || best.weightKg > pick.weight) {
+      pick = { name: exercise.name, weight: best.weightKg, label: formatSet(best) };
+    }
+  }
+  return pick === null ? null : `${pick.name} ${pick.label}`;
 }
 
 /**
  * Le fil des séances partagées, les plus récentes d'abord.
  *
- * Une carte dit qui, quoi, quand, combien — et, pour une séance partagée en
- * détail, chaque exercice avec sa meilleure série. Le bravo est le seul geste
- * possible : pas de commentaire, pas de classement. Le but est de se donner
- * envie d'y aller, pas de se comparer.
+ * Une carte dit qui, quoi, quand, combien (maquette 5a, écran 5). Partagée en
+ * détail, la séance montre ses trois chiffres sur un bandeau et sa série la
+ * plus lourde ; partagée en résumé, elle tient sur une ligne. Le bravo est le
+ * seul geste possible, pas de commentaire : le but est de se donner envie d'y
+ * aller.
  */
 export function Feed({
   initial,
@@ -84,7 +98,7 @@ export function Feed({
 
   if (sessions.length === 0) {
     return (
-      <p className="py-6 text-center text-muted-foreground">
+      <p className="rounded-xl border bg-card p-4 text-center text-[13px] text-muted-foreground">
         Rien dans le fil pour l’instant. Les séances que tu partages, et celles des personnes que tu
         suis, apparaîtront ici.
       </p>
@@ -93,111 +107,113 @@ export function Feed({
 
   return (
     <>
-      {error ? <ErrorAlert className="mb-3">{error}</ErrorAlert> : null}
-      <ul className="flex flex-col gap-2.5">
-        {sessions.map((session) => (
-          <li key={session.id}>
-            <Card>
-              <CardContent>
-                <div className="flex items-center gap-3">
-                  <Avatar className="size-9">
-                    <AvatarFallback className="text-[12px] font-semibold">
-                      {initials(session)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[14.5px] font-medium tracking-tight">
-                      {session.mine ? 'Toi' : personLabel(session.author)}
-                    </p>
-                    <p className="text-[12.5px] text-muted-foreground first-letter:uppercase">
-                      {formatRelativeJournalDate(session.sessionDate)}
-                      {session.mine || session.author.displayName === null
-                        ? ''
-                        : ` · @${session.author.handle}`}
-                    </p>
-                  </div>
-                  {session.mine ? (
-                    <Button asChild variant="ghost" size="sm" className="-mr-2">
-                      <Link href={`/training/session/${session.id}`}>Voir</Link>
-                    </Button>
-                  ) : null}
-                </div>
+      {error ? <ErrorAlert>{error}</ErrorAlert> : null}
+      <ul className="flex flex-col gap-3">
+        {sessions.map((session) => {
+          const who = session.mine ? 'Toi' : personLabel(session.author);
+          const kudos = (
+            <button
+              type="button"
+              disabled={session.mine}
+              aria-pressed={session.kudoedByMe}
+              aria-label={session.kudoedByMe ? 'Retirer le bravo' : 'Dire bravo'}
+              onClick={() => void toggleKudos(session)}
+              className={cn(
+                'flex items-center gap-1.5 font-bold disabled:opacity-100',
+                session.kudoedByMe || session.mine ? 'text-social-ink' : 'text-faint',
+              )}
+            >
+              <HeartIcon
+                aria-hidden
+                className={cn('size-4', session.kudoedByMe && 'fill-current')}
+              />
+              {session.kudos > 0 ? session.kudos : null}
+            </button>
+          );
+          const headline = (
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">
+                {who} · <span className="font-semibold text-sport-ink">{session.name}</span>
+              </p>
+              <p className="text-xs text-muted-foreground first-letter:uppercase">
+                {formatWhen(session)}
+                {session.visibility === 'summary'
+                  ? ` · ${formatTonnage(session.volumeKg)}${session.durationSeconds === null ? '' : ` · ${Math.round(session.durationSeconds / 60)} min`}`
+                  : ''}
+              </p>
+            </div>
+          );
+          const avatar = (
+            <span
+              aria-hidden
+              className={cn(
+                'flex size-8 flex-none items-center justify-center rounded-full text-[11.5px] font-semibold',
+                avatarTone(session.author.id),
+              )}
+            >
+              {initialsOf(personLabel(session.author))}
+            </span>
+          );
 
-                <p className="mt-3 text-[16px] font-semibold tracking-tight">{session.name}</p>
-                <div className="tabular mt-1.5 flex gap-4 text-[12.5px] text-muted-foreground">
-                  {session.durationSeconds !== null ? (
-                    <span>
-                      <span className="block text-[15px] font-semibold text-foreground">
-                        {formatClock(session.durationSeconds)}
-                      </span>
-                      durée
-                    </span>
-                  ) : null}
-                  <span>
-                    <span className="block text-[15px] font-semibold text-foreground">
-                      {formatVolume(session.volumeKg)}
-                    </span>
-                    soulevés
+          if (session.visibility === 'summary') {
+            return (
+              <li key={session.id} className="flex items-center gap-2.5 rounded-xl border bg-card p-3.5">
+                {avatar}
+                {session.mine ? (
+                  <Link href={`/training/session/${session.id}`} className="min-w-0 flex-1">
+                    {headline}
+                  </Link>
+                ) : (
+                  headline
+                )}
+                {kudos}
+              </li>
+            );
+          }
+
+          const top = strongest(session);
+          return (
+            <li key={session.id} className="flex flex-col gap-2.5 rounded-xl border bg-card p-3.5">
+              <div className="flex items-center gap-2.5">
+                {avatar}
+                {session.mine ? (
+                  <Link href={`/training/session/${session.id}`} className="min-w-0 flex-1">
+                    {headline}
+                  </Link>
+                ) : (
+                  headline
+                )}
+              </div>
+              <div className="grid grid-cols-3 rounded-[12px] bg-sport-soft py-2 text-center">
+                <div>
+                  <p className="text-[15px] font-semibold">{session.exercises.length}</p>
+                  <p className="text-[11px] text-muted-foreground">exercices</p>
+                </div>
+                <div>
+                  <p className="text-[15px] font-semibold">{formatTonnage(session.volumeKg)}</p>
+                  <p className="text-[11px] text-muted-foreground">volume</p>
+                </div>
+                <div>
+                  <p className="text-[15px] font-semibold">
+                    {session.durationSeconds === null ? '—' : `${Math.round(session.durationSeconds / 60)} min`}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">durée</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-[13px]">
+                {top === null ? (
+                  <span />
+                ) : (
+                  <span className="flex min-w-0 items-center gap-1.5 rounded-full bg-cook-soft px-2.5 py-[3px] font-semibold text-cook-ink">
+                    <TrendingUpIcon aria-hidden className="size-[13px] flex-none" />
+                    <span className="truncate">{top}</span>
                   </span>
-                  <span>
-                    <span className="block text-[15px] font-semibold text-foreground">
-                      {session.setCount}
-                    </span>
-                    séries
-                  </span>
-                </div>
-
-                {session.exercises.length > 0 ? (
-                  <>
-                    <Separator className="mt-3 mb-1.5" />
-                    <ul>
-                      {session.exercises.map((exercise, index) => {
-                        const best = bestSet(exercise.sets);
-                        return (
-                          <li
-                            key={index}
-                            className="flex items-baseline justify-between gap-3 py-1 text-[13.5px]"
-                          >
-                            <span className="min-w-0 flex-1 truncate">{exercise.name}</span>
-                            <span className="tabular flex-none text-muted-foreground">
-                              {exercise.sets.length} ×{' '}
-                              {best === null ? formatSet(exercise.sets[0]!) : formatSet(best)}
-                            </span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </>
-                ) : null}
-
-                <div className="mt-3 flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant={session.kudoedByMe ? 'secondary' : 'outline'}
-                    size="sm"
-                    disabled={session.mine}
-                    aria-pressed={session.kudoedByMe}
-                    onClick={() => void toggleKudos(session)}
-                    className={cn(session.kudoedByMe && 'text-primary')}
-                  >
-                    <HandHeartIcon />
-                    Bravo
-                  </Button>
-                  {session.kudos > 0 ? (
-                    <Badge variant="outline" className="tabular">
-                      {session.kudos}
-                    </Badge>
-                  ) : null}
-                  {session.mine ? (
-                    <span className="ml-auto text-[12px] text-muted-foreground">
-                      {session.visibility === 'detailed' ? 'Partagée en détail' : 'Partagée en résumé'}
-                    </span>
-                  ) : null}
-                </div>
-              </CardContent>
-            </Card>
-          </li>
-        ))}
+                )}
+                {kudos}
+              </div>
+            </li>
+          );
+        })}
       </ul>
 
       {next !== null ? (
@@ -206,7 +222,7 @@ export function Feed({
           variant="outline"
           onClick={() => void more()}
           disabled={loading}
-          className="mt-3 w-full"
+          className="w-full"
         >
           {loading ? 'Chargement…' : 'Plus ancien'}
         </Button>

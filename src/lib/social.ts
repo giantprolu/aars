@@ -90,6 +90,8 @@ export interface FeedSession {
   author: PublicPerson;
   name: string;
   sessionDate: string;
+  /** Début de la séance, en ISO 8601 : l'heure se lit dans le fil. */
+  startedAt: string;
   durationSeconds: number | null;
   volumeKg: number;
   setCount: number;
@@ -117,4 +119,19 @@ export function initialsOf(label: string | null): string {
   const first = words[0] ?? '';
   const second = words[1];
   return (second === undefined ? first.slice(0, 2) : `${first[0] ?? ''}${second[0] ?? ''}`).toUpperCase();
+}
+
+/** Une ligne du classement de la semaine : qui, combien de séances terminées. */
+export interface WeekBoardRow {
+  person: PublicPerson;
+  sessions: number;
+  mine: boolean;
+}
+
+/** Les lavis des domaines, pour distinguer les avatars sans rien leur faire dire. */
+const AVATAR_TONES = ['bg-protein-soft', 'bg-sport-soft', 'bg-cook-soft', 'bg-body-soft', 'bg-social-soft'];
+
+/** Une teinte stable par personne : la même d'un écran à l'autre. */
+export function avatarTone(id: number): string {
+  return AVATAR_TONES[id % AVATAR_TONES.length] ?? 'bg-muted';
 }
