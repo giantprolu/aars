@@ -1,4 +1,5 @@
 import { requireUserId } from '@/server/guard';
+import { targetFor } from '@/server/services/profile';
 import { recipesFor } from '@/server/services/recipes';
 import { macrosPerServing } from '@/lib/recipe';
 import { RecipeFlow, type RecipeChoice } from './RecipeFlow';
@@ -16,7 +17,8 @@ export const dynamic = 'force-dynamic';
  * ouverture.
  */
 export default async function AddRecipePage() {
-  const recipes = await recipesFor(await requireUserId());
+  const userId = await requireUserId();
+  const [recipes, target] = await Promise.all([recipesFor(userId), targetFor(userId)]);
 
   const choices: RecipeChoice[] = recipes.map((recipe) => {
     const { macros, unresolvedCount } = macrosPerServing(recipe);
@@ -31,5 +33,5 @@ export default async function AddRecipePage() {
     };
   });
 
-  return <RecipeFlow recipes={choices} />;
+  return <RecipeFlow recipes={choices} targetKcal={target?.targetKcal ?? null} />;
 }

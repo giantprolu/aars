@@ -11,17 +11,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { requireUserId } from '@/server/guard';
 import { basketFor } from '@/server/services/basket';
 import { recipeFor } from '@/server/services/recipes';
+import { targetFor } from '@/server/services/profile';
 import {
-  formatIngredientQuantity,
   formatServings,
-  ingredientsForServings,
   macrosPerServing,
-  recipeMacros,
+  portionWeight,
+  suggestedServings,
 } from '@/lib/recipe';
-import { formatGrams, formatKcal, scaleMacros } from '@/lib/nutrition';
+import { formatGrams, formatKcal } from '@/lib/nutrition';
 import { isJournalDate, startOfWeek, todayInParis } from '@/lib/date';
 import { AddToBasket } from './AddToBasket';
 import { DeleteRecipe } from './DeleteRecipe';
+import { RecipeIngredients } from './RecipeIngredients';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,17 +65,20 @@ export default async function RecipePage({
   const weekStart = startOfWeek(
     requested !== undefined && isJournalDate(requested) ? requested : todayInParis(),
   );
-  const basket = await basketFor(userId, weekStart);
+  const [basket, target] = await Promise.all([basketFor(userId, weekStart), targetFor(userId)]);
   const chosen = basket.find((item) => item.recipeId === recipe.id) ?? null;
 
   // Hors panier, la recette parle pour elle-même : ses propres parts.
   const servings = chosen === null ? recipe.servings : chosen.servings;
-  const ingredients = ingredientsForServings(recipe.ingredients, recipe.servings, servings);
-
   // La part reste la part : la mise à l'échelle ne la change pas, et c'est
   // pourquoi elle se lit sur la recette et non sur les quantités affichées.
   const perServing = macrosPerServing(recipe);
-  const batch = recipeMacros(ingredients);
+  // Ce qu'une part pèse, et combien en manger pour tenir la cible : les deux
+  // réponses que « une part » laissait en suspens.
+  const plateGrams = portionWeight(recipe.ingredients, recipe.servings);
+  const targetKcal = target?.targetKcal ?? null;
+  const atLunch = suggestedServings(perServing.macros.kcal, targetKcal, 'lunch');
+  const atDinner = suggestedServings(perServing.macros.kcal, targetKcal, 'dinner');
   const hasSteps = recipe.steps.length > 0;
 
   return (
@@ -121,6 +125,15 @@ export default async function RecipePage({
             g G · {formatGrams(perServing.macros.fatG)} g L
           </p>
         </CardContent>
+        <CardContent className="tabular -mt-2 flex flex-col gap-0.5 text-[12.5px] text-muted-foreground">
+          {plateGrams > 0 ? <p>Une part ≈ {plateGrams.toLocaleString('fr-FR')} g dans l’assiette</p> : null}
+          {atLunch !== null && atDinner !== null ? (
+            <p>
+              Pour ta cible : {formatServings(atLunch)} au déjeuner,{' '}
+              {formatServings(atDinner)} au dîner
+            </p>
+          ) : null}
+        </CardContent>
       </Card>
 
       {perServing.unresolvedCount > 0 ? (
@@ -142,43 +155,12 @@ export default async function RecipePage({
         </TabsList>
 
         <TabsContent value="ingredients" className="mt-2.5">
-          {/*
-            Dit dès qu'il y a un écart, et seulement alors : une quantité qui
-            n'est pas celle de la recette doit s'expliquer sur-le-champ, sinon
-            c'est la fiche qu'on soupçonne d'avoir tort.
-          */}
-          {chosen !== null && servings !== recipe.servings ? (
-            <p className="mb-2.5 text-[12.5px] text-muted-foreground">
-              Quantités pour les {formatServings(servings)} du panier de la semaine, celles-là
-              mêmes que la liste de courses a fait acheter. La recette, telle qu&apos;elle est
-              écrite, en produit {formatServings(recipe.servings)}.
-            </p>
-          ) : null}
-          <ul>
-            {ingredients.map((ingredient) => (
-              <li key={ingredient.id} className="flex items-center gap-3 border-b py-2.5">
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[14.5px] font-medium tracking-tight">
-                    {ingredient.label}
-                  </span>
-                  <span className="tabular mt-px block text-[12.5px] text-muted-foreground">
-                    {formatIngredientQuantity(ingredient)}
-                  </span>
-                </span>
-                <span className="tabular flex-none text-muted-foreground">
-                  {ingredient.per100g === null ? (
-                    <span className="text-destructive">—</span>
-                  ) : (
-                    `${formatKcal(scaleMacros(ingredient.per100g, ingredient.quantityG).kcal)} kcal`
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <p className="tabular mt-3 text-muted-foreground">
-            {formatServings(servings)} en tout {batch.unresolvedCount > 0 ? '≈ ' : ''}
-            {formatKcal(batch.macros.kcal)} kcal
-          </p>
+          <RecipeIngredients
+            ingredients={recipe.ingredients}
+            recipeServings={recipe.servings}
+            initialServings={servings}
+            basketServings={chosen === null ? null : chosen.servings}
+          />
         </TabsContent>
 
         {hasSteps ? (

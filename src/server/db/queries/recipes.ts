@@ -3,6 +3,7 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { db, schema } from '../client';
 import type { Macros } from '@/lib/types';
 import {
+  cookingYield,
   isIngredientRefKind,
   type IngredientRefKind,
   type Recipe,
@@ -95,6 +96,7 @@ async function ingredientsFor(
       quantityG: schema.recipeIngredients.quantityG,
       unitName: schema.recipeIngredients.unitName,
       unitGrams: schema.recipeIngredients.unitGrams,
+      refName: sql<string | null>`coalesce(${schema.ciqualFoods.name}, ${schema.products.name})`,
       kcal: sql<
         string | null
       >`coalesce(${schema.ciqualFoods.kcal100g}, ${schema.products.kcal100g})`,
@@ -137,6 +139,7 @@ async function ingredientsFor(
       refKind: isIngredientRefKind(row.refKind) ? row.refKind : 'ciqual',
       refValue: row.refValue,
       label: row.label,
+      cookedYield: cookingYield(row.refName),
       quantityG: toNumber(row.quantityG),
       unitName: row.unitName,
       unitGrams: toNullableNumber(row.unitGrams),

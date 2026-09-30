@@ -12,6 +12,7 @@
  */
 
 import type { Macros } from './types';
+import type { Meal } from './meal';
 import { scaleMacros, sumMacros, ZERO_MACROS } from './nutrition';
 
 /** Une recette référence les mêmes fiches que le journal : CIQUAL ou produit. */
@@ -29,6 +30,74 @@ export function isIngredientRefKind(value: unknown): value is IngredientRefKind 
  * Le cas est rare mais il se produit, et il ne doit pas se solder par un total
  * silencieusement faux. L'ingrédient reste affiché, signalé, et exclu du calcul.
  */
+/**
+ * Rendements de cuisson : grammes cuits obtenus pour un gramme cru.
+ *
+ * Une recette décrite au poids cuit a des macros justes — c'est bien le riz
+ * cuit qu'on mange — mais une liste de courses et une balance fausses : on
+ * n'achète ni ne pèse 400 g de riz cuit, on pèse 145 g de riz cru. Le rendement
+ * fait le pont, sans toucher aux références nutritionnelles déjà vérifiées.
+ *
+ * La liste est volontairement courte : les féculents secs, qui gonflent de
+ * deux à trois fois, et les viandes et poissons, qui perdent un quart de leur
+ * poids. Ce sont les seuls écarts qui changent ce qu'on achète. Les légumes
+ * cuits, les légumineuses (achetées en conserve, déjà cuites), le jambon et
+ * les crevettes (vendus cuits) n'en ont pas : leur poids affiché est celui
+ * qu'on achète. Les valeurs sont des moyennes de cuisson à l'eau ou à la poêle,
+ * à dix pour cent près, ce qui suffit pour acheter et pour peser.
+ */
+const COOKING_YIELDS: readonly { pattern: RegExp; yield: number }[] = [
+  { pattern: /\briz\b.*\bcomplet/, yield: 2.6 },
+  { pattern: /\briz\b/, yield: 2.8 },
+  { pattern: /\bpates?\b|\bspaghetti|\bmacaroni|\btagliatelle|\bpenne/, yield: 2.3 },
+  { pattern: /\bquinoa/, yield: 2.7 },
+  { pattern: /\bsemoule|\bcouscous/, yield: 2.4 },
+  { pattern: /\bboulgour|\bboulghour/, yield: 2.5 },
+  { pattern: /\blentilles? corail/, yield: 2.2 },
+  { pattern: /\blentille/, yield: 2.5 },
+  { pattern: /\bpoulet|\bdinde|\bboeuf|\bsteak|\bhache|\bporc|\bveau|\bagneau/, yield: 0.75 },
+  { pattern: /\bsaumon|\bcabillaud|\bcolin|\btruite|\bmerlu|\bthon frais|\bdorade|\bpoisson/, yield: 0.8 },
+];
+
+/** Ce qui se vend déjà cuit : aucun rendement, même si le nom dit « cuit ». */
+const SOLD_COOKED = /\bjambon|\bcrevette|\bconserve|\bappertise|\broti\b.*\btranche|\bpois chiche|\bharicot|\bfeve/;
+
+/** Les mots d'un aliment cuit, dans les tables et dans les recettes. */
+const COOKED = /\bcuit|\bcuite|\broti|\bgrille|\bpoele|\bvapeur|\bbouilli/;
+
+function normalizeFoodName(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9%]+/g, ' ');
+}
+
+/**
+ * Le rendement de cuisson d'un aliment cuit, d'après son nom, ou `null`.
+ *
+ * `null` veut dire « le poids affiché est celui qu'on achète » : l'aliment est
+ * cru, vendu cuit, ou d'un rendement trop proche de un pour qu'il compte.
+ */
+export function cookingYield(foodName: string | null): number | null {
+  if (foodName === null) {
+    return null;
+  }
+  const name = normalizeFoodName(foodName);
+  if (!COOKED.test(name) || SOLD_COOKED.test(name)) {
+    return null;
+  }
+  return COOKING_YIELDS.find((entry) => entry.pattern.test(name))?.yield ?? null;
+}
+
+/** Le poids cru qui donne ce poids cuit, arrondi au gramme. */
+export function rawGrams(cookedGrams: number, yieldRatio: number | null): number {
+  if (yieldRatio === null || yieldRatio <= 0) {
+    return cookedGrams;
+  }
+  return Math.max(1, Math.round(cookedGrams / yieldRatio));
+}
+
 export interface RecipeIngredient {
   id: number;
   position: number;
@@ -36,6 +105,12 @@ export interface RecipeIngredient {
   refValue: string;
   /** Désignation affichée, recopiée à la création puis modifiable librement. */
   label: string;
+  /**
+   * Rendement de cuisson de la fiche de référence (voir `cookingYield`), ou
+   * `null` si le poids écrit est celui qu'on achète. Déduit du nom de la
+   * fiche à chaque lecture, jamais stocké.
+   */
+  cookedYield: number | null;
   quantityG: number;
   /** Nom de l'unité usuelle au singulier — « œuf », « boîte » — si elle a un sens. */
   unitName: string | null;
@@ -155,6 +230,68 @@ export function ingredientsForServings(
 }
 
 /**
+ * Le poids d'une part dans l'assiette, en grammes, arrondi à cinq grammes.
+ *
+ * La somme des quantités écrites, divisée par les parts. Les féculents et les
+ * viandes sont écrits au poids cuit, les légumes au poids cru : l'eau que les
+ * seconds perdent rend le chiffre un peu haut, ce qui reste le bon sens d'erreur
+ * pour servir une assiette. Il répond à la question que « une part » laisse
+ * ouverte : combien de grammes du plat mettre dans son assiette.
+ */
+export function portionWeight(
+  ingredients: readonly { quantityG: number }[],
+  servings: number,
+): number {
+  if (!isValidServings(servings)) {
+    return 0;
+  }
+  const total = ingredients.reduce((sum, ingredient) => sum + ingredient.quantityG, 0);
+  return Math.round(total / servings / 5) * 5;
+}
+
+/**
+ * La part de la cible du jour qu'un repas occupe.
+ *
+ * Une répartition ordinaire, pas une prescription : elle sert à proposer un
+ * nombre de parts, que l'utilisateur corrige d'un appui. Le total fait un.
+ */
+export const MEAL_TARGET_SHARES: Record<Meal, number> = {
+  breakfast: 0.25,
+  lunch: 0.35,
+  dinner: 0.3,
+  snack: 0.1,
+};
+
+/** Bornes et pas du nombre de parts proposé : un quart de part suffit à viser juste. */
+const SUGGESTED_STEP = 0.25;
+const SUGGESTED_MIN = 0.5;
+const SUGGESTED_MAX = 3;
+
+/**
+ * Le nombre de parts qui fait tenir ce repas dans la cible du jour.
+ *
+ * C'est l'adaptation des portions à l'objectif : la recette ne change pas —
+ * elle se cuisine et s'achète pareil pour tout le monde — mais ce qu'on en
+ * mange suit la cible. Quelqu'un à 2 800 kcal mange une part et demie du plat
+ * qui en fait une pour quelqu'un à 1 800.
+ *
+ * `null` quand on ne peut rien proposer : pas de cible, ou une part sans
+ * calories connues.
+ */
+export function suggestedServings(
+  kcalPerServing: number,
+  targetKcal: number | null,
+  meal: Meal,
+): number | null {
+  if (targetKcal === null || targetKcal <= 0 || !(kcalPerServing > 0)) {
+    return null;
+  }
+  const exact = (targetKcal * MEAL_TARGET_SHARES[meal]) / kcalPerServing;
+  const stepped = Math.round(exact / SUGGESTED_STEP) * SUGGESTED_STEP;
+  return Math.min(SUGGESTED_MAX, Math.max(SUGGESTED_MIN, stepped));
+}
+
+/**
  * Un nombre de parts, écrit : « 6 parts », « 1 part », « 0,5 part ».
  *
  * Partagé par le panier, la fiche et le mode cuisine, qui affichent tous les
@@ -209,7 +346,15 @@ export function formatIngredientQuantity(ingredient: {
   quantityG: number;
   unitName: string | null;
   unitGrams: number | null;
+  cookedYield?: number | null;
 }): string {
+  // Un féculent ou une viande écrits au poids cuit se lisent au poids cru, celui
+  // qu'on pèse et qu'on achète ; le poids cuit suit, c'est lui que comptent les
+  // macros.
+  if (ingredient.cookedYield !== undefined && ingredient.cookedYield !== null) {
+    const raw = rawGrams(ingredient.quantityG, ingredient.cookedYield);
+    return `${raw.toLocaleString('fr-FR')} g cru · ≈ ${Math.round(ingredient.quantityG).toLocaleString('fr-FR')} g cuit`;
+  }
   const count = unitCount(ingredient.quantityG, ingredient.unitName, ingredient.unitGrams);
   const grams = `${Math.round(ingredient.quantityG).toLocaleString('fr-FR')} g`;
   if (count === null || ingredient.unitName === null) {

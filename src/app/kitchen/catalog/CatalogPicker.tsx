@@ -37,6 +37,8 @@ export interface CatalogCard {
     quantityG: number;
     unitName: string | null;
     unitGrams: number | null;
+    /** Rendement de cuisson, pour lire le poids cru à acheter. */
+    cookedYield: number | null;
   }[];
   /** Ordre de grandeur d'une part. Les valeurs justes viennent avec la recette. */
   kcal: number;

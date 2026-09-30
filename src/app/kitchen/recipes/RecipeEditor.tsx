@@ -1,6 +1,6 @@
 'use client';
 
-import { SearchIcon, XIcon } from 'lucide-react';
+import { MinusIcon, PlusIcon, SearchIcon, XIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { BottomBar } from '@/components/BottomBar';
@@ -18,6 +18,7 @@ import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { MIN_QUERY_LENGTH, SEARCH_DEBOUNCE_MS, searchFoods } from '@/lib/client/search';
 import { cacheProduct } from '@/lib/client/products';
@@ -25,7 +26,10 @@ import { createRecipe, updateRecipe } from '@/lib/client/recipes';
 import {
   MAX_INGREDIENTS,
   MAX_SERVINGS,
+  cookingYield,
   formatIngredientQuantity,
+  formatServings,
+  portionWeight,
   recipeMacros,
   type Recipe,
   type RecipeIngredient,
@@ -64,6 +68,7 @@ function toDraft(ingredient: RecipeIngredient): DraftIngredient {
     refKind: ingredient.refKind,
     refValue: ingredient.refValue,
     label: ingredient.label,
+    cookedYield: ingredient.cookedYield,
     quantityG: ingredient.quantityG,
     unitName: ingredient.unitName,
     unitGrams: ingredient.unitGrams,
@@ -71,11 +76,36 @@ function toDraft(ingredient: RecipeIngredient): DraftIngredient {
   };
 }
 
+/**
+ * Les quantités d'une recette passée d'un nombre de parts à un autre.
+ *
+ * Sans elle, monter une recette de deux à quatre parts gardait 200 g de
+ * tomates : chaque part fondait de moitié sans que rien ne le dise, et la
+ * liste de courses achetait pour deux. Arrondi au gramme, jamais sous un.
+ */
+function rescale(
+  ingredients: readonly DraftIngredient[],
+  from: number,
+  to: number,
+): DraftIngredient[] {
+  if (from <= 0 || to <= 0 || from === to) {
+    return [...ingredients];
+  }
+  return ingredients.map((ingredient) => ({
+    ...ingredient,
+    quantityG: Math.max(1, Math.round((ingredient.quantityG * to) / from)),
+  }));
+}
+
 export function RecipeEditor({ recipe }: { recipe: Recipe | null }) {
   const router = useRouter();
 
   const [name, setName] = useState(recipe?.name ?? '');
-  const [servings, setServings] = useState(String(recipe?.servings ?? 2));
+  const [servings, setServings] = useState(recipe?.servings ?? 2);
+  // Changer les parts refait les quantités par défaut : c'est ce qu'on attend
+  // en passant une recette de deux à quatre. L'autre lecture — même plat, parts
+  // plus petites — reste possible, en le disant.
+  const [scaleWithServings, setScaleWithServings] = useState(true);
   const [prepMinutes, setPrepMinutes] = useState(
     recipe?.prepMinutes === null || recipe?.prepMinutes === undefined
       ? ''
@@ -152,6 +182,7 @@ export function RecipeEditor({ recipe }: { recipe: Recipe | null }) {
         refKind: hit.kind,
         refValue: hit.ref,
         label: hit.name,
+        cookedYield: cookingYield(hit.name),
         quantityG: DEFAULT_QUANTITY_G,
         unitName: null,
         unitGrams: null,
@@ -171,6 +202,14 @@ export function RecipeEditor({ recipe }: { recipe: Recipe | null }) {
     );
   }
 
+  function changeServings(next: number) {
+    const bounded = Math.min(MAX_SERVINGS, Math.max(1, next));
+    if (scaleWithServings) {
+      setIngredients((current) => rescale(current, servings, bounded));
+    }
+    setServings(bounded);
+  }
+
   function remove(index: number) {
     setIngredients((current) => current.filter((_, position) => position !== index));
   }
@@ -179,7 +218,7 @@ export function RecipeEditor({ recipe }: { recipe: Recipe | null }) {
     setSubmitting(true);
     setError(null);
 
-    const parsedServings = Number(servings.replace(',', '.'));
+    const parsedServings = servings;
     const parsedPrep = prepMinutes.trim() === '' ? null : Number(prepMinutes);
 
     const outcome = await (recipe === null
@@ -235,7 +274,7 @@ export function RecipeEditor({ recipe }: { recipe: Recipe | null }) {
   const total = recipeMacros(
     ingredients.map((ingredient, position) => ({ ...ingredient, id: -position, position })),
   );
-  const parsedServings = Number(servings.replace(',', '.'));
+  const parsedServings = servings;
   const perServing =
     Number.isFinite(parsedServings) && parsedServings > 0
       ? scaleMacros(total.macros, 100 / parsedServings)
@@ -272,20 +311,43 @@ export function RecipeEditor({ recipe }: { recipe: Recipe | null }) {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-[1fr_auto] items-end gap-3">
           <div className="grid gap-2">
-            <Label htmlFor="recipe-servings">Parts</Label>
-            <Input
-              id="recipe-servings"
-              type="text"
-              inputMode="decimal"
-              autoComplete="off"
-              value={servings}
-              onChange={(event) => setServings(event.target.value)}
-              className="tabular"
-            />
+            <Label id="recipe-servings-label">Parts</Label>
+            <div
+              role="group"
+              aria-labelledby="recipe-servings-label"
+              className="flex items-center gap-1.5"
+            >
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => changeServings(Math.ceil(servings) - 1)}
+                disabled={servings <= 1}
+                aria-label="Une part de moins"
+              >
+                <MinusIcon />
+              </Button>
+              <span
+                aria-live="polite"
+                className="tabular min-w-[72px] text-center text-[15px] font-semibold"
+              >
+                {formatServings(servings)}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => changeServings(Math.floor(servings) + 1)}
+                disabled={servings >= MAX_SERVINGS}
+                aria-label="Une part de plus"
+              >
+                <PlusIcon />
+              </Button>
+            </div>
           </div>
-          <div className="grid gap-2">
+          <div className="grid w-[120px] gap-2">
             <Label htmlFor="recipe-prep">Préparation (min)</Label>
             <Input
               id="recipe-prep"
@@ -299,6 +361,26 @@ export function RecipeEditor({ recipe }: { recipe: Recipe | null }) {
             />
           </div>
         </div>
+
+        {ingredients.length > 0 ? (
+          <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <Label htmlFor="recipe-scale" className="text-[13.5px]">
+                Les quantités suivent les parts
+              </Label>
+              <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+                {scaleWithServings
+                  ? 'Deux parts de plus, deux parts de plus à manger.'
+                  : 'Même plat, découpé autrement : chaque part change de taille.'}
+              </p>
+            </div>
+            <Switch
+              id="recipe-scale"
+              checked={scaleWithServings}
+              onCheckedChange={setScaleWithServings}
+            />
+          </div>
+        ) : null}
       </div>
 
       <h2 className="mt-6 mb-2 text-[13px] font-semibold tracking-tight">Ingrédients</h2>
@@ -493,6 +575,10 @@ export function RecipeEditor({ recipe }: { recipe: Recipe | null }) {
                 {formatGrams(perServing.fatG)} L
               </p>
             </div>
+            <p className="tabular mt-1 text-[12.5px] text-muted-foreground">
+              Une part ≈ {portionWeight(ingredients, servings).toLocaleString('fr-FR')} g dans
+              l’assiette
+            </p>
             {total.unresolvedCount > 0 ? (
               <p className="mt-2 text-[12.5px] text-destructive">
                 {total.unresolvedCount === 1

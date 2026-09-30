@@ -14,7 +14,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MEALS, MEAL_SHORT_LABELS, isMeal, type Meal } from '@/lib/meal';
 import { formatWeekday, formatDayMonth } from '@/lib/date';
-import { macrosPerServing, type Recipe } from '@/lib/recipe';
+import { formatServings, macrosPerServing, suggestedServings, type Recipe } from '@/lib/recipe';
 import { formatKcal, scaleMacros } from '@/lib/nutrition';
 import { MAX_PLANNED_SERVINGS } from '@/lib/basket';
 import { parseDecimal } from '@/lib/utils';
@@ -52,6 +52,7 @@ export function PlanMealSheet({
   meal: initialMeal,
   recipes,
   busy,
+  targetKcal,
   onClose,
   onConfirm,
 }: {
@@ -63,37 +64,53 @@ export function PlanMealSheet({
   /** Les plats du panier de la semaine, et eux seuls. */
   recipes: readonly Recipe[];
   busy: boolean;
+  /** La cible du jour, pour proposer à chaque plat la part qui y tient. */
+  targetKcal: number | null;
   onClose: () => void;
   onConfirm: (recipeId: number, meal: Meal, servings: number) => void;
 }) {
   const [meal, setMeal] = useState<Meal>(initialMeal);
   // La saisie reste du texte : « 1, » doit survivre le temps de taper le 5.
   const [servingsText, setServingsText] = useState(String(DEFAULT_SERVINGS));
-  const servings = parseDecimal(servingsText);
+  const typed = parseDecimal(servingsText);
+  // Tant que le champ n'est pas touché, chaque plat propose sa propre part,
+  // celle qui fait tenir ce repas dans la cible ; un chiffre tapé vaut pour
+  // tous, c'est une décision.
+  const [touched, setTouched] = useState(false);
 
   // Le repas suit le bouton touché : ouvrir la feuille depuis le dîner de
   // jeudi ne doit pas proposer le déjeuner.
   useEffect(() => {
     setMeal(initialMeal);
     setServingsText(String(DEFAULT_SERVINGS));
+    setTouched(false);
   }, [initialMeal, planDate, open]);
+
+  function servingsFor(recipe: Recipe): number {
+    if (touched) {
+      return typed;
+    }
+    return suggestedServings(macrosPerServing(recipe).macros.kcal, targetKcal, meal) ?? typed;
+  }
 
   // Le champ se vide en le corrigeant, et vide se lit `NaN`. Sans ce
   // contrôle, choisir un plat à cet instant partait au serveur pour revenir en
   // « Ce plat n'a pas pu être prévu », qui n'explique rien.
-  const validServings =
-    Number.isFinite(servings) && servings > 0 && servings <= MAX_PLANNED_SERVINGS;
+  const isValidServings = (value: number) =>
+    Number.isFinite(value) && value > 0 && value <= MAX_PLANNED_SERVINGS;
+  const validServings = !touched || isValidServings(typed);
 
   function renderRecipe(recipe: Recipe) {
     const per = macrosPerServing(recipe);
     // Ce qui compte est ce qu'on va manger, pas ce que la recette produit :
     // une part de plus double le chiffre affiché.
+    const servings = servingsFor(recipe);
     const eaten = scaleMacros(per.macros, servings * 100);
     return (
       <li key={recipe.id}>
         <button
           type="button"
-          disabled={busy || !validServings}
+          disabled={busy || !isValidServings(servings)}
           onClick={() => onConfirm(recipe.id, meal, servings)}
           className="flex w-full items-center gap-3 border-b py-2.5 text-left transition-colors active:bg-accent disabled:opacity-50"
         >
@@ -106,6 +123,7 @@ export function PlanMealSheet({
                 ? '1 ingrédient'
                 : `${recipe.ingredients.length} ingrédients`}
               {recipe.prepMinutes === null ? '' : ` · ${recipe.prepMinutes} min`}
+              {touched ? '' : ` · ${formatServings(servings)}`}
             </span>
           </span>
           <span className="tabular flex-none font-medium">
@@ -173,8 +191,12 @@ export function PlanMealSheet({
                 type="text"
                 inputMode="decimal"
                 autoComplete="off"
-                value={servingsText}
-                onChange={(event) => setServingsText(event.target.value)}
+                value={touched ? servingsText : ''}
+                placeholder={touched ? undefined : targetKcal === null ? String(DEFAULT_SERVINGS) : 'Auto'}
+                onChange={(event) => {
+                  setTouched(true);
+                  setServingsText(event.target.value);
+                }}
                 aria-invalid={!validServings}
                 aria-describedby={validServings ? undefined : 'plan-servings-error'}
                 className="tabular w-[92px] text-right"

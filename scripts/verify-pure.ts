@@ -26,9 +26,13 @@ import {
 import { weeklyWeights, weightChange } from '../src/lib/weight';
 import { parseFavoriteItems, suggestFavoriteName, favoriteTotals } from '../src/lib/favorites';
 import {
+  cookingYield,
   formatIngredientQuantity,
   formatServings,
   ingredientsForServings,
+  portionWeight,
+  rawGrams,
+  suggestedServings,
   macrosPerServing,
   quantityForServings,
   recipeMacros,
@@ -414,6 +418,7 @@ const riz: RecipeIngredient = {
   refKind: 'ciqual',
   refValue: '9999',
   label: 'Riz',
+  cookedYield: null,
   quantityG: 200,
   unitName: null,
   unitGrams: null,
@@ -425,6 +430,7 @@ const oeufs: RecipeIngredient = {
   refKind: 'ciqual',
   refValue: '8888',
   label: 'Oeufs',
+  cookedYield: null,
   quantityG: 100,
   unitName: 'oeuf',
   unitGrams: 50,
@@ -1594,6 +1600,38 @@ assert.equal(
   assert.equal(suggestFavoriteName(items), 'Flocons d avoine, Skyr', 'les deux plus caloriques');
   assert.equal(favoriteTotals({ items }).kcal, 315, 'total du repas');
   assert.deepEqual(parseFavoriteItems({ pas: 'un tableau' }), [], 'pas un tableau : vide');
+}
+
+// --- Cru et cuit, parts et cible ---
+{
+  assert.equal(cookingYield('Riz blanc, cuit, non sale'), 2.8, 'le riz cuit gonfle');
+  assert.equal(cookingYield('Riz complet, cuit'), 2.6, 'le riz complet un peu moins');
+  assert.equal(cookingYield('Pates alimentaires cuites'), 2.3, 'les pates');
+  assert.equal(cookingYield('pates blanches cuites'), 2.3, 'le terme du catalogue aussi');
+  assert.equal(cookingYield('Riz blanc, cru'), null, 'un aliment cru n a pas de rendement');
+  assert.equal(cookingYield('Poulet, filet, sans peau, cuit a la poele'), 0.75, 'la viande perd un quart');
+  assert.equal(cookingYield('Jambon cuit, decouenne'), null, 'le jambon se vend cuit');
+  assert.equal(cookingYield('Pois chiche, cuit'), null, 'les legumineuses en conserve');
+  assert.equal(cookingYield('Crevette, cuite'), null, 'les crevettes se vendent cuites');
+  assert.equal(cookingYield('Courgette, cuite'), null, 'les legumes ne comptent pas');
+  assert.equal(cookingYield(null), null, 'sans nom, rien');
+  assert.equal(rawGrams(400, 2.8), 143, '400 g de riz cuit : 143 g cru');
+  assert.equal(rawGrams(300, 0.75), 400, '300 g de poulet cuit : 400 g cru');
+  assert.equal(rawGrams(150, null), 150, 'sans rendement, le poids ne change pas');
+  assert.equal(
+    formatIngredientQuantity({ quantityG: 400, unitName: null, unitGrams: null, cookedYield: 2.8 }),
+    '143 g cru · ≈ 400 g cuit',
+    'le poids a peser d abord, le poids cuit ensuite',
+  );
+
+  assert.equal(portionWeight([{ quantityG: 400 }, { quantityG: 300 }], 2), 350, 'une part pese la moitie');
+  assert.equal(portionWeight([{ quantityG: 100 }], 3), 35, 'arrondi a cinq grammes');
+
+  assert.equal(suggestedServings(500, 2000, 'dinner'), 1.25, '600 kcal de budget, part de 500');
+  assert.equal(suggestedServings(500, 1400, 'dinner'), 0.75, 'cible basse, part reduite');
+  assert.equal(suggestedServings(100, 3000, 'lunch'), 3, 'plafond a trois parts');
+  assert.equal(suggestedServings(500, null, 'lunch'), null, 'sans cible, rien a proposer');
+  assert.equal(suggestedServings(0, 2000, 'lunch'), null, 'sans calories, rien a proposer');
 }
 
 console.log('Toutes les verifications pures passent.');

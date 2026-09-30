@@ -3,6 +3,7 @@ import { requireUserId } from '@/server/guard';
 import { basketFor, installedFor } from '@/server/services/basket';
 import { profileFor } from '@/server/services/profile';
 import { catalogFor } from '@/lib/meal-catalog';
+import { cookingYield } from '@/lib/recipe';
 import type { Goal } from '@/lib/energy';
 import { formatWeekRange, isJournalDate, startOfWeek, todayInParis } from '@/lib/date';
 import { CatalogPicker, type CatalogCard } from './CatalogPicker';
@@ -80,6 +81,7 @@ export default async function CatalogPage({
         quantityG: ingredient.quantityG,
         unitName: ingredient.unitName ?? null,
         unitGrams: ingredient.unitGrams ?? null,
+        cookedYield: cookingYield(ingredient.searchTerm),
       })),
       kcal: meal.estimate.kcal,
       proteinG: meal.estimate.proteinG,

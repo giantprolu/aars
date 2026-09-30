@@ -47,6 +47,7 @@ export function WeekPlanner({
   recipes,
   basketRecipeIds,
   today,
+  targetKcal,
 }: {
   startDate: string;
   days: readonly string[];
@@ -55,6 +56,7 @@ export function WeekPlanner({
   /** Recettes du panier de la semaine : les seules qu'on puisse mettre au plan. */
   basketRecipeIds: ReadonlySet<number>;
   today: string;
+  targetKcal: number | null;
 }) {
   const router = useRouter();
   const [target, setTarget] = useState<SheetTarget | null>(null);
@@ -270,6 +272,7 @@ export function WeekPlanner({
         meal={target?.meal ?? 'dinner'}
         recipes={choosable}
         busy={busy}
+        targetKcal={targetKcal}
         onClose={() => setTarget(null)}
         onConfirm={(recipeId, meal, servings) => void add(recipeId, meal, servings)}
       />

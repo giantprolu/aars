@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { requireUserId } from '@/server/guard';
 import { basketFor } from '@/server/services/basket';
 import { planForWeek, weekDays } from '@/server/services/meal-plan';
+import { targetFor } from '@/server/services/profile';
 import { recipesFor } from '@/server/services/recipes';
 import { formatWeekRange, isJournalDate, startOfWeek, todayInParis } from '@/lib/date';
 import { KitchenTabs } from './KitchenTabs';
@@ -42,10 +43,11 @@ export default async function KitchenPage({
     requested !== undefined && isJournalDate(requested) ? requested : today,
   );
 
-  const [planned, recipes, basket] = await Promise.all([
+  const [planned, recipes, basket, target] = await Promise.all([
     planForWeek(userId, startDate),
     recipesFor(userId),
     basketFor(userId, startDate),
+    targetFor(userId),
   ]);
 
   const basketRecipeIds = new Set(basket.map((item) => item.recipeId));
@@ -89,6 +91,7 @@ export default async function KitchenPage({
           recipes={recipes}
           basketRecipeIds={basketRecipeIds}
           today={today}
+          targetKcal={target?.targetKcal ?? null}
         />
       )}
     </>

@@ -24,7 +24,7 @@ import { MAX_PLANNED_SERVINGS } from '@/lib/basket';
 import { hourInParis } from '@/lib/date';
 import { MEALS, MEAL_LABELS, isMeal, mealForHour, type Meal } from '@/lib/meal';
 import { formatKcal, formatGrams, scaleMacros } from '@/lib/nutrition';
-import { formatServings } from '@/lib/recipe';
+import { formatServings, suggestedServings } from '@/lib/recipe';
 import type { Macros } from '@/lib/types';
 import { parseDecimal } from '@/lib/utils';
 
@@ -67,6 +67,10 @@ const STEP_SERVINGS = 0.5;
 /** Ce qu'on mange d'un plat, par défaut. Une part : on cuisine pour plusieurs jours. */
 const DEFAULT_SERVINGS = 1;
 
+function formatServingsInput(value: number): string {
+  return String(value).replace('.', ',');
+}
+
 /** Sans accents ni casse : « creme » doit trouver « Crème brûlée ». */
 function fold(text: string): string {
   return text
@@ -75,7 +79,14 @@ function fold(text: string): string {
     .toLowerCase();
 }
 
-export function RecipeFlow({ recipes }: { recipes: readonly RecipeChoice[] }) {
+export function RecipeFlow({
+  recipes,
+  targetKcal,
+}: {
+  recipes: readonly RecipeChoice[];
+  /** La cible du jour, pour proposer la part qui y tient ; `null` sans profil. */
+  targetKcal: number | null;
+}) {
   const router = useRouter();
   const [step, setStep] = useState<Step>({ name: 'pick' });
   const [term, setTerm] = useState('');
@@ -83,19 +94,35 @@ export function RecipeFlow({ recipes }: { recipes: readonly RecipeChoice[] }) {
   const [servingsText, setServingsText] = useState(String(DEFAULT_SERVINGS));
   const servings = parseDecimal(servingsText);
   const [meal, setMeal] = useState<Meal>(() => mealForHour(hourInParis()));
+  // Tant qu'on n'a pas touché aux parts, elles suivent la cible et le repas :
+  // passer du déjeuner au dîner change la part conseillée.
+  const [servingsTouched, setServingsTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function suggestedFor(recipe: RecipeChoice, forMeal: Meal): number {
+    return suggestedServings(recipe.perServing.kcal, targetKcal, forMeal) ?? DEFAULT_SERVINGS;
+  }
+
   function pick(recipe: RecipeChoice) {
     setError(null);
-    setServingsText(String(DEFAULT_SERVINGS));
+    setServingsTouched(false);
+    setServingsText(formatServingsInput(suggestedFor(recipe, meal)));
     setStep({ name: 'servings', recipe });
   }
 
+  function changeMeal(next: Meal) {
+    setMeal(next);
+    if (step.name === 'servings' && !servingsTouched) {
+      setServingsText(formatServingsInput(suggestedFor(step.recipe, next)));
+    }
+  }
+
   function stepBy(delta: number) {
+    setServingsTouched(true);
     const current = Number.isFinite(servings) ? servings : 0;
     const next = Math.min(MAX_PLANNED_SERVINGS, Math.max(STEP_SERVINGS, current + delta));
-    setServingsText(String(Math.round(next * 2) / 2).replace('.', ','));
+    setServingsText(formatServingsInput(Math.round(next * 2) / 2));
   }
 
   async function save(recipeId: number) {
@@ -224,7 +251,10 @@ export function RecipeFlow({ recipes }: { recipes: readonly RecipeChoice[] }) {
               inputMode="decimal"
               autoComplete="off"
               value={servingsText}
-              onChange={(event) => setServingsText(event.target.value)}
+              onChange={(event) => {
+                setServingsTouched(true);
+                setServingsText(event.target.value);
+              }}
               aria-invalid={!valid}
               aria-describedby={valid ? undefined : 'servings-error'}
               className="tabular h-11 flex-1 text-center text-[19px] font-semibold md:text-[19px]"
@@ -242,6 +272,10 @@ export function RecipeFlow({ recipes }: { recipes: readonly RecipeChoice[] }) {
 
           {valid ? (
             <p className="mt-2 text-[12.5px] text-muted-foreground">
+              {!servingsTouched &&
+              suggestedServings(recipe.perServing.kcal, targetKcal, meal) !== null
+                ? `Ajusté à ta cible pour ce repas. `
+                : ''}
               Sur les {formatServings(recipe.servings)} de la recette.{' '}
               {recipe.ingredientCount === 1
                 ? '1 ligne au journal'
@@ -277,7 +311,7 @@ export function RecipeFlow({ recipes }: { recipes: readonly RecipeChoice[] }) {
           {error ? <ErrorAlert>{error}</ErrorAlert> : null}
 
           <BottomBar className="flex gap-2.5">
-            <Select value={meal} onValueChange={(value) => isMeal(value) && setMeal(value)}>
+            <Select value={meal} onValueChange={(value) => isMeal(value) && changeMeal(value)}>
               <SelectTrigger aria-label="Repas" className="h-10 flex-1 data-[size=default]:h-10">
                 <span className="text-muted-foreground">Repas :</span>
                 <SelectValue />

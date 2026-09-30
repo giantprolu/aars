@@ -1,6 +1,6 @@
 import 'server-only';
 import { aisleFor, type Aisle } from '@/lib/aisle';
-import { quantityForServings } from '@/lib/recipe';
+import { quantityForServings, rawGrams } from '@/lib/recipe';
 import {
   aggregateNeeds,
   ingredientKey,
@@ -124,7 +124,10 @@ async function computeNeeds(
         refKind: ingredient.refKind,
         refValue: ingredient.refValue,
         label: ingredient.label,
-        quantityG,
+        // On achète le riz cru, pas cuit : un ingrédient écrit au poids cuit
+        // passe ici au poids qu'on met dans le panier. Les macros, elles,
+        // restent calculées sur le poids cuit, celui qu'on mange.
+        quantityG: rawGrams(quantityG, ingredient.cookedYield),
         unitName: ingredient.unitName,
         unitGrams: ingredient.unitGrams,
         aisle: null,
