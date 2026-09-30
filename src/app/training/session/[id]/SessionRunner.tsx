@@ -38,7 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Toggle } from '@/components/ui/toggle';
-import { cn } from '@/lib/utils';
+import { cn, parseDecimal } from '@/lib/utils';
 import {
   discardSession,
   finishSession,
@@ -337,7 +337,7 @@ export function SessionRunner({
     const isTimed = entry.exercise.kind === 'hold' || entry.exercise.kind === 'cardio';
 
     const measures = {
-      weightKg: isTimed || draft.weightKg.trim() === '' ? null : Number(draft.weightKg),
+      weightKg: isTimed || draft.weightKg.trim() === '' ? null : parseDecimal(draft.weightKg),
       reps: isTimed || draft.reps.trim() === '' ? null : Number(draft.reps),
       seconds: isTimed && draft.seconds.trim() !== '' ? Number(draft.seconds) : null,
     };
@@ -647,10 +647,9 @@ export function SessionRunner({
                           <>
                             <div className="relative min-w-0 flex-1">
                               <Input
-                                type="number"
+                                type="text"
                                 inputMode="decimal"
-                                min={0}
-                                step={0.5}
+                                autoComplete="off"
                                 aria-label={`Charge de la série ${setIndex} en kilogrammes`}
                                 value={draft.weightKg}
                                 onChange={(event) => patch(key, { weightKg: event.target.value })}

@@ -277,10 +277,9 @@ export function RecipeEditor({ recipe }: { recipe: Recipe | null }) {
             <Label htmlFor="recipe-servings">Parts</Label>
             <Input
               id="recipe-servings"
-              type="number"
+              type="text"
               inputMode="decimal"
-              min={1}
-              max={MAX_SERVINGS}
+              autoComplete="off"
               value={servings}
               onChange={(event) => setServings(event.target.value)}
               className="tabular"

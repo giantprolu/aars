@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatKcal } from '@/lib/nutrition';
+import { parseDecimal } from '@/lib/utils';
 
 /**
  * Questionnaire corporel (FR-26).
@@ -84,7 +85,17 @@ function isGoal(value: string): value is ProfileFormValues['goal'] {
   return value === 'lose' || value === 'maintain' || value === 'gain';
 }
 
-/** Un champ numérique, son intitulé porte l'unité. */
+function formatDecimal(value: number): string {
+  return Number.isNaN(value) ? '' : String(value).replace('.', ',');
+}
+
+/**
+ * Un champ numérique, son intitulé porte l'unité.
+ *
+ * Il garde la saisie telle qu'elle est tapée et ne remonte que le nombre lu :
+ * repasser par `String(Number(…))` à chaque frappe effaçait la virgule de
+ * « 0, » avant qu'on ait pu taper la décimale. Champ vide : `NaN`.
+ */
 function NumberField({
   id,
   label,
@@ -95,24 +106,33 @@ function NumberField({
 }: {
   id: string;
   label: string;
-  value: string;
-  onChange: (value: string) => void;
+  value: number;
+  onChange: (value: number) => void;
   hint?: React.ReactNode;
-  min?: number;
-  max?: number;
-  step?: string;
   required?: boolean;
   placeholder?: string;
 }) {
+  const [draft, setDraft] = useState(() => formatDecimal(value));
+
+  // Une valeur changée d'ailleurs (le rythme ramené sous le plafond d'un
+  // nouvel objectif) remplace la saisie ; celle qui vient de la saisie, non.
+  if (!Object.is(parseDecimal(draft), value)) {
+    setDraft(formatDecimal(value));
+  }
+
   return (
     <div className="grid min-w-0 gap-2">
       <Label htmlFor={id}>{label}</Label>
       <Input
         id={id}
-        type="number"
+        type="text"
         inputMode="decimal"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
+        autoComplete="off"
+        value={draft}
+        onChange={(event) => {
+          setDraft(event.target.value);
+          onChange(parseDecimal(event.target.value));
+        }}
         className="tabular"
         {...rest}
       />
@@ -214,6 +234,7 @@ export function ProfileForm({
   // que du gras.
   const maxRate = values.goal === 'lose' ? 1 : 0.5;
   const rateDisabled = values.goal === 'maintain';
+  const weeklyKg = Math.round(values.weightKg * values.ratePercentPerWeek * 10) / 1000;
 
   // Le plancher de la cible manuelle est le minimum clinique du sexe déclaré,
   // repris de `@/lib/energy` : choisir son chiffre n'autorise pas à descendre
@@ -281,21 +302,16 @@ export function ProfileForm({
           <NumberField
             id="heightCm"
             label="Taille (cm)"
-            min={120}
-            max={250}
             required
-            value={String(values.heightCm)}
-            onChange={(value) => set('heightCm', Number(value))}
+            value={values.heightCm}
+            onChange={(value) => set('heightCm', value)}
           />
           <NumberField
             id="weightKg"
             label="Poids (kg)"
-            step="0.1"
-            min={30}
-            max={300}
             required
-            value={String(values.weightKg)}
-            onChange={(value) => set('weightKg', Number(value))}
+            value={values.weightKg}
+            onChange={(value) => set('weightKg', value)}
           />
         </div>
 
@@ -314,12 +330,9 @@ export function ProfileForm({
         <NumberField
           id="bodyFat"
           label="Masse grasse, si connue (%)"
-          step="0.1"
-          min={3}
-          max={70}
           placeholder="Laisser vide"
-          value={values.bodyFatPercent === null ? '' : String(values.bodyFatPercent)}
-          onChange={(value) => set('bodyFatPercent', value === '' ? null : Number(value))}
+          value={values.bodyFatPercent ?? Number.NaN}
+          onChange={(value) => set('bodyFatPercent', Number.isNaN(value) ? null : value)}
           hint="Renseignée, elle fait passer le calcul sur la masse maigre, plus fidèle si tu es très musclé ou très gras."
         />
 
@@ -356,16 +369,15 @@ export function ProfileForm({
           <NumberField
             id="rate"
             label="Rythme visé, par semaine (%)"
-            step="0.05"
-            min={0.05}
-            max={maxRate}
             required
-            value={String(values.ratePercentPerWeek)}
-            onChange={(value) => set('ratePercentPerWeek', Number(value))}
+            value={values.ratePercentPerWeek}
+            onChange={(value) => set('ratePercentPerWeek', value)}
             hint={
               <>
-                Soit {Math.round(values.weightKg * values.ratePercentPerWeek * 10) / 1000} kg par
-                semaine. Plafond de {maxRate} % :{' '}
+                {Number.isFinite(weeklyKg) ? (
+                  <>Soit {formatDecimal(weeklyKg)} kg par semaine. </>
+                ) : null}
+                Plafond de {formatDecimal(maxRate)} % :{' '}
                 {values.goal === 'lose'
                   ? 'au-delà, la masse maigre part avec la graisse.'
                   : 'au-delà, le surplus se stocke sans servir.'}
@@ -404,14 +416,10 @@ export function ProfileForm({
                 <NumberField
                   id="manualTarget"
                   label="Ma cible quotidienne (kcal)"
-                  step="10"
-                  min={manualFloor}
-                  max={MANUAL_TARGET_MAX}
                   required
-                  value={String(values.manualTargetKcal ?? '')}
-                  onChange={(value) =>
-                    set('manualTargetKcal', value === '' ? null : Math.round(Number(value)))
-                  }
+                  value={values.manualTargetKcal ?? Number.NaN}
+                  // Un champ vidé reste en manuel : `null` éteindrait l'interrupteur.
+                  onChange={(value) => set('manualTargetKcal', Math.round(value))}
                   hint={`Entre ${manualFloor} et ${MANUAL_TARGET_MAX} kcal. Les macronutriments sont répartis dessus.`}
                 />
               </div>

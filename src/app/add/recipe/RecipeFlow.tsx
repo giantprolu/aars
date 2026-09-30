@@ -26,6 +26,7 @@ import { MEALS, MEAL_LABELS, isMeal, mealForHour, type Meal } from '@/lib/meal';
 import { formatKcal, formatGrams, scaleMacros } from '@/lib/nutrition';
 import { formatServings } from '@/lib/recipe';
 import type { Macros } from '@/lib/types';
+import { parseDecimal } from '@/lib/utils';
 
 /**
  * Ajout d'un plat du carnet au journal, cinquième chemin de /add.
@@ -78,21 +79,23 @@ export function RecipeFlow({ recipes }: { recipes: readonly RecipeChoice[] }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>({ name: 'pick' });
   const [term, setTerm] = useState('');
-  const [servings, setServings] = useState(DEFAULT_SERVINGS);
+  // La saisie reste du texte : « 1, » doit survivre le temps de taper le 5.
+  const [servingsText, setServingsText] = useState(String(DEFAULT_SERVINGS));
+  const servings = parseDecimal(servingsText);
   const [meal, setMeal] = useState<Meal>(() => mealForHour(hourInParis()));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function pick(recipe: RecipeChoice) {
     setError(null);
-    setServings(DEFAULT_SERVINGS);
+    setServingsText(String(DEFAULT_SERVINGS));
     setStep({ name: 'servings', recipe });
   }
 
   function stepBy(delta: number) {
     const current = Number.isFinite(servings) ? servings : 0;
     const next = Math.min(MAX_PLANNED_SERVINGS, Math.max(STEP_SERVINGS, current + delta));
-    setServings(Math.round(next * 2) / 2);
+    setServingsText(String(Math.round(next * 2) / 2).replace('.', ','));
   }
 
   async function save(recipeId: number) {
@@ -217,13 +220,11 @@ export function RecipeFlow({ recipes }: { recipes: readonly RecipeChoice[] }) {
             </Button>
             <Input
               id="servings"
-              type="number"
+              type="text"
               inputMode="decimal"
-              min={STEP_SERVINGS}
-              max={MAX_PLANNED_SERVINGS}
-              step={STEP_SERVINGS}
-              value={Number.isFinite(servings) ? servings : ''}
-              onChange={(event) => setServings(Number(event.target.value))}
+              autoComplete="off"
+              value={servingsText}
+              onChange={(event) => setServingsText(event.target.value)}
               aria-invalid={!valid}
               aria-describedby={valid ? undefined : 'servings-error'}
               className="tabular h-11 flex-1 text-center text-[19px] font-semibold md:text-[19px]"

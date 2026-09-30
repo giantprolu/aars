@@ -17,6 +17,7 @@ import { formatWeekday, formatDayMonth } from '@/lib/date';
 import { macrosPerServing, type Recipe } from '@/lib/recipe';
 import { formatKcal, scaleMacros } from '@/lib/nutrition';
 import { MAX_PLANNED_SERVINGS } from '@/lib/basket';
+import { parseDecimal } from '@/lib/utils';
 
 /**
  * Feuille d'ajout d'un plat au plan.
@@ -66,16 +67,18 @@ export function PlanMealSheet({
   onConfirm: (recipeId: number, meal: Meal, servings: number) => void;
 }) {
   const [meal, setMeal] = useState<Meal>(initialMeal);
-  const [servings, setServings] = useState(DEFAULT_SERVINGS);
+  // La saisie reste du texte : « 1, » doit survivre le temps de taper le 5.
+  const [servingsText, setServingsText] = useState(String(DEFAULT_SERVINGS));
+  const servings = parseDecimal(servingsText);
 
   // Le repas suit le bouton touché : ouvrir la feuille depuis le dîner de
   // jeudi ne doit pas proposer le déjeuner.
   useEffect(() => {
     setMeal(initialMeal);
-    setServings(DEFAULT_SERVINGS);
+    setServingsText(String(DEFAULT_SERVINGS));
   }, [initialMeal, planDate, open]);
 
-  // Le champ se vide en le corrigeant, et `Number('')` vaut zéro. Sans ce
+  // Le champ se vide en le corrigeant, et vide se lit `NaN`. Sans ce
   // contrôle, choisir un plat à cet instant partait au serveur pour revenir en
   // « Ce plat n'a pas pu être prévu », qui n'explique rien.
   const validServings =
@@ -167,13 +170,11 @@ export function PlanMealSheet({
               </Label>
               <Input
                 id="plan-servings"
-                type="number"
+                type="text"
                 inputMode="decimal"
-                min={0.5}
-                max={MAX_PLANNED_SERVINGS}
-                step={0.5}
-                value={servings}
-                onChange={(event) => setServings(Number(event.target.value))}
+                autoComplete="off"
+                value={servingsText}
+                onChange={(event) => setServingsText(event.target.value)}
                 aria-invalid={!validServings}
                 aria-describedby={validServings ? undefined : 'plan-servings-error'}
                 className="tabular w-[92px] text-right"
