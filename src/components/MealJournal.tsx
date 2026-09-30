@@ -1,10 +1,9 @@
 'use client';
 
-import { StarIcon } from 'lucide-react';
+import { ChevronDownIcon, StarIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -19,9 +18,10 @@ import { Label } from '@/components/ui/label';
 import { saveFavorite } from '@/lib/client/favorites';
 import { MAX_FAVORITE_NAME, suggestFavoriteName } from '@/lib/favorites';
 import type { Entry } from '@/lib/types';
-import { groupByMeal } from '@/lib/journal';
+import { groupByMeal, type MealSection } from '@/lib/journal';
 import type { Meal } from '@/lib/meal';
 import { formatGrams, formatKcal } from '@/lib/nutrition';
+import { cn } from '@/lib/utils';
 import { SwipeToDeleteRow } from './SwipeToDeleteRow';
 
 /**
@@ -43,20 +43,42 @@ import { SwipeToDeleteRow } from './SwipeToDeleteRow';
 
 function EntryRow({ entry }: { entry: Entry }) {
   return (
-    <div className="flex items-center gap-3 border-b py-2.5">
-      <Avatar aria-hidden className="size-[34px]">
-        <AvatarFallback className="text-xs font-semibold uppercase">
+    <div className="flex items-center gap-3 border-t border-divider py-2.5">
+      <Avatar aria-hidden className="size-8">
+        <AvatarFallback className="bg-nutri-soft text-xs font-semibold text-nutri-ink uppercase">
           {entry.foodLabel.trim().charAt(0)}
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[14.5px] font-medium tracking-tight">{entry.foodLabel}</p>
+        <p className="truncate text-[14px] font-medium">{entry.foodLabel}</p>
         <p className="tabular mt-px text-[12.5px] text-muted-foreground">
           {formatGrams(entry.quantityG)} g
         </p>
       </div>
-      <p className="tabular font-medium">{formatKcal(entry.macros.kcal)}</p>
+      <p className="font-medium text-muted-foreground">{formatKcal(entry.macros.kcal)}</p>
     </div>
+  );
+}
+
+/**
+ * La barre empilée d'un repas : la part de chaque macro dans son énergie.
+ * Le total en kilocalories est écrit à côté, la couleur ne porte rien seule.
+ */
+function MacroStrip({ section }: { section: MealSection }) {
+  const { proteinG, carbsG, fatG } = section.macros;
+  const parts = [
+    { share: proteinG * 4, className: 'bg-protein' },
+    { share: carbsG * 4, className: 'bg-carb' },
+    { share: fatG * 9, className: 'bg-fat' },
+  ];
+  return (
+    <span aria-hidden className="flex h-[7px] w-16 flex-none gap-px overflow-hidden rounded-full bg-track">
+      {parts.map((part, index) =>
+        part.share > 0 ? (
+          <span key={index} className={part.className} style={{ flexGrow: part.share }} />
+        ) : null,
+      )}
+    </span>
   );
 }
 
@@ -64,12 +86,17 @@ export function MealJournal({
   entries,
   deletable = false,
   favoritable = false,
+  initiallyOpen = false,
 }: {
   entries: readonly Entry[];
   deletable?: boolean;
   /** Propose d'enregistrer chaque repas en favori. Journal du jour seulement. */
   favoritable?: boolean;
+  /** Repas dépliés d'emblée. Aujourd'hui les replie, l'historique les montre. */
+  initiallyOpen?: boolean;
 }) {
+  const [expanded, setExpanded] = useState<ReadonlySet<Meal>>(new Set());
+  const [collapsed, setCollapsed] = useState<ReadonlySet<Meal>>(new Set());
   const router = useRouter();
   const [removing, setRemoving] = useState<ReadonlySet<number>>(new Set());
   const [naming, setNaming] = useState<{ meal: Meal; label: string } | null>(null);
@@ -109,54 +136,100 @@ export function MealJournal({
 
   return (
     <>
-      {sections.map((section) => (
-        <section key={section.meal} aria-label={section.label}>
-          <div className="flex items-center justify-between pt-[18px] pb-1.5">
-            <h2 className="text-[13px] font-semibold tracking-tight">{section.label}</h2>
-            <div className="flex items-center gap-1">
-              {favoritable ? (
-                <Button
+      <div className="rounded-xl border bg-card px-3.5 py-1">
+        {sections.map((section, index) => {
+          const open = initiallyOpen
+            ? !collapsed.has(section.meal)
+            : expanded.has(section.meal);
+          const toggle = () => {
+            const flip = (previous: ReadonlySet<Meal>) => {
+              const next = new Set(previous);
+              if (next.has(section.meal)) {
+                next.delete(section.meal);
+              } else {
+                next.add(section.meal);
+              }
+              return next;
+            };
+            if (initiallyOpen) {
+              setCollapsed(flip);
+            } else {
+              setExpanded(flip);
+            }
+          };
+          return (
+            <section
+              key={section.meal}
+              aria-label={section.label}
+              className={cn(index > 0 && 'border-t border-divider')}
+            >
+              <div className="flex items-center gap-2.5 py-2.5">
+                <button
                   type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-muted-foreground"
-                  aria-label={`Enregistrer « ${section.label} » en favori`}
-                  onClick={() => {
-                    setName(suggestFavoriteName(section.entries));
-                    setSaveError(null);
-                    setNaming({ meal: section.meal, label: section.label });
-                  }}
+                  onClick={toggle}
+                  aria-expanded={open}
+                  className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                 >
-                  <StarIcon
-                    className={saved.has(section.meal) ? 'fill-primary text-primary' : undefined}
+                  <h2 className="min-w-0 flex-1 truncate text-[14px] font-medium">
+                    {section.label}
+                  </h2>
+                  <MacroStrip section={section} />
+                  <span className="w-11 text-right font-semibold">
+                    {formatKcal(section.macros.kcal)}
+                  </span>
+                  <ChevronDownIcon
+                    aria-hidden
+                    className={cn(
+                      'size-4 flex-none text-faint transition-transform',
+                      open && 'rotate-180',
+                    )}
                   />
-                </Button>
-              ) : null}
-              <Badge variant="secondary" className="tabular">
-                {formatKcal(section.macros.kcal)} kcal
-              </Badge>
-            </div>
-          </div>
+                </button>
+              </div>
 
-          <ul>
-            {section.entries.map((entry) =>
-              deletable ? (
-                <SwipeToDeleteRow
-                  key={entry.id}
-                  label={entry.foodLabel}
-                  onDelete={() => remove(entry.id)}
-                >
-                  <EntryRow entry={entry} />
-                </SwipeToDeleteRow>
-              ) : (
-                <li key={entry.id}>
-                  <EntryRow entry={entry} />
-                </li>
-              ),
-            )}
-          </ul>
-        </section>
-      ))}
+              {open ? (
+                <div className="pb-1">
+                  <ul>
+                    {section.entries.map((entry) =>
+                      deletable ? (
+                        <SwipeToDeleteRow
+                          key={entry.id}
+                          label={entry.foodLabel}
+                          onDelete={() => remove(entry.id)}
+                        >
+                          <EntryRow entry={entry} />
+                        </SwipeToDeleteRow>
+                      ) : (
+                        <li key={entry.id}>
+                          <EntryRow entry={entry} />
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                  {favoritable ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="mb-1 -ml-2 text-nutri-ink"
+                      onClick={() => {
+                        setName(suggestFavoriteName(section.entries));
+                        setSaveError(null);
+                        setNaming({ meal: section.meal, label: section.label });
+                      }}
+                    >
+                      <StarIcon
+                        className={saved.has(section.meal) ? 'fill-current' : undefined}
+                      />
+                      {saved.has(section.meal) ? 'En favori' : 'Mettre en favori'}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+            </section>
+          );
+        })}
+      </div>
 
       <Dialog open={naming !== null} onOpenChange={(open) => (open ? undefined : setNaming(null))}>
         <DialogContent>

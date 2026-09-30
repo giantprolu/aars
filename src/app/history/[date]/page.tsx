@@ -51,7 +51,7 @@ export default async function HistoryDayPage({
       ) : (
         <>
           <DayBreakdown macros={totals.macros} />
-          <MealJournal entries={entries} />
+          <MealJournal entries={entries} initiallyOpen />
           <p className="mt-5 text-center text-[12.5px] text-muted-foreground">
             Journée clôturée. Les valeurs sont figées à l&apos;écriture.
           </p>

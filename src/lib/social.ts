@@ -101,3 +101,20 @@ export interface FeedSession {
   /** Vrai pour mes propres séances, qui figurent aussi dans le fil. */
   mine: boolean;
 }
+
+/**
+ * Deux initiales pour un avatar : « Camille Lefort » donne « CL », « Camille »
+ * donne « CA », un identifiant « camille_s » donne « CA ». `?` sans rien.
+ */
+export function initialsOf(label: string | null): string {
+  const words = (label ?? '')
+    .replace(/^@/, '')
+    .split(/[\s_.-]+/)
+    .filter((word) => word !== '');
+  if (words.length === 0) {
+    return '?';
+  }
+  const first = words[0] ?? '';
+  const second = words[1];
+  return (second === undefined ? first.slice(0, 2) : `${first[0] ?? ''}${second[0] ?? ''}`).toUpperCase();
+}

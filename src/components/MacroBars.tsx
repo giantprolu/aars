@@ -10,13 +10,15 @@ import type { Macros } from '@/lib/types';
  */
 
 export const MACROS = [
-  { key: 'proteinG', label: 'Protéines', indicator: 'bg-protein' },
-  { key: 'carbsG', label: 'Glucides', indicator: 'bg-carb' },
-  { key: 'fatG', label: 'Lipides', indicator: 'bg-fat' },
+  { key: 'proteinG', label: 'Protéines', indicator: 'bg-protein', track: 'bg-protein-soft', ink: 'text-protein-ink' },
+  { key: 'carbsG', label: 'Glucides', indicator: 'bg-carb', track: 'bg-carb-soft', ink: 'text-carb-ink' },
+  { key: 'fatG', label: 'Lipides', indicator: 'bg-fat', track: 'bg-fat-soft', ink: 'text-fat-ink' },
 ] as const satisfies readonly {
   key: keyof Omit<Macros, 'kcal'>;
   label: string;
   indicator: string;
+  track: string;
+  ink: string;
 }[];
 
 export type MacroKey = (typeof MACROS)[number]['key'];
@@ -37,8 +39,9 @@ export function MacroBars({
             value={ratios[macro.key] * 100}
             aria-label={macro.label}
             indicatorClassName={macro.indicator}
+            className={macro.track}
           />
-          <p className="mt-2 text-[12.5px] text-muted-foreground">{macro.label}</p>
+          <p className={`mt-2 text-[12.5px] font-medium ${macro.ink}`}>{macro.label}</p>
           <p className="tabular mt-px font-medium">{formatGrams(macros[macro.key])} g</p>
         </div>
       ))}
