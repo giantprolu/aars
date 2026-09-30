@@ -19,6 +19,8 @@ const config = [
       'public/sw.js',
       'public/swe-worker-*.js',
       'next-env.d.ts',
+      // Maquettes de la refonte : leur moteur de rendu n'est pas du code de l'app.
+      'Annexe/**',
     ],
   },
   ...compat.extends('next/core-web-vitals', 'next/typescript'),

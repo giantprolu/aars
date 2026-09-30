@@ -56,4 +56,4 @@ export function themeAttribute(appearance: Appearance): string | undefined {
 }
 
 /** Couleur de fond des deux thèmes, pour la barre d'état du système. */
-export const THEME_COLORS = { light: '#ffffff', dark: '#0a0a0a' } as const;
+export const THEME_COLORS = { light: '#f4f1eb', dark: '#15120f' } as const;

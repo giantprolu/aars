@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Geist_Mono, Instrument_Sans } from 'next/font/google';
 import { TabBar } from '@/components/TabBar';
 import { INSTALL_PROMPT_KEY, INSTALL_READY_EVENT } from '@/lib/client/install';
 import {
@@ -12,17 +12,18 @@ import {
 import './globals.css';
 
 /**
- * Geist, la police de shadcn/ui, et sa déclinaison à chasse fixe pour les
- * codes-barres saisis à la main.
+ * Instrument Sans, la police des maquettes de la refonte, et Geist Mono pour
+ * les codes-barres saisis à la main.
  *
  * `next/font` la sert depuis notre propre domaine plutôt que depuis Google :
  * aucune requête vers un tiers au chargement, donc pas de fuite d'adresse IP,
  * et la substitution de police est calculée à la compilation, ce qui évite le
  * décalage de mise en page à l'affichage.
  */
-const geistSans = Geist({
+const instrumentSans = Instrument_Sans({
   subsets: ['latin'],
-  variable: '--font-geist-sans',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-instrument-sans',
   display: 'swap',
 });
 
@@ -117,7 +118,7 @@ export default async function RootLayout({
       lang="fr"
       // Rien en mode auto : l'absence d'attribut rend la main au système.
       {...(theme === undefined ? {} : { 'data-theme': theme })}
-      className={`${geistSans.variable} ${geistMono.variable}`}
+      className={`${instrumentSans.variable} ${geistMono.variable}`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: CAPTURE_SCRIPT }} />
@@ -135,7 +136,7 @@ export default async function RootLayout({
           au ras de l'encoche, et un titre posé dessus paraît collé au bord.
           La demi-marge qui s'y ajoute donne l'air que le matériel ne donne pas.
         */}
-        <main className="mx-auto w-full max-w-lg flex-1 px-5 pt-[calc(var(--safe-top)+0.5rem)] pb-6">
+        <main className="mx-auto w-full max-w-lg flex-1 px-4 pt-[calc(var(--safe-top)+0.5rem)] pb-6">
           {children}
         </main>
         <TabBar />

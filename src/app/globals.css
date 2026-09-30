@@ -2,14 +2,22 @@
 @import 'tw-animate-css';
 
 /*
- * Système shadcn/ui, importé depuis le projet Claude Design
- * « NutriPerso — Refonte shadcn ». L'interface n'est faite que des primitives
- * de shadcn/ui (src/components/ui), sur leurs jetons par défaut : base
- * neutral, rayon de 10 px, police Geist.
+ * Direction B, palette 2 (maquettes du dossier Annexe, 5a / 5b / 6a).
  *
- * La chrome reste neutre. Les trois couleurs de graphique sont réservées aux
- * macros ; chaque barre porte son intitulé et sa valeur, la couleur n'est donc
- * jamais le seul canal d'information.
+ * La chrome est chaude et claire : un papier crème pour le fond, des cartes
+ * presque blanches, une encre brun très sombre. Cinq domaines ont chacun leur
+ * teinte, déclinée en cinq usages :
+ *
+ *   - la teinte pleine (`bg-nutri`), pour ce qui se touche en premier ;
+ *   - le lavis (`bg-nutri-soft`), fond des tuiles et des pistes de jauge ;
+ *   - le demi-ton (`bg-nutri-mid`), pour ce qui est fait mais passé ;
+ *   - l'encre (`text-nutri-ink`), texte lisible sur le papier comme sur le lavis ;
+ *   - le contre-chant (`text-nutri-on`), texte posé sur la teinte pleine.
+ *
+ * Nutrition en vert, Cuisine en orange, Sport en bleu nuit, Corps en violet,
+ * Communauté en cyan. Les trois macros ont leurs couleurs propres ; chaque
+ * barre porte son intitulé et sa valeur, la couleur n'est donc jamais le seul
+ * canal d'information.
  *
  * Deux thèmes. Par défaut l'application suit `prefers-color-scheme`, donc le
  * réglage iOS ou Android. Un choix explicite pose `data-theme` sur <html> et
@@ -29,7 +37,7 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
   --color-background: var(--background);
@@ -56,19 +64,60 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
+  /* Les nuances de la chrome que shadcn ne nomme pas. */
+  --color-faint: var(--faint);
+  --color-divider: var(--divider);
+  --color-track: var(--track);
+  --color-nav: var(--nav);
+
+  /* Les cinq domaines. */
+  --color-nutri: var(--nutri);
+  --color-nutri-soft: var(--nutri-soft);
+  --color-nutri-mid: var(--nutri-mid);
+  --color-nutri-ink: var(--nutri-ink);
+  --color-nutri-on: var(--nutri-on);
+  --color-cook: var(--cook);
+  --color-cook-soft: var(--cook-soft);
+  --color-cook-mid: var(--cook-mid);
+  --color-cook-ink: var(--cook-ink);
+  --color-cook-on: var(--cook-on);
+  --color-sport: var(--sport);
+  --color-sport-soft: var(--sport-soft);
+  --color-sport-mid: var(--sport-mid);
+  --color-sport-ink: var(--sport-ink);
+  --color-sport-on: var(--sport-on);
+  --color-body: var(--body);
+  --color-body-soft: var(--body-soft);
+  --color-body-mid: var(--body-mid);
+  --color-body-ink: var(--body-ink);
+  --color-body-on: var(--body-on);
+  --color-social: var(--social);
+  --color-social-soft: var(--social-soft);
+  --color-social-mid: var(--social-mid);
+  --color-social-ink: var(--social-ink);
+  --color-social-on: var(--social-on);
+
   /* Les macros, nommées pour ce qu'elles sont plutôt que par leur rang. */
-  --color-protein: var(--chart-1);
-  --color-carb: var(--chart-2);
-  --color-fat: var(--chart-3);
+  --color-protein: var(--protein);
+  --color-protein-soft: var(--protein-soft);
+  --color-protein-ink: var(--protein-ink);
+  --color-carb: var(--carb);
+  --color-carb-soft: var(--carb-soft);
+  --color-carb-ink: var(--carb-ink);
+  --color-fat: var(--fat);
+  --color-fat-soft: var(--fat-soft);
+  --color-fat-ink: var(--fat-ink);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
 }
 
 :root {
-  --radius: 0.625rem;
+  /* 14 px : champs et pastilles ; les cartes prennent `rounded-xl`, 18 px. */
+  --radius: 0.875rem;
 
   /*
    * Zones sûres, nommées une fois pour tout le reste. Elles ne servent qu'à
@@ -92,29 +141,70 @@
    */
   --viewport-height: max(100dvh, var(--app-height, 0px));
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --background: #f4f1eb;
+  --foreground: #231f1a;
+  --card: #fffdf9;
+  --card-foreground: #231f1a;
+  --popover: #fffdf9;
+  --popover-foreground: #231f1a;
+  --primary: #36b37e;
+  --primary-foreground: #0b3b26;
+  --secondary: #f1ece4;
+  --secondary-foreground: #231f1a;
+  --muted: #f1ece4;
+  --muted-foreground: #736b62;
+  --accent: #f1ece4;
+  --accent-foreground: #231f1a;
+  --destructive: #c32b42;
+  --border: #e9e3d9;
+  --input: #e6e0d6;
+  --ring: #1f7a52;
+  --chart-1: #262e57;
+  --chart-2: #7c5cfc;
+  --chart-3: #36b37e;
+  --chart-4: #f7a007;
+  --chart-5: #4fbfbe;
+
+  --faint: #a39a8f;
+  --divider: #eee8de;
+  --track: #e6e0d6;
+  --nav: #8a8279;
+
+  --nutri: #36b37e;
+  --nutri-soft: #ddf3e9;
+  --nutri-mid: #86d2af;
+  --nutri-ink: #1f7a52;
+  --nutri-on: #0b3b26;
+  --cook: #f7a007;
+  --cook-soft: #fdebcc;
+  --cook-mid: #fbd89a;
+  --cook-ink: #945b00;
+  --cook-on: #3a2600;
+  --sport: #262e57;
+  --sport-soft: #dde0ee;
+  --sport-mid: #c2c7e0;
+  --sport-ink: #262e57;
+  --sport-on: #ffffff;
+  --body: #7c5cfc;
+  --body-soft: #eae5ff;
+  --body-mid: #d6ccfe;
+  --body-ink: #5a3bd6;
+  --body-on: #ffffff;
+  --social: #a5e9e8;
+  --social-soft: #e3f8f7;
+  --social-mid: #4fbfbe;
+  --social-ink: #1c6968;
+  --social-on: #0e4d4c;
+
+  --protein: #c32b42;
+  --protein-soft: #f8dde1;
+  --protein-ink: #9e2236;
+  --carb: #f7a007;
+  --carb-soft: #fdebcc;
+  --carb-ink: #945b00;
+  --fat: #4fbfbe;
+  --fat-soft: #e3f8f7;
+  --fat-ink: #1c6968;
 }
 
 /*
@@ -136,60 +226,147 @@
  * Le thème sombre est écrit deux fois : sous condition de média quand aucun
  * choix ne l'emporte, et sans condition quand il est choisi. Une variable CSS
  * ne se factorise pas entre un sélecteur et une requête média.
+ *
+ * Les maquettes ne dessinent que le clair. Le sombre en garde la logique : un
+ * papier brun très profond, des lavis assombris, des encres éclaircies pour
+ * rester lisibles, et les teintes pleines inchangées sauf le bleu nuit, qui se
+ * confondrait avec le fond et s'éclaircit d'un cran.
  */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 12%);
-    --input: oklch(1 0 0 / 16%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
+    --background: #15120f;
+    --foreground: #f4f1eb;
+    --card: #1f1b16;
+    --card-foreground: #f4f1eb;
+    --popover: #1f1b16;
+    --popover-foreground: #f4f1eb;
+    --primary: #36b37e;
+    --primary-foreground: #0b3b26;
+    --secondary: #2a251f;
+    --secondary-foreground: #f4f1eb;
+    --muted: #2a251f;
+    --muted-foreground: #a39a8f;
+    --accent: #2a251f;
+    --accent-foreground: #f4f1eb;
+    --destructive: #e0556b;
+    --border: #332d26;
+    --input: #3a332b;
+    --ring: #7fd9ae;
+    --chart-1: #8f9ae0;
+    --chart-2: #9d85ff;
+    --chart-3: #36b37e;
+    --chart-4: #f7a007;
+    --chart-5: #4fbfbe;
+
+    --faint: #7a7167;
+    --divider: #2c2721;
+    --track: #3a332b;
+    --nav: #8a8279;
+
+    --nutri: #36b37e;
+    --nutri-soft: #173a2b;
+    --nutri-mid: #2a7a57;
+    --nutri-ink: #7fd9ae;
+    --nutri-on: #0b3b26;
+    --cook: #f7a007;
+    --cook-soft: #3d2c0c;
+    --cook-mid: #6b4a10;
+    --cook-ink: #f9c46a;
+    --cook-on: #3a2600;
+    --sport: #3a4585;
+    --sport-soft: #232846;
+    --sport-mid: #3b4370;
+    --sport-ink: #aab3e6;
+    --sport-on: #ffffff;
+    --body: #7c5cfc;
+    --body-soft: #2a2350;
+    --body-mid: #4a3d8f;
+    --body-ink: #b7a5ff;
+    --body-on: #ffffff;
+    --social: #a5e9e8;
+    --social-soft: #17393a;
+    --social-mid: #4fbfbe;
+    --social-ink: #8fdedd;
+    --social-on: #0e4d4c;
+
+    --protein: #e0556b;
+    --protein-soft: #3d1a20;
+    --protein-ink: #f08a9a;
+    --carb: #f7a007;
+    --carb-soft: #3d2c0c;
+    --carb-ink: #f9c46a;
+    --fat: #4fbfbe;
+    --fat-soft: #17393a;
+    --fat-ink: #8fdedd;
   }
 }
 
 /* Aussi sur un sous-arbre : le scanner et la séance restent sombres en plein jour. */
 [data-theme='dark'] {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
+  --background: #15120f;
+  --foreground: #f4f1eb;
+  --card: #1f1b16;
+  --card-foreground: #f4f1eb;
+  --popover: #1f1b16;
+  --popover-foreground: #f4f1eb;
+  --primary: #36b37e;
+  --primary-foreground: #0b3b26;
+  --secondary: #2a251f;
+  --secondary-foreground: #f4f1eb;
+  --muted: #2a251f;
+  --muted-foreground: #a39a8f;
+  --accent: #2a251f;
+  --accent-foreground: #f4f1eb;
+  --destructive: #e0556b;
+  --border: #332d26;
+  --input: #3a332b;
+  --ring: #7fd9ae;
+  --chart-1: #8f9ae0;
+  --chart-2: #9d85ff;
+  --chart-3: #36b37e;
+  --chart-4: #f7a007;
+  --chart-5: #4fbfbe;
+
+  --faint: #7a7167;
+  --divider: #2c2721;
+  --track: #3a332b;
+  --nav: #8a8279;
+
+  --nutri: #36b37e;
+  --nutri-soft: #173a2b;
+  --nutri-mid: #2a7a57;
+  --nutri-ink: #7fd9ae;
+  --nutri-on: #0b3b26;
+  --cook: #f7a007;
+  --cook-soft: #3d2c0c;
+  --cook-mid: #6b4a10;
+  --cook-ink: #f9c46a;
+  --cook-on: #3a2600;
+  --sport: #3a4585;
+  --sport-soft: #232846;
+  --sport-mid: #3b4370;
+  --sport-ink: #aab3e6;
+  --sport-on: #ffffff;
+  --body: #7c5cfc;
+  --body-soft: #2a2350;
+  --body-mid: #4a3d8f;
+  --body-ink: #b7a5ff;
+  --body-on: #ffffff;
+  --social: #a5e9e8;
+  --social-soft: #17393a;
+  --social-mid: #4fbfbe;
+  --social-ink: #8fdedd;
+  --social-on: #0e4d4c;
+
+  --protein: #e0556b;
+  --protein-soft: #3d1a20;
+  --protein-ink: #f08a9a;
+  --carb: #f7a007;
+  --carb-soft: #3d2c0c;
+  --carb-ink: #f9c46a;
+  --fat: #4fbfbe;
+  --fat-soft: #17393a;
+  --fat-ink: #8fdedd;
 }
 
 @layer base {
@@ -208,7 +385,9 @@
     min-height: var(--viewport-height);
     font-size: 14px;
     line-height: 1.45;
-    letter-spacing: -0.006em;
+    letter-spacing: -0.005em;
+    /* Chiffres tabulaires partout, comme sur les maquettes. */
+    font-variant-numeric: tabular-nums;
   }
 
   /* Chiffres tabulaires pour toute valeur numérique en liste (UX-DR-9). */

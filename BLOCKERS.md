@@ -232,6 +232,13 @@ portant la correction des courses, puis une troisième fois sur l'arbre propre
 remis par `git stash`. Un fichier du chargeur webpack est bien remplacé sous
 la compilation ; rien dans la révision n'est en cause.
 
+**Reproduit le 30/09/2026, refonte de l'épic 15.** Même erreur au prérendu de
+`/unlock` (`Cannot read properties of undefined (reading 'call')`), deux fois
+sur l'arbre de la story 15-1 puis une fois sur `15adb41` intact remis par
+`git stash`. La compilation et la vérification des types passent à chaque
+fois. Les stories de l'épic 15 s'en tiennent donc à la règle ci-dessus : build
+jusqu'à la vérification des types, `npm run lint`, et Vercel fait foi.
+
 
 ---
 
