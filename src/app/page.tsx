@@ -20,11 +20,13 @@ import {
   startOfWeek,
   todayInParis,
 } from '@/lib/date';
+import { formatKcal } from '@/lib/nutrition';
 import { macrosPerServing } from '@/lib/recipe';
 import { initialsOf } from '@/lib/social';
 import { weightChange } from '@/lib/weight';
 import { cn } from '@/lib/utils';
 import { TodayTiles, type PlannedTonight } from './TodayTiles';
+import { WelcomeCard } from './WelcomeCard';
 
 // Le journal vient du serveur à chaque navigation : rien n'est mis en cache (AD-5).
 export const dynamic = 'force-dynamic';
@@ -42,7 +44,12 @@ const WEIGHT_WEEKS = 6;
  * Composant serveur : les lectures partent ensemble, seules les tuiles et la
  * liste des repas, qui écrivent, sont des composants client (AD-10).
  */
-export default async function TodayPage() {
+export default async function TodayPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ bienvenue?: string }>;
+}) {
+  const welcome = (await searchParams).bienvenue === '1';
   const today = todayInParis();
   const weekStart = startOfWeek(today);
   const userId = await requireUserId();
@@ -130,6 +137,15 @@ export default async function TodayPage() {
         </div>
         <UserAvatar initials={initialsOf(identity.displayName ?? identity.handle)} />
       </header>
+
+      {welcome ? (
+        <WelcomeCard
+          name={identity.displayName}
+          targetKcal={target === null ? null : formatKcal(target.targetKcal)}
+          handle={identity.handle}
+          sessionsPerWeek={session === null ? null : preferences.sessionsPerWeek}
+        />
+      ) : null}
 
       <section aria-label="La semaine" className="flex flex-col gap-1.5 rounded-xl border bg-card px-3 py-2.5">
         <div className="flex justify-between text-xs">

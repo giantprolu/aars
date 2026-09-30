@@ -50,7 +50,11 @@ export function TabBar() {
 
   // L'écran de connexion n'a pas de navigation : rien n'est accessible.
   // Les chemins d'ajout non plus, qui portent leur propre sortie.
-  if (pathname.startsWith('/unlock') || pathname.startsWith('/add')) {
+  if (
+    pathname.startsWith('/unlock') ||
+    pathname.startsWith('/add') ||
+    pathname.startsWith('/welcome')
+  ) {
     return null;
   }
 

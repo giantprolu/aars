@@ -49,7 +49,8 @@ export function UnlockForm() {
       });
 
       if (response.ok) {
-        router.replace('/');
+        // Un compte tout neuf passe par les trois réglages du premier lancement.
+        router.replace(mode === 'register' ? '/welcome' : '/');
         router.refresh();
         return;
       }

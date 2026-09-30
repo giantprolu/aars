@@ -221,11 +221,14 @@ export function AddFab() {
           onPointerCancel={cancelPress}
           onContextMenu={(event) => event.preventDefault()}
           onClick={onClick}
+          data-fab
           aria-expanded={open}
           aria-label={open ? 'Fermer' : 'Ajouter un repas, une séance ou une pesée'}
           className={cn(
             'relative flex size-[50px] touch-none items-center justify-center rounded-full shadow-[0_6px_16px_-4px_rgb(0_0_0/0.35)] transition-[background-color,color,transform] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] select-none [-webkit-touch-callout:none]',
             open ? 'scale-[0.92] bg-card text-foreground' : 'bg-nutri text-nutri-on',
+            // Au premier passage, un halo désigne le bouton que la bulle d'aide nomme.
+            '[body:has([data-welcome-hint])_&]:shadow-[0_0_0_6px_rgb(54_179_126/0.18),0_6px_16px_-4px_rgb(54_179_126/0.55)]',
           )}
         >
           <PlusIcon

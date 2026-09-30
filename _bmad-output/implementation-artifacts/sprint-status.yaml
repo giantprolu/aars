@@ -111,7 +111,7 @@ development_status:
   epic-14-retrospective: optional
 
   # Refonte visuelle « Direction B, palette 2 » (maquettes du dossier Annexe).
-  epic-15: in-progress
+  epic-15: done
   15-1-palette-2-et-typographie: done
   15-2-navigation-et-bouton-plus-en-arc: done
   15-3-ecran-aujourd-hui: done
@@ -119,5 +119,5 @@ development_status:
   15-5-sport: done
   15-6-communaute: done
   15-7-moi-et-progression: done
-  15-8-parcours-d-arrivee: backlog
+  15-8-parcours-d-arrivee: done
   epic-15-retrospective: optional
