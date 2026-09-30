@@ -1,9 +1,13 @@
-import { PlusIcon } from 'lucide-react';
+import { PlusIcon, UtensilsIcon } from 'lucide-react';
 import Link from 'next/link';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { DomainHeader } from '@/components/DomainHeader';
 import { Button } from '@/components/ui/button';
 import { requireUserId } from '@/server/guard';
 import { recipesFor } from '@/server/services/recipes';
+import { listForWeek } from '@/server/services/shopping';
+import { identityFor } from '@/server/services/social';
+import { startOfWeek, todayInParis } from '@/lib/date';
+import { initialsOf } from '@/lib/social';
 import { macrosPerServing } from '@/lib/recipe';
 import { KitchenTabs } from '../KitchenTabs';
 import { RecipeGrid, type RecipeTile } from './RecipeGrid';
@@ -22,7 +26,15 @@ export const dynamic = 'force-dynamic';
  * c'est la seule grandeur qu'on compare à une cible, et la seule qu'on mange.
  */
 export default async function RecipesPage() {
-  const recipes = await recipesFor(await requireUserId());
+  const userId = await requireUserId();
+  const weekStart = startOfWeek(todayInParis());
+  const [recipes, identity, shopping] = await Promise.all([
+    recipesFor(userId),
+    identityFor(userId),
+    listForWeek(userId, weekStart),
+  ]);
+  const shoppingLeft =
+    shopping === null ? null : shopping.items.filter((item) => item.checkedAt === null).length;
 
   const tiles: RecipeTile[] = recipes.map((recipe) => {
     const { macros, unresolvedCount } = macrosPerServing(recipe);
@@ -37,13 +49,16 @@ export default async function RecipesPage() {
   });
 
   return (
-    <div className="pb-16">
-      <ScreenHeader
+    <div className="flex flex-col gap-3 pb-16">
+      <DomainHeader
         title="Cuisine"
         kicker={recipes.length === 1 ? '1 recette' : `${recipes.length} recettes`}
+        icon={UtensilsIcon}
+        tone="cook"
+        initials={initialsOf(identity.displayName ?? identity.handle)}
       />
 
-      <KitchenTabs current="recipes" />
+      <KitchenTabs current="recipes" weekStart={weekStart} shoppingLeft={shoppingLeft} />
 
       {recipes.length === 0 ? (
         <div className="py-8 text-center">
@@ -65,7 +80,7 @@ export default async function RecipesPage() {
       <Button
         asChild
         size="icon"
-        className="fixed right-[max(1.25rem,calc(50vw-16rem+1.25rem))] top-[calc(var(--viewport-height)_-_9rem_-_var(--safe-bottom))] z-40 size-14 rounded-full shadow-[0_8px_20px_-4px_rgb(0_0_0/0.35)]"
+        className="fixed right-[max(1rem,calc(50vw-16rem+1rem))] top-[calc(var(--viewport-height)_-_9rem_-_var(--safe-bottom))] z-30 size-12 rounded-full bg-cook text-cook-on shadow-[0_8px_20px_-6px_rgb(247_160_7/0.6)] hover:bg-cook/90"
       >
         <Link href="/kitchen/recipes/new" aria-label="Nouvelle recette">
           <PlusIcon className="size-6" />

@@ -2,6 +2,7 @@
 
 import {
   CameraIcon,
+  CookingPotIcon,
   HistoryIcon,
   ListPlusIcon,
   MinusIcon,
@@ -233,6 +234,15 @@ export function MealSheet({
         <Tile href={`/add/photo${query}`} icon={CameraIcon} label="Photo" onNavigate={onClose} />
         <Tile href={`/add/manual${query}`} icon={PencilIcon} label="À la main" onNavigate={onClose} />
       </div>
+      {/* Hors maquette : sans lui, noter un plat du carnet n'aurait plus d'entrée. */}
+      <Link
+        href={`/add/recipe${query}`}
+        onClick={onClose}
+        className="flex items-center justify-center gap-1.5 text-[13px] font-semibold text-nutri-ink"
+      >
+        <CookingPotIcon aria-hidden className="size-4" />
+        Une de mes recettes
+      </Link>
     </QuickSheet>
   );
 }

@@ -1,12 +1,18 @@
 'use client';
 
-import { MinusIcon, PlusIcon, ShoppingCartIcon, XIcon } from 'lucide-react';
+import { MinusIcon, PlusIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { ErrorAlert } from '@/components/ErrorAlert';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { removeFromBasket, setBasketServings } from '@/lib/client/basket';
 import { MAX_BASKET_SERVINGS } from '@/lib/basket';
 import { formatServings } from '@/lib/recipe';
@@ -55,6 +61,8 @@ export function WeekBasket({
   const [refreshing, startRefresh] = useTransition();
   /** Une file par ligne, pour que les écritures gardent l'ordre des gestes. */
   const queues = useRef(new Map<number, Promise<unknown>>());
+  /** Le plat dont la feuille de réglage est ouverte. */
+  const [openId, setOpenId] = useState<number | null>(null);
 
   // Le panier rendu par le serveur porte ces parts : les avances ont fait leur
   // office, et les garder ferait tenir une valeur périmée.
@@ -102,135 +110,153 @@ export function WeekBasket({
     setBusy(false);
 
     if (outcome.kind === 'ok') {
+      setOpenId(null);
       startRefresh(() => router.refresh());
       return;
     }
     setError('Suppression impossible.');
   }
 
+  const selected = basket.find((item) => item.id === openId) ?? null;
+
   return (
-    <section aria-label="Mes repas de la semaine">
-      <div className="flex items-center justify-between pt-[18px] pb-2">
-        <h2 className="text-[13px] font-semibold tracking-tight">Mes repas de la semaine</h2>
-        <Button asChild variant="link" size="sm" className="-mr-3 h-auto">
-          <Link href={`/kitchen/catalog?from=${weekStart}`}>Choisir</Link>
-        </Button>
+    <section
+      aria-label="À cuisiner"
+      className="flex flex-col gap-2 rounded-xl border bg-card px-3.5 py-3"
+    >
+      <div className="flex items-center justify-between">
+        <h2 className="text-[13px] font-semibold">À cuisiner</h2>
+        <Link
+          href={`/kitchen/catalog?from=${weekStart}`}
+          className="text-[12.5px] font-bold text-cook-ink"
+        >
+          Choisir des plats
+        </Link>
       </div>
 
-      {error ? <ErrorAlert className="mt-0 mb-2">{error}</ErrorAlert> : null}
+      {error ? <ErrorAlert className="mt-0">{error}</ErrorAlert> : null}
 
       {basket.length === 0 ? (
-        <Card>
-          <div className="px-4">
-            <p className="text-muted-foreground">
-              Rien de choisi pour cette semaine. Le parcours commence ici : on choisit des plats,
-              on achète de quoi les faire, et on décide du jour au dernier moment.
-            </p>
-            <Button asChild className="mt-3 w-full">
-              <Link href={`/kitchen/catalog?from=${weekStart}`}>
-                <PlusIcon />
-                Choisir mes repas
-              </Link>
-            </Button>
-          </div>
-        </Card>
+        <p className="text-[13px] text-muted-foreground">
+          Rien de choisi pour cette semaine. On choisit des plats, on achète de quoi les faire,
+          et on décide du jour au dernier moment.
+        </p>
       ) : (
-        <>
-          <Card className="gap-0 overflow-hidden py-0">
-            <ul>
-              {basket.map((item) => {
-                // Ce qu'il reste à mettre à table. Négatif quand on a prévu plus
-                // de parts qu'on n'en a acheté : c'est dit, pas ramené à zéro.
-                const servings = servingsOf(item);
-                const remaining = Math.round((servings - item.plannedServings) * 10) / 10;
-
-                return (
-                  <li
-                    key={item.id}
-                    className="flex items-center gap-2 border-b py-2.5 pr-2 pl-4 last:border-b-0"
-                  >
-                    <div className="min-w-0 flex-1">
-                      {/*
-                        La semaine voyage avec le lien : c'est elle qui décide
-                        des parts, donc des quantités que la fiche affichera.
-                        Sans elle, un plat du panier de la semaine prochaine
-                        s'ouvrirait aux quantités de celle-ci.
-                      */}
-                      <Link
-                        href={`/kitchen/recipes/${item.recipeId}?from=${weekStart}`}
-                        className="block truncate text-[14.5px] font-medium tracking-tight"
-                      >
-                        {item.recipeName}
-                      </Link>
-                      <p className="tabular mt-px text-[12.5px] text-muted-foreground">
-                        {formatServings(servings)} prévues
-                        {' · '}
-                        {remaining <= 0
-                          ? 'tout est au plan'
-                          : `${formatServings(remaining)} à placer`}
-                      </p>
-                    </div>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon-sm"
-                      onClick={() => adjust(item, -STEP)}
-                      disabled={busy || servings <= STEP}
-                      aria-label={`Retirer une demi-part de ${item.recipeName}`}
-                    >
-                      <MinusIcon />
-                    </Button>
-                    <span className="tabular w-8 text-center font-medium">
-                      {servings.toLocaleString('fr-FR', { maximumFractionDigits: 1 })}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon-sm"
-                      onClick={() => adjust(item, STEP)}
-                      disabled={busy || servings >= MAX_BASKET_SERVINGS}
-                      aria-label={`Ajouter une demi-part à ${item.recipeName}`}
-                    >
-                      <PlusIcon />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => void drop(item)}
-                      disabled={busy || refreshing}
-                      aria-label={`Retirer ${item.recipeName} du panier`}
-                      className="text-muted-foreground"
-                    >
-                      <XIcon />
-                    </Button>
-                  </li>
-                );
-              })}
-            </ul>
-          </Card>
-
-          <p className="mt-2 text-[12.5px] text-muted-foreground">
-            La liste de courses de la semaine suit ces parts, sauf ce qui y est déjà coché.
-          </p>
-
-          <div className="mt-2.5 flex gap-2">
-            <Button asChild className="flex-[1.4]">
-              <Link href={`/kitchen/shopping?from=${weekStart}`}>
-                <ShoppingCartIcon />
-                Liste de courses
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="flex-1">
-              <Link href={`/kitchen/catalog?from=${weekStart}`}>
-                <PlusIcon />
-                D’autres plats
-              </Link>
-            </Button>
-          </div>
-        </>
+        <ul className="flex flex-wrap gap-1.5 text-[12.5px]">
+          {basket.map((item) => (
+            <li key={item.id}>
+              <button
+                type="button"
+                onClick={() => setOpenId(item.id)}
+                className="rounded-[10px] bg-cook-soft px-2.5 py-1.5 text-left"
+              >
+                {item.recipeName}{' '}
+                <b className="font-bold text-cook-ink">
+                  {formatServingCount(item.plannedServings)}/{formatServingCount(servingsOf(item))}
+                </b>
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
+
+      <Sheet open={selected !== null} onOpenChange={(next) => (next ? undefined : setOpenId(null))}>
+        <SheetContent
+          side="bottom"
+          className="mx-auto max-w-lg gap-4 px-5 pt-5 pb-[calc(2rem+var(--safe-bottom))]"
+        >
+          {selected === null ? null : (
+            <BasketItemPanel
+              item={selected}
+              servings={servingsOf(selected)}
+              weekStart={weekStart}
+              busy={busy || refreshing}
+              onAdjust={(delta) => adjust(selected, delta)}
+              onDrop={() => void drop(selected)}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </section>
+  );
+}
+
+function formatServingCount(value: number): string {
+  return value.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+}
+
+/**
+ * Le réglage d'un plat du panier : ses parts, ce qu'il en reste à placer, sa
+ * fiche, et le retrait. La recette elle-même reste au carnet.
+ */
+function BasketItemPanel({
+  item,
+  servings,
+  weekStart,
+  busy,
+  onAdjust,
+  onDrop,
+}: {
+  item: BasketItem;
+  servings: number;
+  weekStart: string;
+  busy: boolean;
+  onAdjust: (delta: number) => void;
+  onDrop: () => void;
+}) {
+  // Négatif quand on a prévu plus de parts qu'on n'en a acheté : c'est dit,
+  // pas ramené à zéro.
+  const remaining = Math.round((servings - item.plannedServings) * 10) / 10;
+  return (
+    <>
+      <SheetHeader className="p-0 pr-10">
+        <SheetTitle className="text-[19px] tracking-[-0.02em]">{item.recipeName}</SheetTitle>
+        <SheetDescription>
+          {formatServings(servings)} prévues ·{' '}
+          {remaining <= 0 ? 'tout est au plan' : `${formatServings(remaining)} à placer`}
+        </SheetDescription>
+      </SheetHeader>
+      <div className="flex items-center justify-center gap-5">
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon-lg"
+          className="bg-cook-soft text-cook-ink"
+          onClick={() => onAdjust(-STEP)}
+          disabled={busy || servings <= STEP}
+          aria-label="Retirer une demi-part"
+        >
+          <MinusIcon />
+        </Button>
+        <p className="min-w-24 text-center">
+          <span className="block text-4xl font-bold tracking-[-0.03em] text-cook-ink">
+            {formatServingCount(servings)}
+          </span>
+          <span className="text-[13px] text-muted-foreground">parts à acheter</span>
+        </p>
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon-lg"
+          className="bg-cook-soft text-cook-ink"
+          onClick={() => onAdjust(STEP)}
+          disabled={busy || servings >= MAX_BASKET_SERVINGS}
+          aria-label="Ajouter une demi-part"
+        >
+          <PlusIcon />
+        </Button>
+      </div>
+      <p className="text-center text-[12.5px] text-muted-foreground">
+        La liste de courses suit ces parts, sauf ce qui y est déjà coché.
+      </p>
+      <div className="flex gap-2">
+        <Button asChild variant="outline" className="flex-1">
+          <Link href={`/kitchen/recipes/${item.recipeId}?from=${weekStart}`}>Voir la fiche</Link>
+        </Button>
+        <Button type="button" variant="ghost" className="flex-1 text-destructive" onClick={onDrop} disabled={busy}>
+          Retirer du panier
+        </Button>
+      </div>
+    </>
   );
 }

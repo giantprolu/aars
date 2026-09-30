@@ -1,8 +1,18 @@
-import { NavHeader, PageTitle } from '@/components/ScreenHeader';
+import { UtensilsIcon } from 'lucide-react';
+import { DomainHeader } from '@/components/DomainHeader';
 import { requireUserId } from '@/server/guard';
 import { listForWeek } from '@/server/services/shopping';
 import { shareableRecipesFor } from '@/server/services/recipes';
-import { formatWeekRange, isJournalDate, startOfWeek, todayInParis } from '@/lib/date';
+import { identityFor } from '@/server/services/social';
+import { initialsOf } from '@/lib/social';
+import { KitchenTabs } from '../KitchenTabs';
+import {
+  formatShortWeekRange,
+  formatWeekRange,
+  isJournalDate,
+  startOfWeek,
+  todayInParis,
+} from '@/lib/date';
 import { ShoppingList } from './ShoppingList';
 
 export const dynamic = 'force-dynamic';
@@ -36,15 +46,25 @@ export default async function ShoppingPage({
     requested !== undefined && isJournalDate(requested) ? requested : todayInParis(),
   );
 
-  const list = await listForWeek(userId, weekStart);
+  const [list, identity] = await Promise.all([
+    listForWeek(userId, weekStart),
+    identityFor(userId),
+  ]);
   const recipes = list === null ? [] : await shareableRecipesFor(userId, weekStart);
 
   return (
-    <>
-      <NavHeader label="Cuisine" href={`/kitchen?from=${weekStart}`} />
-      <PageTitle
-        title="Courses"
-        description={formatWeekRange(weekStart)}
+    <div className="flex flex-col gap-3">
+      <DomainHeader
+        title="Cuisine"
+        kicker={formatShortWeekRange(weekStart)}
+        icon={UtensilsIcon}
+        tone="cook"
+        initials={initialsOf(identity.displayName ?? identity.handle)}
+      />
+      <KitchenTabs
+        current="shopping"
+        weekStart={weekStart}
+        shoppingLeft={list === null ? null : list.items.filter((item) => item.checkedAt === null).length}
       />
 
       <ShoppingList
@@ -53,6 +73,6 @@ export default async function ShoppingPage({
         recipes={recipes}
         weekLabel={formatWeekRange(weekStart)}
       />
-    </>
+    </div>
   );
 }
