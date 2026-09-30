@@ -1,5 +1,5 @@
 import 'server-only';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, or } from 'drizzle-orm';
 import { db, schema } from '../client';
 
 /**
@@ -38,10 +38,17 @@ export async function exportUserData(userId: number) {
     sessions,
     sets,
     favoriteExercises,
+    follows,
+    kudos,
     subscriptions,
   ] = await Promise.all([
     database
-      .select({ email: schema.users.email, createdAt: schema.users.createdAt })
+      .select({
+        email: schema.users.email,
+        handle: schema.users.handle,
+        displayName: schema.users.displayName,
+        createdAt: schema.users.createdAt,
+      })
       .from(schema.users)
       .where(eq(schema.users.id, userId)),
     database.select().from(schema.profiles).where(eq(schema.profiles.userId, userId)),
@@ -82,6 +89,21 @@ export async function exportUserData(userId: number) {
       })
       .from(schema.favoriteExercises)
       .where(eq(schema.favoriteExercises.userId, userId)),
+    // Les relations des deux sens : qui je suis, et qui me suit. Les autres
+    // comptes n'y figurent que par leur identifiant public, jamais leur adresse.
+    database
+      .select({
+        followerId: schema.follows.followerId,
+        followeeId: schema.follows.followeeId,
+        status: schema.follows.status,
+        createdAt: schema.follows.createdAt,
+      })
+      .from(schema.follows)
+      .where(or(eq(schema.follows.followerId, userId), eq(schema.follows.followeeId, userId))),
+    database
+      .select({ sessionId: schema.sessionKudos.sessionId, createdAt: schema.sessionKudos.createdAt })
+      .from(schema.sessionKudos)
+      .where(eq(schema.sessionKudos.userId, userId)),
     database
       .select({ createdAt: schema.pushSubscriptions.createdAt })
       .from(schema.pushSubscriptions)
@@ -131,6 +153,7 @@ export async function exportUserData(userId: number) {
       sets,
       favoriteExercises,
     },
+    community: { follows, kudosGiven: kudos },
     notifications: { devices: subscriptions.length },
   };
 }

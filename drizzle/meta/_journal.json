@@ -120,6 +120,13 @@
       "when": 1790750305343,
       "tag": "0016_training_favorites",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790751135981,
+      "tag": "0017_social_sharing",
+      "breakpoints": true
     }
   ]
 }

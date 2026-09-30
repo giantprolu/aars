@@ -41,6 +41,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Toggle } from '@/components/ui/toggle';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { setSessionVisibility } from '@/lib/client/social';
+import {
+  isSessionVisibility,
+  SESSION_VISIBILITIES,
+  VISIBILITY_LABELS,
+  VISIBILITY_NOTES,
+  type SessionVisibility,
+} from '@/lib/social';
 import { cn, parseDecimal } from '@/lib/utils';
 import {
   addSessionExercise,
@@ -423,6 +432,19 @@ export function SessionRunner({
     setError('La séance n’a pas pu rejoindre tes favoris.');
   }
 
+  /** Règle ce que les abonnés voient de cette séance. */
+  async function share(visibility: SessionVisibility) {
+    setBusy(true);
+    setError(null);
+    const outcome = await setSessionVisibility(session.id, visibility);
+    setBusy(false);
+    if (outcome.kind === 'ok') {
+      router.refresh();
+      return;
+    }
+    setError('Le partage n’a pas pu être modifié.');
+  }
+
   async function discard() {
     setBusy(true);
     await discardSession(session.id);
@@ -473,6 +495,36 @@ export function SessionRunner({
           <StarIcon className={cn(favorited && 'fill-current')} />
           {favorited ? 'Dans tes favoris' : 'Ajouter aux favoris'}
         </Button>
+      ) : null}
+
+      {closed && recordedSets > 0 ? (
+        <div className="mt-4">
+          <p id="share-label" className="mb-1.5 text-[12.5px] text-muted-foreground">
+            Partage avec tes abonnés
+          </p>
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            value={session.visibility}
+            onValueChange={(value) => {
+              if (isSessionVisibility(value) && value !== session.visibility) {
+                void share(value);
+              }
+            }}
+            disabled={busy}
+            aria-labelledby="share-label"
+            className="w-full"
+          >
+            {SESSION_VISIBILITIES.map((visibility) => (
+              <ToggleGroupItem key={visibility} value={visibility} className="flex-1">
+                {VISIBILITY_LABELS[visibility]}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+          <p className="mt-1.5 text-[12.5px] text-muted-foreground">
+            {VISIBILITY_NOTES[session.visibility]}
+          </p>
+        </div>
       ) : null}
 
       {error ? <ErrorAlert>{error}</ErrorAlert> : null}

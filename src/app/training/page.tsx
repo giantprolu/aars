@@ -7,6 +7,7 @@ import {
   sessionHistory,
   templatesFor,
 } from '@/server/services/workouts';
+import { pendingRequestCount } from '@/server/services/social';
 import { TrainingHome } from './TrainingHome';
 
 // Les séances viennent du serveur à chaque navigation : rien n'est mis en cache (AD-5).
@@ -24,12 +25,13 @@ const RECENT_LIMIT = 6;
  */
 export default async function TrainingPage() {
   const userId = await requireUserId();
-  const [templates, openSession, history, preferences, gyms] = await Promise.all([
+  const [templates, openSession, history, preferences, gyms, pending] = await Promise.all([
     templatesFor(userId),
     openSessionFor(userId),
     sessionHistory(userId, RECENT_LIMIT),
     preferencesFor(userId),
     gymCatalog(),
+    pendingRequestCount(userId),
   ]);
 
   const gymName = gyms.find((gym) => gym.id === preferences.gymId)?.name ?? null;
@@ -43,6 +45,7 @@ export default async function TrainingPage() {
         history={history.filter((session) => session.finishedAt !== null)}
         preferences={preferences}
         gymName={gymName}
+        pendingRequests={pending}
       />
     </>
   );

@@ -7,6 +7,7 @@ import {
   SlidersHorizontalIcon,
   StarIcon,
   TrendingUpIcon,
+  UsersIcon,
   ZapIcon,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -78,6 +79,7 @@ export function TrainingHome({
   history,
   preferences,
   gymName,
+  pendingRequests,
 }: {
   templates: readonly WorkoutTemplate[];
   openSession: WorkoutSession | null;
@@ -85,6 +87,8 @@ export function TrainingHome({
   preferences: TrainingPreferences;
   /** Le nom de la salle choisie, ou `null` si l'utilisateur ne précise pas. */
   gymName: string | null;
+  /** Les demandes d'abonnement qui attendent une réponse. */
+  pendingRequests: number;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -355,6 +359,29 @@ export function TrainingHome({
               Records, 1RM estimé et tonnage par exercice
             </span>
           </span>
+          <ChevronRightIcon aria-hidden className="size-4 flex-none text-muted-foreground" />
+        </Link>
+      </Card>
+
+      <Card asChild className="mt-2.5 flex-row items-center gap-3 px-4 py-3 transition-colors active:bg-accent">
+        <Link href="/training/community">
+          <span
+            aria-hidden
+            className="flex size-8 flex-none items-center justify-center rounded-lg bg-muted"
+          >
+            <UsersIcon className="size-[17px]" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[14.5px] font-medium tracking-tight">Communauté</span>
+            <span className="mt-px block text-[12.5px] text-muted-foreground">
+              Les séances de ceux que tu suis
+            </span>
+          </span>
+          {pendingRequests > 0 ? (
+            <Badge className="tabular" aria-label={`${pendingRequests} demandes en attente`}>
+              {pendingRequests}
+            </Badge>
+          ) : null}
           <ChevronRightIcon aria-hidden className="size-4 flex-none text-muted-foreground" />
         </Link>
       </Card>

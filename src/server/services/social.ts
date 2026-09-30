@@ -1,0 +1,184 @@
+import 'server-only';
+import { sessionVolume } from '@/lib/workout';
+import {
+  cleanDisplayName,
+  isValidHandle,
+  normalizeHandle,
+  type FeedSession,
+  type FollowState,
+  type PublicPerson,
+  type SessionVisibility,
+  type SharedExercise,
+} from '@/lib/social';
+import {
+  answerFollowRequest,
+  countIncomingRequests,
+  deleteFollow,
+  deleteFollower,
+  findIdentity,
+  insertFollowRequest,
+  kudosFor,
+  listFeed,
+  listFollowers,
+  listFollowing,
+  listIncomingRequests,
+  searchPeople,
+  setKudos,
+  setsForSessions,
+  updateIdentity,
+  updateSessionVisibility,
+} from '../db/queries/social';
+
+/**
+ * Service du partage : ce qu'on montre de soi, qui on suit, et le fil.
+ *
+ * Le fil est composé ici plutôt qu'en base : la visibilité est tranchée par
+ * la requête, et ce qui reste — additionner un volume, grouper des séries —
+ * est de la mise en forme, qui n'a pas à alourdir le SQL.
+ */
+
+export const FEED_PAGE = 20;
+export const SEARCH_LIMIT = 20;
+
+export function identityFor(
+  userId: number,
+): Promise<{ handle: string | null; displayName: string | null }> {
+  return findIdentity(userId);
+}
+
+export type SaveIdentityResult = { kind: 'saved' } | { kind: 'invalid' } | { kind: 'taken' };
+
+/** Choisit son identifiant et son nom. */
+export async function saveIdentity(
+  userId: number,
+  rawHandle: string,
+  rawDisplayName: string | null,
+): Promise<SaveIdentityResult> {
+  const handle = normalizeHandle(rawHandle);
+  if (!isValidHandle(handle)) {
+    return { kind: 'invalid' };
+  }
+  const outcome = await updateIdentity(userId, handle, cleanDisplayName(rawDisplayName));
+  return outcome === 'saved' ? { kind: 'saved' } : { kind: 'taken' };
+}
+
+export async function findPeople(
+  viewerId: number,
+  rawQuery: string,
+): Promise<(PublicPerson & { state: FollowState })[]> {
+  const query = normalizeHandle(rawQuery);
+  if (query.length < 2) {
+    return [];
+  }
+  return searchPeople(viewerId, query, SEARCH_LIMIT);
+}
+
+/**
+ * Demande à suivre. Refusé tant que le demandeur ne s'est pas présenté : une
+ * demande venue d'un compte sans nom ne dirait pas qui la fait.
+ */
+export async function follow(viewerId: number, followeeId: number): Promise<boolean> {
+  const me = await findIdentity(viewerId);
+  if (me.handle === null) {
+    return false;
+  }
+  return insertFollowRequest(viewerId, followeeId);
+}
+
+export function unfollow(viewerId: number, followeeId: number): Promise<void> {
+  return deleteFollow(viewerId, followeeId);
+}
+
+export function answerRequest(
+  viewerId: number,
+  followerId: number,
+  accept: boolean,
+): Promise<boolean> {
+  return answerFollowRequest(viewerId, followerId, accept);
+}
+
+export function removeFollower(viewerId: number, followerId: number): Promise<void> {
+  return deleteFollower(viewerId, followerId);
+}
+
+export async function relationsFor(viewerId: number): Promise<{
+  requests: PublicPerson[];
+  following: (PublicPerson & { state: FollowState })[];
+  followers: PublicPerson[];
+}> {
+  const [requests, following, followers] = await Promise.all([
+    listIncomingRequests(viewerId),
+    listFollowing(viewerId),
+    listFollowers(viewerId),
+  ]);
+  return { requests, following, followers };
+}
+
+export function pendingRequestCount(viewerId: number): Promise<number> {
+  return countIncomingRequests(viewerId);
+}
+
+export function shareSession(
+  userId: number,
+  sessionId: number,
+  visibility: SessionVisibility,
+): Promise<boolean> {
+  return updateSessionVisibility(userId, sessionId, visibility);
+}
+
+export function giveKudos(viewerId: number, sessionId: number, given: boolean): Promise<boolean> {
+  return setKudos(viewerId, sessionId, given);
+}
+
+/**
+ * Le fil : mes séances partagées et celles de ceux que je suis.
+ *
+ * Le détail d'une séance n'est descendu que si elle est partagée en détail.
+ * Ses séries sont lues pour toutes, parce que le volume et le nombre de
+ * séries du résumé en dépendent, mais seuls leurs totaux sortent d'ici pour
+ * une séance partagée en résumé.
+ */
+export async function feedFor(
+  viewerId: number,
+  before: number | null,
+): Promise<{ sessions: FeedSession[]; next: number | null }> {
+  const rows = await listFeed(viewerId, FEED_PAGE, before);
+  const ids = rows.map((row) => row.id);
+  const [sets, kudos] = await Promise.all([setsForSessions(ids), kudosFor(viewerId, ids)]);
+
+  const sessions = rows.map((row): FeedSession => {
+    const mine = sets.filter((set) => set.sessionId === row.id);
+    const exercises: SharedExercise[] = [];
+    if (row.visibility === 'detailed') {
+      const byPosition = new Map<number, SharedExercise>();
+      for (const set of mine) {
+        const entry = byPosition.get(set.position) ?? { name: set.exerciseName, sets: [] };
+        entry.sets.push({ weightKg: set.weightKg, reps: set.reps, seconds: set.seconds });
+        byPosition.set(set.position, entry);
+      }
+      exercises.push(...byPosition.values());
+    }
+    return {
+      id: row.id,
+      author: row.author,
+      name: row.name ?? 'Séance',
+      sessionDate: row.sessionDate,
+      durationSeconds:
+        row.finishedAt === null
+          ? null
+          : Math.round((row.finishedAt.getTime() - row.startedAt.getTime()) / 1000),
+      volumeKg: sessionVolume(mine),
+      setCount: mine.length,
+      visibility: row.visibility === 'detailed' ? 'detailed' : 'summary',
+      exercises,
+      kudos: kudos.counts.get(row.id) ?? 0,
+      kudoedByMe: kudos.mine.has(row.id),
+      mine: row.mine,
+    };
+  });
+
+  return {
+    sessions,
+    next: rows.length === FEED_PAGE ? (rows[rows.length - 1]?.id ?? null) : null,
+  };
+}

@@ -57,9 +57,53 @@ export const users = pgTable('users', {
    * usage unique et se hache comme un mot de passe, parce qu'il en ouvre un.
    */
   recoveryCodeHash: text('recovery_code_hash'),
+  /**
+   * L'identifiant public, sans l'arobase : seul moyen de trouver quelqu'un.
+   *
+   * `null` tant que l'utilisateur ne s'est pas présenté : sans lui, personne
+   * ne peut le trouver ni le suivre. L'adresse n'est jamais montrée à un
+   * autre compte — elle ouvre la récupération du mot de passe. Stocké en
+   * minuscules, et l'unicité porte sur cette forme.
+   */
+  handle: text('handle').unique(),
+  /** Le nom affiché aux abonnés. Libre, et pas unique : deux Camille existent. */
+  displayName: text('display_name'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 export type UserRow = typeof users.$inferSelect;
+
+/**
+ * Qui suit qui.
+ *
+ * Suivre se demande et s'accepte : une séance dit ce qu'on soulève, quand et
+ * à quelle fréquence, et c'est à celui qui s'entraîne de choisir qui la voit.
+ * `pending` tant que la personne suivie n'a pas répondu ; refuser supprime la
+ * ligne, ce qui permet de redemander plus tard sans rien laisser voir du refus.
+ */
+export const follows = pgTable(
+  'follows',
+  {
+    followerId: bigint('follower_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    followeeId: bigint('followee_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** `pending` ou `accepted`. */
+    status: text('status').notNull().default('pending'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.followerId, table.followeeId] }),
+    // La lecture la plus fréquente part de la personne suivie : « qui me
+    // suit », et le fil, qui cherche les séances de ceux que je suis.
+    index('follows_followee_idx').on(table.followeeId, table.status),
+    check('follows_status_check', sql`${table.status} in ('pending', 'accepted')`),
+    check('follows_not_self_check', sql`${table.followerId} <> ${table.followeeId}`),
+  ],
+);
+
+export type FollowRow = typeof follows.$inferSelect;
 
 /**
  * Dépense d'activité mesurée, une ligne par jour et par source.
@@ -876,8 +920,20 @@ export const workoutSessions = pgTable(
     startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
     finishedAt: timestamp('finished_at', { withTimezone: true }),
     notes: text('notes'),
+    /**
+     * Ce que les abonnés voient de la séance : `private`, `summary` ou
+     * `detailed`. Privée par défaut, et réglée séance par séance : partager
+     * sa séance de jambes n'engage pas à partager toutes les autres.
+     */
+    visibility: text('visibility').notNull().default('private'),
   },
-  (table) => [index('workout_sessions_user_date_idx').on(table.userId, table.sessionDate)],
+  (table) => [
+    index('workout_sessions_user_date_idx').on(table.userId, table.sessionDate),
+    check(
+      'workout_sessions_visibility_check',
+      sql`${table.visibility} in ('private', 'summary', 'detailed')`,
+    ),
+  ],
 );
 
 export type WorkoutSessionRow = typeof workoutSessions.$inferSelect;
@@ -938,6 +994,24 @@ export const workoutSets = pgTable(
 );
 
 export type WorkoutSetRow = typeof workoutSets.$inferSelect;
+
+/**
+ * Les « bravo » laissés sous une séance partagée. Un par personne et par
+ * séance : c'est un signe, pas un compteur qu'on fait monter.
+ */
+export const sessionKudos = pgTable(
+  'session_kudos',
+  {
+    sessionId: bigint('session_id', { mode: 'number' })
+      .notNull()
+      .references(() => workoutSessions.id, { onDelete: 'cascade' }),
+    userId: bigint('user_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.sessionId, table.userId] })],
+);
 
 /**
  * Les exercices mis en favori, qui passent en tête des listes de choix.

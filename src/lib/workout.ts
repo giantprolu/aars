@@ -8,6 +8,8 @@
  * comparable d'une semaine à l'autre.
  */
 
+import type { SessionVisibility } from './social';
+
 /** Ce qu'une série enregistre, selon la nature de l'exercice. */
 export type ExerciseKind = 'strength' | 'hold' | 'cardio';
 
@@ -286,6 +288,8 @@ export interface WorkoutSession {
   sessionDate: string;
   startedAt: Date;
   finishedAt: Date | null;
+  /** Ce que les abonnés en voient ; voir `@/lib/social`. */
+  visibility: SessionVisibility;
   sets: WorkoutSet[];
 }
 

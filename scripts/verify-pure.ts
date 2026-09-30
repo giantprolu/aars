@@ -24,6 +24,13 @@ import {
   type BodyProfile,
 } from '../src/lib/energy';
 import { weeklyWeights, weightChange } from '../src/lib/weight';
+import {
+  cleanDisplayName,
+  isSessionVisibility,
+  isValidHandle,
+  normalizeHandle,
+  personLabel,
+} from '../src/lib/social';
 import { parseFavoriteItems, suggestFavoriteName, favoriteTotals } from '../src/lib/favorites';
 import {
   cookingYield,
@@ -1632,6 +1639,22 @@ assert.equal(
   assert.equal(suggestedServings(100, 3000, 'lunch'), 3, 'plafond a trois parts');
   assert.equal(suggestedServings(500, null, 'lunch'), null, 'sans cible, rien a proposer');
   assert.equal(suggestedServings(0, 2000, 'lunch'), null, 'sans calories, rien a proposer');
+}
+
+// --- Partage des seances ---
+{
+  assert.equal(normalizeHandle('  @Camille_S '), 'camille_s', 'arobase, espaces et casse retires');
+  assert.equal(isValidHandle('camille_s'), true, 'lettres, chiffres et tiret bas');
+  assert.equal(isValidHandle('ab'), false, 'trop court');
+  assert.equal(isValidHandle('a'.repeat(21)), false, 'trop long');
+  assert.equal(isValidHandle('camille.s'), false, 'pas de point');
+  assert.equal(isValidHandle('camillé'), false, 'pas d accent');
+  assert.equal(cleanDisplayName('  Camille   S. '), 'Camille S.', 'espaces resserres');
+  assert.equal(cleanDisplayName('   '), null, 'vide : pas de nom');
+  assert.equal(personLabel({ handle: 'cam', displayName: null }), '@cam', 'sans nom, l identifiant');
+  assert.equal(personLabel({ handle: 'cam', displayName: 'Camille' }), 'Camille', 'le nom d abord');
+  assert.equal(isSessionVisibility('detailed'), true, 'visibilite connue');
+  assert.equal(isSessionVisibility('public'), false, 'pas de public : on partage a ses abonnes');
 }
 
 console.log('Toutes les verifications pures passent.');

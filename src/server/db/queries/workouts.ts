@@ -19,6 +19,7 @@ import {
 } from '@/lib/workout';
 import type { ProgressExercise, ProgressSet } from '@/lib/workout-progress';
 import type { SeedExercise } from '@/lib/workout-seed';
+import { isSessionVisibility } from '@/lib/social';
 
 /**
  * Accès aux séances.
@@ -655,6 +656,7 @@ async function toSession(
     sessionDate: String(row.sessionDate).slice(0, 10),
     startedAt: row.startedAt,
     finishedAt: row.finishedAt,
+    visibility: isSessionVisibility(row.visibility) ? row.visibility : 'private',
     sets: await setsFor(row.id),
   };
 }
