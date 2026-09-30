@@ -359,3 +359,28 @@ export function beatsPersonalBest(best: PersonalBest | null, set: MeasuredSet): 
   const value = setMeasure(best.metric, set);
   return value !== null && value > best.value;
 }
+
+/**
+ * Les exercices dont le record tombe depuis `sinceDate`.
+ *
+ * Une première fois n'est pas un record : sans séance d'avant, il n'y avait
+ * rien à battre, et chaque nouvel exercice gonflerait le compte.
+ */
+export function recordsSince(
+  exercises: readonly ExerciseProgress[],
+  sinceDate: string,
+): ExerciseProgress[] {
+  return exercises.filter(
+    (exercise) =>
+      exercise.points.length > 1 &&
+      exercise.record.sessionDate >= sinceDate &&
+      exercise.record.sessionId !== exercise.points[0]?.sessionId,
+  );
+}
+
+/** « 8,4 t » au-delà d'une tonne, « 850 kg » en deçà. */
+export function formatTonnage(kg: number): string {
+  return kg >= 1000
+    ? `${(Math.round(kg / 100) / 10).toLocaleString('fr-FR')} t`
+    : `${Math.round(kg).toLocaleString('fr-FR')} kg`;
+}
