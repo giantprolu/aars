@@ -113,6 +113,13 @@
       "when": 1790537985741,
       "tag": "0015_account_recovery_push",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790750305343,
+      "tag": "0016_training_favorites",
+      "breakpoints": true
     }
   ]
 }

@@ -775,10 +775,40 @@ export const workoutTemplates = pgTable(
     /** Rang dans le programme : la séance A avant la B. */
     position: integer('position').notNull().default(0),
     notes: text('notes'),
+    /**
+     * `program`, `custom` ou `adhoc` : d'où vient la séance.
+     *
+     * `program` est composé depuis les préférences et remplacé en bloc quand
+     * on le recompose. `custom` est écrit par l'utilisateur, en touchant des
+     * exercices ou en retenant une séance faite ; la recomposition ne le touche
+     * pas. `adhoc` porte une séance libre ou lancée sans être gardée : il donne
+     * à l'écran d'exécution la liste d'exercices qu'il attend, et ne s'affiche
+     * nulle part ailleurs.
+     */
+    kind: text('kind').notNull().default('program'),
+    /**
+     * Rangée dans les favoris, relancée d'un appui depuis l'accueil.
+     *
+     * Une séance `custom` l'est toujours ; une séance du programme peut l'être,
+     * et elle sort alors du programme sans disparaître quand on le recompose.
+     */
+    favorite: boolean('favorite').notNull().default(false),
+    /**
+     * La séance faite dont celle-ci est la copie, quand elle a été retenue
+     * depuis l'historique. Sert à dire « déjà dans tes favoris » plutôt que
+     * d'en créer une seconde au deuxième appui.
+     */
+    sourceSessionId: bigint('source_session_id', { mode: 'number' }),
     archivedAt: timestamp('archived_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index('workout_templates_user_idx').on(table.userId, table.position)],
+  (table) => [
+    index('workout_templates_user_idx').on(table.userId, table.position),
+    check(
+      'workout_templates_kind_check',
+      sql`${table.kind} in ('program', 'custom', 'adhoc')`,
+    ),
+  ],
 );
 
 export type WorkoutTemplateRow = typeof workoutTemplates.$inferSelect;
@@ -908,6 +938,27 @@ export const workoutSets = pgTable(
 );
 
 export type WorkoutSetRow = typeof workoutSets.$inferSelect;
+
+/**
+ * Les exercices mis en favori, qui passent en tête des listes de choix.
+ *
+ * Une table de liaison et non un tableau sur l'utilisateur : le catalogue est
+ * commun, et la suppression d'un exercice doit emporter ses favoris sans qu'on
+ * ait à les chercher.
+ */
+export const favoriteExercises = pgTable(
+  'favorite_exercises',
+  {
+    userId: bigint('user_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    exerciseId: bigint('exercise_id', { mode: 'number' })
+      .notNull()
+      .references(() => exercises.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.exerciseId] })],
+);
 
 /**
  * Les pesées, une par jour au plus.

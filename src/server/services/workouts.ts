@@ -1,8 +1,14 @@
 import 'server-only';
 import { shiftDate, startOfWeek, todayInParis } from '@/lib/date';
 import {
+  composedFromSets,
+  composedToPrescription,
+  defaultComposed,
   DEFAULT_PREFERENCES,
   habitualSwaps,
+  MAX_TEMPLATE_EXERCISES,
+  MAX_TEMPLATE_NAME,
+  type ComposedExercise,
   MAX_REST_SECONDS,
   MIN_REST_SECONDS,
   isValidReps,
@@ -38,8 +44,14 @@ import {
 } from '@/lib/workout-log';
 import { gymInventory, SEED_EXERCISES, SEED_GYMS } from '@/lib/workout-seed';
 import {
+  appendTemplateExercise,
   archiveAllTemplates,
   archiveTemplate,
+  favoritedSessionIds,
+  listFavoriteExerciseIds,
+  setFavoriteExercise,
+  setTemplateFavorite,
+  type NewTemplateExercise,
   catalogSize,
   deleteSession,
   deleteSet,
@@ -664,4 +676,247 @@ export async function editTemplateExercise(
   return (await updateTemplateExercise(userId, entryId, patch))
     ? { kind: 'saved' }
     : { kind: 'not_found' };
+}
+
+/** Nom donné à une séance composée qu'on n'a pas nommée. */
+const DEFAULT_COMPOSED_NAME = 'Ma séance';
+
+/** Nom d'une séance ouverte sans rien prévoir. */
+export const FREE_SESSION_NAME = 'Séance libre';
+
+function cleanName(raw: string | null, fallback: string): string {
+  const trimmed = (raw ?? '').trim().replace(/\s+/g, ' ').slice(0, MAX_TEMPLATE_NAME);
+  return trimmed === '' ? fallback : trimmed;
+}
+
+/** Vrai si la cible d'un exercice composé tient dans les bornes d'une série. */
+function isValidComposed(entry: ComposedExercise, kind: Exercise['kind']): boolean {
+  if (!Number.isInteger(entry.sets) || entry.sets < 1 || entry.sets > MAX_SETS) {
+    return false;
+  }
+  if (kind === 'strength') {
+    return entry.reps !== null && Number.isInteger(entry.reps) && isValidReps(entry.reps);
+  }
+  return (
+    entry.seconds !== null && Number.isInteger(entry.seconds) && isValidSeconds(entry.seconds)
+  );
+}
+
+/** Les lignes de modèle d'une suite d'exercices composés, ceux du catalogue seulement. */
+function prescribe(
+  entries: readonly ComposedExercise[],
+  catalog: ReadonlyMap<number, Exercise>,
+): NewTemplateExercise[] {
+  return entries.flatMap((entry) => {
+    const exercise = catalog.get(entry.exerciseId);
+    return exercise === undefined
+      ? []
+      : [
+          {
+            exerciseId: exercise.id,
+            ...composedToPrescription(entry, exercise.kind),
+            supersetGroup: null,
+            restSeconds: null,
+            notes: null,
+          },
+        ];
+  });
+}
+
+async function catalogById(): Promise<Map<number, Exercise>> {
+  return new Map((await fullExerciseCatalog()).map((exercise) => [exercise.id, exercise]));
+}
+
+export type ComposeTemplateResult = { kind: 'saved'; templateId: number } | { kind: 'invalid' };
+
+/**
+ * Écrit une séance composée en touchant des exercices.
+ *
+ * `keep` la range dans les favoris ; sans lui, elle n'existe que pour être
+ * lancée tout de suite, et reste hors des listes. Les exercices sont vérifiés
+ * au catalogue entier et non à celui de la salle : on compose aussi pour une
+ * salle de vacances.
+ */
+export async function composeTemplate(
+  userId: number,
+  input: { name: string | null; exercises: readonly ComposedExercise[]; keep: boolean },
+): Promise<ComposeTemplateResult> {
+  if (input.exercises.length === 0 || input.exercises.length > MAX_TEMPLATE_EXERCISES) {
+    return { kind: 'invalid' };
+  }
+  const ids = input.exercises.map((entry) => entry.exerciseId);
+  if (new Set(ids).size !== ids.length) {
+    return { kind: 'invalid' };
+  }
+
+  const catalog = await catalogById();
+  for (const entry of input.exercises) {
+    const exercise = catalog.get(entry.exerciseId);
+    if (exercise === undefined || !isValidComposed(entry, exercise.kind)) {
+      return { kind: 'invalid' };
+    }
+  }
+
+  const templateId = await insertTemplate(
+    userId,
+    {
+      name: cleanName(input.name, DEFAULT_COMPOSED_NAME),
+      position: 0,
+      notes: null,
+      kind: input.keep ? 'custom' : 'adhoc',
+      favorite: input.keep,
+    },
+    prescribe(input.exercises, catalog),
+  );
+  return { kind: 'saved', templateId };
+}
+
+/**
+ * Ouvre une séance sans rien de prévu, à remplir exercice par exercice.
+ *
+ * Elle repose sur un modèle improvisé et vide plutôt que sur une séance sans
+ * modèle : l'écran d'exécution lit ses exercices dans un modèle, et c'est lui
+ * qui retient ce qu'on ajoute avant la première série, quand l'application se
+ * recharge entre deux appareils.
+ */
+export async function startFreeSession(userId: number): Promise<StartSessionResult> {
+  const open = await findOpenSession(userId);
+  if (open !== null) {
+    return { kind: 'already_open', id: open.id };
+  }
+  const templateId = await insertTemplate(
+    userId,
+    { name: FREE_SESSION_NAME, position: 0, notes: null, kind: 'adhoc' },
+    [],
+  );
+  return startSession(userId, templateId);
+}
+
+export type AddSessionExerciseResult =
+  | { kind: 'added' }
+  | { kind: 'not_found' }
+  | { kind: 'invalid' };
+
+/**
+ * Ajoute un exercice à une séance libre en cours.
+ *
+ * Réservé aux séances improvisées : ajouter à une séance du programme ou des
+ * favoris la modifierait pour les fois suivantes, ce qu'un geste fait en
+ * salle, entre deux séries, ne doit pas décider en passant.
+ */
+export async function addExerciseToSession(
+  userId: number,
+  sessionId: number,
+  exerciseId: number,
+): Promise<AddSessionExerciseResult> {
+  const session = await findSession(userId, sessionId);
+  if (session === null || session.finishedAt !== null || session.templateId === null) {
+    return { kind: 'not_found' };
+  }
+  const template = await findTemplate(userId, session.templateId);
+  if (
+    template === null ||
+    template.kind !== 'adhoc' ||
+    template.exercises.length >= MAX_TEMPLATE_EXERCISES ||
+    template.exercises.some((entry) => entry.exercise.id === exerciseId)
+  ) {
+    return { kind: 'invalid' };
+  }
+
+  const exercise = (await catalogById()).get(exerciseId);
+  if (exercise === undefined) {
+    return { kind: 'not_found' };
+  }
+
+  const added = await appendTemplateExercise(userId, template.id, {
+    exerciseId: exercise.id,
+    ...composedToPrescription(defaultComposed(exercise), exercise.kind),
+    supersetGroup: null,
+    restSeconds: null,
+    notes: null,
+  });
+  return added === null ? { kind: 'not_found' } : { kind: 'added' };
+}
+
+/** Met une séance modèle en favori, ou l'en sort. */
+export function favoriteTemplate(
+  userId: number,
+  templateId: number,
+  favorite: boolean,
+  name: string | null,
+): Promise<boolean> {
+  return setTemplateFavorite(
+    userId,
+    templateId,
+    favorite,
+    name === null ? null : cleanName(name, DEFAULT_COMPOSED_NAME),
+  );
+}
+
+export type FavoriteSessionResult =
+  | { kind: 'saved'; templateId: number }
+  | { kind: 'already' }
+  | { kind: 'empty' }
+  | { kind: 'not_found' };
+
+/**
+ * Retient une séance faite comme séance à refaire.
+ *
+ * C'est une copie de ce qui a été fait, remplacements compris, et non un
+ * lien vers son modèle : la séance qu'on a aimée est celle qu'on a vécue, pas
+ * celle que le programme prévoyait.
+ */
+export async function favoriteSession(
+  userId: number,
+  sessionId: number,
+  name: string | null,
+): Promise<FavoriteSessionResult> {
+  const session = await findSession(userId, sessionId);
+  if (session === null) {
+    return { kind: 'not_found' };
+  }
+  if (await isSessionFavorited(userId, sessionId)) {
+    return { kind: 'already' };
+  }
+
+  const rows = prescribe(composedFromSets(session.sets), await catalogById());
+  if (rows.length === 0) {
+    return { kind: 'empty' };
+  }
+
+  const templateId = await insertTemplate(
+    userId,
+    {
+      name: cleanName(name ?? session.templateName, DEFAULT_COMPOSED_NAME),
+      position: 0,
+      notes: null,
+      kind: 'custom',
+      favorite: true,
+      sourceSessionId: session.id,
+    },
+    rows,
+  );
+  return { kind: 'saved', templateId };
+}
+
+/** Vrai si cette séance faite est déjà rangée dans les favoris. */
+export async function isSessionFavorited(userId: number, sessionId: number): Promise<boolean> {
+  return (await favoritedSessionIds(userId, [sessionId])).has(sessionId);
+}
+
+export function favoriteExerciseIdsFor(userId: number): Promise<number[]> {
+  return listFavoriteExerciseIds(userId);
+}
+
+/** Met un exercice du catalogue en favori, ou l'en retire. */
+export async function favoriteExercise(
+  userId: number,
+  exerciseId: number,
+  favorite: boolean,
+): Promise<boolean> {
+  if (!(await catalogById()).has(exerciseId)) {
+    return false;
+  }
+  await setFavoriteExercise(userId, exerciseId, favorite);
+  return true;
 }

@@ -240,3 +240,98 @@ export async function saveWrittenSession(input: {
     return { kind: 'error' };
   }
 }
+
+async function send(url: string, method: string, body: unknown): Promise<Response | null> {
+  try {
+    return await fetch(url, {
+      method,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** Ouvre une séance libre, à remplir exercice par exercice. */
+export async function startFreeSession(): Promise<StartSessionOutcome> {
+  const response = await send('/api/training/sessions', 'POST', { free: true });
+  if (response === null || !response.ok) {
+    return { kind: 'error' };
+  }
+  const body = (await response.json()) as { id: number; alreadyOpen?: boolean };
+  return { kind: 'started', id: body.id, alreadyOpen: body.alreadyOpen === true };
+}
+
+export type ComposeOutcome =
+  | { kind: 'saved'; templateId: number; sessionId: number | null; alreadyOpen: boolean }
+  | { kind: 'error' };
+
+/** Écrit une séance composée ; `start` l'ouvre dans la foulée. */
+export async function composeSession(input: {
+  name: string | null;
+  exercises: readonly { exerciseId: number; sets: number; reps: number | null; seconds: number | null }[];
+  keep: boolean;
+  start: boolean;
+}): Promise<ComposeOutcome> {
+  const response = await send('/api/training/templates', 'POST', input);
+  if (response === null || !response.ok) {
+    return { kind: 'error' };
+  }
+  const body = (await response.json()) as {
+    templateId: number;
+    sessionId?: number | null;
+    alreadyOpen?: boolean;
+  };
+  return {
+    kind: 'saved',
+    templateId: body.templateId,
+    sessionId: body.sessionId ?? null,
+    alreadyOpen: body.alreadyOpen === true,
+  };
+}
+
+/** Ajoute un exercice à la séance libre en cours. */
+export async function addSessionExercise(
+  sessionId: number,
+  exerciseId: number,
+): Promise<SimpleOutcome> {
+  const response = await send(`/api/training/sessions/${sessionId}/exercises`, 'POST', {
+    exerciseId,
+  });
+  return response?.ok ? { kind: 'ok' } : { kind: 'error' };
+}
+
+/** Range une séance modèle dans les favoris, ou l'en sort. */
+export async function setTemplateFavorite(
+  templateId: number,
+  favorite: boolean,
+  name: string | null = null,
+): Promise<SimpleOutcome> {
+  const response = await send(`/api/training/templates/${templateId}`, 'PATCH', {
+    favorite,
+    name,
+  });
+  return response?.ok ? { kind: 'ok' } : { kind: 'error' };
+}
+
+/** Retient une séance faite dans les favoris. */
+export async function favoriteSession(
+  sessionId: number,
+  name: string | null,
+): Promise<SimpleOutcome> {
+  const response = await send(`/api/training/sessions/${sessionId}/favorite`, 'POST', { name });
+  return response?.ok ? { kind: 'ok' } : { kind: 'error' };
+}
+
+/** Met un exercice en favori ou l'en retire. */
+export async function setExerciseFavorite(
+  exerciseId: number,
+  favorite: boolean,
+): Promise<SimpleOutcome> {
+  const response = await send('/api/training/exercises/favorites', 'PUT', {
+    exerciseId,
+    favorite,
+  });
+  return response?.ok ? { kind: 'ok' } : { kind: 'error' };
+}

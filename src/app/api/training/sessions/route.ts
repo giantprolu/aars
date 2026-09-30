@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { apiError } from '@/server/errors';
 import { currentUserId } from '@/server/guard';
-import { openSessionFor, startSession } from '@/server/services/workouts';
+import { openSessionFor, startFreeSession, startSession } from '@/server/services/workouts';
 
 export const runtime = 'nodejs';
 
@@ -17,6 +17,8 @@ export async function GET(): Promise<Response> {
 const startSchema = z.object({
   /** Séance modèle suivie, ou `null` pour une séance improvisée. */
   templateId: z.number().int().positive().nullable().default(null),
+  /** Une séance libre, à laquelle on ajoute les exercices en cours de route. */
+  free: z.boolean().default(false),
 });
 
 /**
@@ -43,7 +45,9 @@ export async function POST(request: Request): Promise<Response> {
     return apiError('invalid_input');
   }
 
-  const result = await startSession(userId, parsed.data.templateId);
+  const result = parsed.data.free
+    ? await startFreeSession(userId)
+    : await startSession(userId, parsed.data.templateId);
   switch (result.kind) {
     case 'started':
       return Response.json({ id: result.id }, { status: 201 });

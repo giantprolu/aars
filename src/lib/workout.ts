@@ -148,12 +148,115 @@ export interface TemplateExercise {
   notes: string | null;
 }
 
+/** D'où vient une séance modèle ; voir `workout_templates.kind`. */
+export type TemplateKind = 'program' | 'custom' | 'adhoc';
+
+export function isTemplateKind(value: unknown): value is TemplateKind {
+  return value === 'program' || value === 'custom' || value === 'adhoc';
+}
+
 export interface WorkoutTemplate {
   id: number;
   name: string;
   position: number;
   notes: string | null;
+  kind: TemplateKind;
+  favorite: boolean;
   exercises: TemplateExercise[];
+}
+
+/** Bornes d'une séance composée à la main. */
+export const MAX_TEMPLATE_EXERCISES = 20;
+export const MAX_TEMPLATE_NAME = 60;
+
+/**
+ * Un exercice tel que le compose l'utilisateur : une série de séries, et une
+ * cible de répétitions ou de durée selon sa nature.
+ */
+export interface ComposedExercise {
+  exerciseId: number;
+  sets: number;
+  /** Répétitions visées, pour un exercice de force. */
+  reps: number | null;
+  /** Durée visée en secondes, pour un gainage ou un cardio. */
+  seconds: number | null;
+}
+
+/**
+ * La prescription d'un exercice composé, prête à écrire dans le modèle.
+ *
+ * Une cible unique s'écrit avec les deux bornes égales, comme le veut le
+ * schéma. Un cardio garde une seule « série » : c'est une durée, pas un nombre
+ * de passages.
+ */
+export function composedToPrescription(
+  entry: ComposedExercise,
+  kind: ExerciseKind,
+): {
+  targetSets: number;
+  targetRepsMin: number | null;
+  targetRepsMax: number | null;
+  targetSeconds: number | null;
+} {
+  if (kind === 'strength') {
+    return {
+      targetSets: entry.sets,
+      targetRepsMin: entry.reps,
+      targetRepsMax: entry.reps,
+      targetSeconds: null,
+    };
+  }
+  return {
+    targetSets: kind === 'cardio' ? 1 : entry.sets,
+    targetRepsMin: null,
+    targetRepsMax: null,
+    targetSeconds: entry.seconds,
+  };
+}
+
+/** La cible proposée à l'ajout d'un exercice dans une séance composée. */
+export function defaultComposed(exercise: Pick<Exercise, 'id' | 'kind'>): ComposedExercise {
+  switch (exercise.kind) {
+    case 'strength':
+      return { exerciseId: exercise.id, sets: 3, reps: 10, seconds: null };
+    case 'hold':
+      return { exerciseId: exercise.id, sets: 3, reps: null, seconds: 45 };
+    case 'cardio':
+      return { exerciseId: exercise.id, sets: 1, reps: null, seconds: 20 * 60 };
+  }
+}
+
+/**
+ * Une séance faite, relue comme une séance à refaire.
+ *
+ * Chaque exercice garde son rang, le nombre de séries réellement faites et la
+ * cible la plus haute atteinte : c'est ce qu'on a tenu, donc ce qu'on sait
+ * pouvoir refaire. La moyenne proposerait une cible qu'aucune série n'a eue.
+ */
+export function composedFromSets(
+  sets: readonly Pick<WorkoutSet, 'exerciseId' | 'position' | 'setIndex' | 'reps' | 'seconds'>[],
+): ComposedExercise[] {
+  const byPosition = new Map<number, ComposedExercise>();
+  const order: number[] = [];
+  for (const set of [...sets].sort((a, b) => a.position - b.position || a.setIndex - b.setIndex)) {
+    const current = byPosition.get(set.position);
+    if (current === undefined) {
+      order.push(set.position);
+      byPosition.set(set.position, {
+        exerciseId: set.exerciseId,
+        sets: 1,
+        reps: set.reps,
+        seconds: set.seconds,
+      });
+      continue;
+    }
+    current.sets = Math.min(MAX_SETS, current.sets + 1);
+    current.reps =
+      set.reps === null ? current.reps : Math.max(current.reps ?? 0, set.reps);
+    current.seconds =
+      set.seconds === null ? current.seconds : Math.max(current.seconds ?? 0, set.seconds);
+  }
+  return order.map((position) => byPosition.get(position)!).slice(0, MAX_TEMPLATE_EXERCISES);
 }
 
 /** Une série réalisée. Les trois mesures sont optionnelles (voir le schéma). */
@@ -402,6 +505,36 @@ export function resolveSessionExercises(
     }
     return { ...entry, planned: null, locked: recordedId !== undefined };
   });
+
+  // Les rangs que le modèle ne prévoit pas mais que des séries occupent : une
+  // séance saisie à la main n'a pas de modèle du tout, et ses séries sont la
+  // seule trace de ce qu'elle contenait. Sans ce complément, elle s'ouvrait
+  // vide dans l'historique.
+  const plannedPositions = new Set(planned.map((entry) => entry.position));
+  for (const [position, exerciseId] of recordedAt) {
+    const exercise = catalog.get(exerciseId);
+    if (plannedPositions.has(position) || exercise === undefined) {
+      continue;
+    }
+    const atPosition = sets.filter((set) => set.position === position);
+    resolved.push({
+      // Négatif : aucune ligne de modèle ne porte cet identifiant, et rien ne
+      // doit pouvoir le prendre pour une ligne à modifier.
+      id: -(position + 1),
+      position,
+      exercise,
+      targetSets: Math.max(...atPosition.map((set) => set.setIndex)),
+      targetRepsMin: null,
+      targetRepsMax: null,
+      targetSeconds: null,
+      supersetGroup: null,
+      restSeconds: null,
+      notes: null,
+      planned: null,
+      locked: true,
+    });
+  }
+  resolved.sort((a, b) => a.position - b.position);
 
   const used = new Set(resolved.map((entry) => entry.exercise.id));
   return resolved.map((entry) => {

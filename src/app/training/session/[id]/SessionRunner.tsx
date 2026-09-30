@@ -4,6 +4,8 @@ import {
   ArrowLeftRightIcon,
   CheckIcon,
   FlameIcon,
+  PlusIcon,
+  StarIcon,
   TrendingUpIcon,
   TrophyIcon,
 } from 'lucide-react';
@@ -12,6 +14,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { BottomBar } from '@/components/BottomBar';
 import { ErrorAlert } from '@/components/ErrorAlert';
+import { ExercisePicker } from '@/components/ExercisePicker';
 import { ExerciseSheet, type SheetExercise } from '@/components/ExerciseSheet';
 import { NavHeader, PageTitle } from '@/components/ScreenHeader';
 import {
@@ -40,7 +43,9 @@ import {
 import { Toggle } from '@/components/ui/toggle';
 import { cn, parseDecimal } from '@/lib/utils';
 import {
+  addSessionExercise,
   discardSession,
+  favoriteSession,
   finishSession,
   recordSet,
   updateTemplateExercise,
@@ -156,6 +161,9 @@ export function SessionRunner({
   bests,
   habitual,
   catalog,
+  canAddExercise,
+  favorited,
+  favoriteExercises,
 }: {
   session: WorkoutSession;
   /** Les exercices à faire, remplacements appliqués. Vide pour une séance libre. */
@@ -168,6 +176,12 @@ export function SessionRunner({
   habitual: readonly number[];
   /** Les exercices de la salle, parmi lesquels choisir un remplaçant. */
   catalog: readonly Exercise[];
+  /** Séance libre en cours : on y ajoute les exercices au fil de la séance. */
+  canAddExercise: boolean;
+  /** Séance terminée déjà rangée dans les favoris. */
+  favorited: boolean;
+  /** Les exercices favoris, en tête des choix d'exercice. */
+  favoriteExercises: readonly number[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -178,6 +192,8 @@ export function SessionRunner({
   const [swapping, setSwapping] = useState<SessionExercise | null>(null);
   const [rest, setRest] = useState<Rest | null>(null);
   const [record, setRecord] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [favorites, setFavorites] = useState<Set<number>>(() => new Set(favoriteExercises));
 
   const doneSets = new Map(
     session.sets.map((set) => [draftKey(set.exerciseId, set.setIndex), set]),
@@ -382,6 +398,31 @@ export function SessionRunner({
     setError('La séance n’a pas pu être terminée.');
   }
 
+  async function addExercise(exercise: Exercise) {
+    setBusy(true);
+    setError(null);
+    const outcome = await addSessionExercise(session.id, exercise.id);
+    setBusy(false);
+    if (outcome.kind === 'ok') {
+      router.refresh();
+      return;
+    }
+    setError('L’exercice n’a pas pu être ajouté.');
+  }
+
+  /** Range la séance faite dans les favoris, telle qu'elle a été faite. */
+  async function keepAsFavorite() {
+    setBusy(true);
+    setError(null);
+    const outcome = await favoriteSession(session.id, null);
+    setBusy(false);
+    if (outcome.kind === 'ok') {
+      router.refresh();
+      return;
+    }
+    setError('La séance n’a pas pu rejoindre tes favoris.');
+  }
+
   async function discard() {
     setBusy(true);
     await discardSession(session.id);
@@ -420,6 +461,20 @@ export function SessionRunner({
         />
       ) : null}
 
+      {closed && recordedSets > 0 ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => void keepAsFavorite()}
+          disabled={busy || favorited}
+          className={cn('mt-3', favorited && 'text-primary disabled:opacity-100')}
+        >
+          <StarIcon className={cn(favorited && 'fill-current')} />
+          {favorited ? 'Dans tes favoris' : 'Ajouter aux favoris'}
+        </Button>
+      ) : null}
+
       {error ? <ErrorAlert>{error}</ErrorAlert> : null}
 
       {record !== null ? (
@@ -432,10 +487,14 @@ export function SessionRunner({
         </div>
       ) : null}
 
-      {exercises.length === 0 ? (
+      {exercises.length === 0 && canAddExercise ? (
         <p className="mt-6 text-muted-foreground">
-          Cette séance ne suit aucun modèle : ses séries ne peuvent pas être préremplies.
+          Séance libre : ajoute les exercices au fur et à mesure, ils se remplissent avec ce
+          que tu as fait la dernière fois.
         </p>
+      ) : null}
+      {exercises.length === 0 && !canAddExercise ? (
+        <p className="mt-6 text-muted-foreground">Cette séance ne compte aucune série.</p>
       ) : null}
 
       <div className="mt-4 flex flex-col gap-2.5">
@@ -572,7 +631,7 @@ export function SessionRunner({
                   qu'on découvre qu'il est trop court. Le réglage est écrit dans
                   le programme : il vaut pour les séances suivantes aussi.
                 */}
-                {restSeconds !== null && !closed ? (
+                {restSeconds !== null && !closed && entry.id > 0 ? (
                   <div className="mt-1.5 mb-1 flex items-center gap-2 text-[12.5px] text-muted-foreground">
                     <span>Repos</span>
                     <Select
@@ -721,6 +780,19 @@ export function SessionRunner({
         })}
       </div>
 
+      {canAddExercise ? (
+        <Button
+          type="button"
+          variant={exercises.length === 0 ? 'default' : 'outline'}
+          onClick={() => setAdding(true)}
+          disabled={busy}
+          className="mt-3 w-full"
+        >
+          <PlusIcon />
+          Ajouter un exercice
+        </Button>
+      ) : null}
+
       {!closed ? (
         <BottomBar surface="card">
           <SessionClock startedAt={session.startedAt} rest={rest} onRestChange={setRest} />
@@ -760,6 +832,7 @@ export function SessionRunner({
       <SwapSheet
         target={swapping?.exercise ?? null}
         catalog={catalog}
+        favorites={favorites}
         excluded={new Set(exercises.map((entry) => entry.exercise.id))}
         onPick={(exercise) => {
           if (swapping !== null) {
@@ -769,6 +842,20 @@ export function SessionRunner({
         }}
         onClose={() => setSwapping(null)}
       />
+      {canAddExercise ? (
+        <ExercisePicker
+          open={adding}
+          title="Ajouter un exercice"
+          description="Il rejoint la séance en cours, sous les autres."
+          catalog={catalog}
+          favorites={favorites}
+          onFavoritesChange={setFavorites}
+          selected={new Set()}
+          excluded={new Set(exercises.map((entry) => entry.exercise.id))}
+          onToggle={(exercise) => void addExercise(exercise)}
+          onClose={() => setAdding(false)}
+        />
+      ) : null}
     </>
   );
 }

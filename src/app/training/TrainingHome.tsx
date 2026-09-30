@@ -2,20 +2,34 @@
 
 import {
   ChevronRightIcon,
+  ListPlusIcon,
   PlayIcon,
   SlidersHorizontalIcon,
+  StarIcon,
   TrendingUpIcon,
+  ZapIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ErrorAlert } from '@/components/ErrorAlert';
 import { ExerciseSheet, type SheetExercise } from '@/components/ExerciseSheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { startSession } from '@/lib/client/training';
+import { setTemplateFavorite, startFreeSession, startSession } from '@/lib/client/training';
 import {
   EQUIPMENT_PREFERENCE_LABELS,
   formatPrescription,
@@ -77,10 +91,10 @@ export function TrainingHome({
   const [error, setError] = useState<string | null>(null);
   const [shown, setShown] = useState<SheetExercise | null>(null);
 
-  async function begin(templateId: number) {
+  async function begin(templateId: number | null) {
     setBusy(true);
     setError(null);
-    const outcome = await startSession(templateId);
+    const outcome = templateId === null ? await startFreeSession() : await startSession(templateId);
     setBusy(false);
 
     if (outcome.kind === 'started') {
@@ -89,6 +103,41 @@ export function TrainingHome({
     }
     setError('La séance n’a pas pu être ouverte.');
   }
+
+  async function toggleFavorite(template: WorkoutTemplate) {
+    setBusy(true);
+    setError(null);
+    const outcome = await setTemplateFavorite(template.id, !template.favorite);
+    setBusy(false);
+    if (outcome.kind === 'ok') {
+      router.refresh();
+      return;
+    }
+    setError('Le favori n’a pas pu être modifié.');
+  }
+
+  // Deux gestes pour s'entraîner sans programme : composer à l'avance, ou
+  // commencer à vide et ajouter en salle. Ils valent avec ou sans programme.
+  const quickStart = (
+    <div className="flex gap-2.5">
+      <Button asChild variant="outline" className="flex-1">
+        <Link href="/training/compose">
+          <ListPlusIcon />
+          Composer
+        </Link>
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => void begin(null)}
+        disabled={busy || openSession !== null}
+        className="flex-1"
+      >
+        <ZapIcon />
+        Séance libre
+      </Button>
+    </div>
+  );
 
   if (templates.length === 0) {
     return (
@@ -100,15 +149,142 @@ export function TrainingHome({
           Ce que tu veux travailler, où tu t’entraînes, poids libres ou machines.
           Trois réponses, et les séances se composent.
         </p>
-        <div className="mx-auto mt-5 flex max-w-[260px] flex-col gap-2.5">
+        <div className="mx-auto mt-5 flex max-w-[300px] flex-col gap-2.5">
           <Button asChild>
             <Link href="/training/preferences">Composer mon programme</Link>
           </Button>
-          <Button asChild variant="outline">
+          {quickStart}
+          <Button asChild variant="ghost">
             <Link href="/training/import">Saisir une séance déjà faite</Link>
           </Button>
         </div>
+        {error ? <ErrorAlert className="mt-3 text-left">{error}</ErrorAlert> : null}
       </div>
+    );
+  }
+
+  const program = templates.filter((template) => template.kind === 'program');
+  const favorites = templates.filter((template) => template.favorite);
+
+  function renderTemplate(template: WorkoutTemplate) {
+    const running = openSession?.templateId === template.id;
+    const star = (
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        aria-pressed={template.favorite}
+        aria-label={
+          template.favorite
+            ? `Retirer ${template.name} des favoris`
+            : `Mettre ${template.name} en favori`
+        }
+        disabled={busy}
+        onClick={template.kind === 'custom' ? undefined : () => void toggleFavorite(template)}
+        className={template.favorite ? 'text-primary' : 'text-muted-foreground'}
+      >
+        <StarIcon className={template.favorite ? 'fill-current' : undefined} />
+      </Button>
+    );
+
+    return (
+      <li key={template.id}>
+        <Card>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <CardTitle className="text-[14.5px] font-medium">{template.name}</CardTitle>
+                <CardDescription className="mt-0.5 text-[12.5px]">
+                  {template.exercises.length} exercice
+                  {template.exercises.length > 1 ? 's' : ''}
+                  {template.notes === null ? '' : ` · ${template.notes}`}
+                </CardDescription>
+              </div>
+              {/*
+                Retirer des favoris une séance à soi l'efface de la liste : elle
+                n'existait que là. Le geste se confirme, celui d'une séance du
+                programme non, qui y reste.
+              */}
+              {template.kind === 'custom' ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>{star}</AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Retirer « {template.name} » ?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        La séance quitte tes favoris. Celles déjà faites restent dans
+                        l’historique.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Garder</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => void toggleFavorite(template)}>
+                        Retirer
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : (
+                star
+              )}
+              {running ? (
+                <Badge variant="secondary">En cours</Badge>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void begin(template.id)}
+                  disabled={busy || openSession !== null}
+                >
+                  Commencer
+                </Button>
+              )}
+            </div>
+
+            <Separator className="mt-3 mb-1.5" />
+
+            {/*
+              Les exercices sont listés à plat sous leur séance : on veut voir
+              ce qu'on va faire avant de s'engager, sans une navigation de plus.
+              Les supersets sont marqués, c'est leur seule particularité utile
+              au moment du coup d'œil.
+
+              Chaque nom ouvre sa fiche. C'est ici que le besoin est le plus
+              fort : on découvre un programme qu'on n'a pas écrit, et la moitié
+              des lignes sont des mots de salle qu'on n'a jamais vus.
+            */}
+            <ul>
+              {groupBySuperset(template.exercises).map((block, index) => (
+                <li key={index} className="flex items-baseline justify-between gap-3 py-1">
+                  <span className="min-w-0 flex-1 text-[13.5px]">
+                    {block.map((entry, rank) => (
+                      <span key={entry.id}>
+                        {rank > 0 ? ' + ' : null}
+                        <button
+                          type="button"
+                          onClick={() => setShown(entry.exercise)}
+                          className="text-left underline decoration-border underline-offset-4 hover:decoration-foreground"
+                        >
+                          {entry.exercise.name}
+                        </button>
+                      </span>
+                    ))}
+                    {block.length > 1 ? (
+                      <Badge variant="outline" className="ml-2 align-middle">
+                        superset
+                      </Badge>
+                    ) : null}
+                  </span>
+                  <span className="tabular flex-none text-muted-foreground">
+                    {formatPrescription(block[0]!)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      </li>
     );
   }
 
@@ -183,7 +359,16 @@ export function TrainingHome({
         </Link>
       </Card>
 
+      <div className="mt-3">{quickStart}</div>
+
       {error ? <ErrorAlert className="mt-3">{error}</ErrorAlert> : null}
+
+      {favorites.length > 0 ? (
+        <>
+          <h2 className="mt-5 mb-2 text-[12.5px] text-muted-foreground">Mes favoris</h2>
+          <ul className="flex flex-col gap-2.5">{favorites.map(renderTemplate)}</ul>
+        </>
+      ) : null}
 
       <div className="mt-5 mb-2 flex items-center justify-between gap-3">
         <div className="min-w-0">
@@ -196,88 +381,18 @@ export function TrainingHome({
         <Button asChild variant="ghost" size="sm" className="-mr-2">
           <Link href="/training/preferences">
             <SlidersHorizontalIcon />
-            Modifier
+            {program.length === 0 ? 'Composer' : 'Modifier'}
           </Link>
         </Button>
       </div>
 
-      <ul className="flex flex-col gap-2.5">
-        {templates.map((template) => {
-          const running = openSession?.templateId === template.id;
-          return (
-            <li key={template.id}>
-              <Card>
-                <CardContent>
-                  <div className="flex items-center gap-3">
-                    <div className="min-w-0 flex-1">
-                      <CardTitle className="text-[14.5px] font-medium">{template.name}</CardTitle>
-                      <CardDescription className="mt-0.5 text-[12.5px]">
-                        {template.exercises.length} exercice
-                        {template.exercises.length > 1 ? 's' : ''}
-                        {template.notes === null ? '' : ` · ${template.notes}`}
-                      </CardDescription>
-                    </div>
-                    {running ? (
-                      <Badge variant="secondary">En cours</Badge>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => void begin(template.id)}
-                        disabled={busy || openSession !== null}
-                      >
-                        Commencer
-                      </Button>
-                    )}
-                  </div>
-
-                  <Separator className="mt-3 mb-1.5" />
-
-                  {/*
-                    Les exercices sont listés à plat sous leur séance : on veut voir
-                    ce qu'on va faire avant de s'engager, sans une navigation de plus.
-                    Les supersets sont marqués, c'est leur seule particularité utile
-                    au moment du coup d'œil.
-
-                    Chaque nom ouvre sa fiche. C'est ici que le besoin est le plus
-                    fort : on découvre un programme qu'on n'a pas écrit, et la moitié
-                    des lignes sont des mots de salle qu'on n'a jamais vus.
-                  */}
-                  <ul>
-                    {groupBySuperset(template.exercises).map((block, index) => (
-                      <li key={index} className="flex items-baseline justify-between gap-3 py-1">
-                        <span className="min-w-0 flex-1 text-[13.5px]">
-                          {block.map((entry, rank) => (
-                            <span key={entry.id}>
-                              {rank > 0 ? ' + ' : null}
-                              <button
-                                type="button"
-                                onClick={() => setShown(entry.exercise)}
-                                className="text-left underline decoration-border underline-offset-4 hover:decoration-foreground"
-                              >
-                                {entry.exercise.name}
-                              </button>
-                            </span>
-                          ))}
-                          {block.length > 1 ? (
-                            <Badge variant="outline" className="ml-2 align-middle">
-                              superset
-                            </Badge>
-                          ) : null}
-                        </span>
-                        <span className="tabular flex-none text-muted-foreground">
-                          {formatPrescription(block[0]!)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            </li>
-          );
-        })}
-      </ul>
+      {program.length === 0 ? (
+        <p className="text-[13.5px] text-muted-foreground">
+          Aucun programme pour l’instant : trois réponses suffisent à le composer.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-2.5">{program.map(renderTemplate)}</ul>
+      )}
 
       <Button asChild variant="outline" className="mt-3 w-full">
         <Link href="/training/import">Saisir une séance déjà faite</Link>

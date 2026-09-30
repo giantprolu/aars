@@ -6,10 +6,12 @@ import {
   isExerciseEquipment,
   isExerciseKind,
   isExerciseRegion,
+  isTemplateKind,
   isTrainingFocus,
   type Exercise,
   type Gym,
   type TemplateExercise,
+  type TemplateKind,
   type TrainingPreferences,
   type WorkoutSession,
   type WorkoutSet,
@@ -330,7 +332,26 @@ async function templateExercisesFor(
   return grouped;
 }
 
-/** Les séances modèles actives d'un utilisateur, dans l'ordre du programme. */
+function toTemplate(
+  row: typeof schema.workoutTemplates.$inferSelect,
+  exercises: TemplateExercise[],
+): WorkoutTemplate {
+  return {
+    id: row.id,
+    name: row.name,
+    position: row.position,
+    notes: row.notes,
+    kind: isTemplateKind(row.kind) ? row.kind : 'program',
+    favorite: row.favorite,
+    exercises,
+  };
+}
+
+/**
+ * Les séances modèles actives d'un utilisateur : le programme dans son ordre,
+ * puis les séances à lui. Les séances improvisées n'en font pas partie, elles
+ * ne se relancent pas.
+ */
 export async function listTemplates(userId: number): Promise<WorkoutTemplate[]> {
   const rows = await db()
     .select()
@@ -339,18 +360,13 @@ export async function listTemplates(userId: number): Promise<WorkoutTemplate[]> 
       and(
         eq(schema.workoutTemplates.userId, userId),
         isNull(schema.workoutTemplates.archivedAt),
+        inArray(schema.workoutTemplates.kind, ['program', 'custom']),
       ),
     )
     .orderBy(asc(schema.workoutTemplates.position), asc(schema.workoutTemplates.id));
 
   const exercises = await templateExercisesFor(rows.map((row) => row.id));
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    position: row.position,
-    notes: row.notes,
-    exercises: exercises.get(row.id) ?? [],
-  }));
+  return rows.map((row) => toTemplate(row, exercises.get(row.id) ?? []));
 }
 
 export async function findTemplate(
@@ -367,13 +383,7 @@ export async function findTemplate(
     return null;
   }
   const exercises = await templateExercisesFor([row.id]);
-  return {
-    id: row.id,
-    name: row.name,
-    position: row.position,
-    notes: row.notes,
-    exercises: exercises.get(row.id) ?? [],
-  };
+  return toTemplate(row, exercises.get(row.id) ?? []);
 }
 
 export interface NewTemplateExercise {
@@ -390,7 +400,14 @@ export interface NewTemplateExercise {
 /** Crée une séance modèle et ses exercices. */
 export async function insertTemplate(
   userId: number,
-  template: { name: string; position: number; notes: string | null },
+  template: {
+    name: string;
+    position: number;
+    notes: string | null;
+    kind?: TemplateKind;
+    favorite?: boolean;
+    sourceSessionId?: number | null;
+  },
   exercises: readonly NewTemplateExercise[],
 ): Promise<number> {
   const [row] = await db()
@@ -420,19 +437,166 @@ export async function insertTemplate(
  * supprimées mais mises de côté, parce que les séances déjà réalisées les
  * référencent et que les effacer ferait perdre le nom de ce qu'on a fait
  * pendant des mois.
+ *
+ * Seul le programme est concerné. Une séance du programme mise en favori
+ * n'est pas archivée : elle le quitte pour rejoindre les séances à soi, parce
+ * que recomposer ne doit pas faire perdre ce qu'on a choisi de garder.
  */
 export async function archiveAllTemplates(userId: number): Promise<number> {
+  const program = and(
+    eq(schema.workoutTemplates.userId, userId),
+    isNull(schema.workoutTemplates.archivedAt),
+    eq(schema.workoutTemplates.kind, 'program'),
+  );
+  await db()
+    .update(schema.workoutTemplates)
+    .set({ kind: 'custom' })
+    .where(and(program, eq(schema.workoutTemplates.favorite, true)));
   const updated = await db()
     .update(schema.workoutTemplates)
     .set({ archivedAt: new Date() })
+    .where(program)
+    .returning({ id: schema.workoutTemplates.id });
+  return updated.length;
+}
+
+/**
+ * Range une séance dans les favoris, ou l'en sort.
+ *
+ * Une séance improvisée qu'on garde devient une séance à soi, sous le nom
+ * choisi. Une séance à soi qu'on retire des favoris est archivée : elle
+ * n'apparaissait que là, la garder active la rendrait introuvable. Une séance
+ * du programme reste au programme dans les deux sens.
+ */
+export async function setTemplateFavorite(
+  userId: number,
+  id: number,
+  favorite: boolean,
+  name: string | null,
+): Promise<boolean> {
+  const [row] = await db()
+    .select({ kind: schema.workoutTemplates.kind })
+    .from(schema.workoutTemplates)
+    .where(
+      and(
+        eq(schema.workoutTemplates.userId, userId),
+        eq(schema.workoutTemplates.id, id),
+        isNull(schema.workoutTemplates.archivedAt),
+      ),
+    )
+    .limit(1);
+  if (!row) {
+    return false;
+  }
+
+  const change: Partial<typeof schema.workoutTemplates.$inferInsert> = { favorite };
+  if (favorite && row.kind === 'adhoc') {
+    change.kind = 'custom';
+  }
+  if (favorite && name !== null) {
+    change.name = name;
+  }
+  if (!favorite && row.kind === 'custom') {
+    change.archivedAt = new Date();
+  }
+
+  const updated = await db()
+    .update(schema.workoutTemplates)
+    .set(change)
+    .where(and(eq(schema.workoutTemplates.userId, userId), eq(schema.workoutTemplates.id, id)))
+    .returning({ id: schema.workoutTemplates.id });
+  return updated.length > 0;
+}
+
+/** Parmi ces séances faites, celles déjà retenues comme favori actif. */
+export async function favoritedSessionIds(
+  userId: number,
+  sessionIds: readonly number[],
+): Promise<Set<number>> {
+  if (sessionIds.length === 0) {
+    return new Set();
+  }
+  const rows = await db()
+    .select({ sessionId: schema.workoutTemplates.sourceSessionId })
+    .from(schema.workoutTemplates)
     .where(
       and(
         eq(schema.workoutTemplates.userId, userId),
         isNull(schema.workoutTemplates.archivedAt),
+        eq(schema.workoutTemplates.favorite, true),
+        inArray(schema.workoutTemplates.sourceSessionId, [...sessionIds]),
       ),
+    );
+  return new Set(
+    rows.map((row) => row.sessionId).filter((value): value is number => value !== null),
+  );
+}
+
+/**
+ * Ajoute un exercice en fin de séance modèle, et rend l'identifiant de sa ligne.
+ *
+ * La propriété est vérifiée avant l'écriture : un identifiant de modèle venu
+ * du client ne dit rien de son auteur.
+ */
+export async function appendTemplateExercise(
+  userId: number,
+  templateId: number,
+  exercise: NewTemplateExercise,
+): Promise<number | null> {
+  const [owner] = await db()
+    .select({ id: schema.workoutTemplates.id })
+    .from(schema.workoutTemplates)
+    .where(
+      and(eq(schema.workoutTemplates.userId, userId), eq(schema.workoutTemplates.id, templateId)),
     )
-    .returning({ id: schema.workoutTemplates.id });
-  return updated.length;
+    .limit(1);
+  if (!owner) {
+    return null;
+  }
+
+  const [last] = await db()
+    .select({ position: sql<number | null>`max(${schema.workoutTemplateExercises.position})` })
+    .from(schema.workoutTemplateExercises)
+    .where(eq(schema.workoutTemplateExercises.templateId, templateId));
+
+  const [row] = await db()
+    .insert(schema.workoutTemplateExercises)
+    .values({ templateId, position: Number(last?.position ?? -1) + 1, ...exercise })
+    .returning({ id: schema.workoutTemplateExercises.id });
+  return row?.id ?? null;
+}
+
+/** Les exercices mis en favori par l'utilisateur, les plus anciens d'abord. */
+export async function listFavoriteExerciseIds(userId: number): Promise<number[]> {
+  const rows = await db()
+    .select({ exerciseId: schema.favoriteExercises.exerciseId })
+    .from(schema.favoriteExercises)
+    .where(eq(schema.favoriteExercises.userId, userId))
+    .orderBy(asc(schema.favoriteExercises.createdAt));
+  return rows.map((row) => row.exerciseId);
+}
+
+/** Met un exercice en favori ou l'en retire. Rejouable sans effet de bord. */
+export async function setFavoriteExercise(
+  userId: number,
+  exerciseId: number,
+  favorite: boolean,
+): Promise<void> {
+  if (favorite) {
+    await db()
+      .insert(schema.favoriteExercises)
+      .values({ userId, exerciseId })
+      .onConflictDoNothing();
+    return;
+  }
+  await db()
+    .delete(schema.favoriteExercises)
+    .where(
+      and(
+        eq(schema.favoriteExercises.userId, userId),
+        eq(schema.favoriteExercises.exerciseId, exerciseId),
+      ),
+    );
 }
 
 /** Archive une séance modèle plutôt que de la supprimer (voir le schéma). */

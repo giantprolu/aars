@@ -37,6 +37,7 @@ export async function exportUserData(userId: number) {
     templates,
     sessions,
     sets,
+    favoriteExercises,
     subscriptions,
   ] = await Promise.all([
     database
@@ -74,6 +75,13 @@ export async function exportUserData(userId: number) {
       .from(schema.workoutSessions)
       .where(eq(schema.workoutSessions.userId, userId)),
     database.select().from(schema.workoutSets).where(eq(schema.workoutSets.userId, userId)),
+    database
+      .select({
+        exerciseId: schema.favoriteExercises.exerciseId,
+        createdAt: schema.favoriteExercises.createdAt,
+      })
+      .from(schema.favoriteExercises)
+      .where(eq(schema.favoriteExercises.userId, userId)),
     database
       .select({ createdAt: schema.pushSubscriptions.createdAt })
       .from(schema.pushSubscriptions)
@@ -121,6 +129,7 @@ export async function exportUserData(userId: number) {
       })),
       sessions,
       sets,
+      favoriteExercises,
     },
     notifications: { devices: subscriptions.length },
   };

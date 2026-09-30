@@ -2,8 +2,10 @@ import { notFound } from 'next/navigation';
 import { requireUserId } from '@/server/guard';
 import {
   exerciseCatalog,
+  favoriteExerciseIdsFor,
   fullExerciseCatalog,
   habitualSwapsFor,
+  isSessionFavorited,
   personalBests,
   previousPerformance,
   sessionFor,
@@ -74,7 +76,10 @@ export default async function SessionPage({
     new Map(catalog.map((exercise) => [exercise.id, exercise])),
   );
 
-  const [previous, bests] = await Promise.all([
+  // Une séance libre en cours reçoit des exercices en route ; une séance
+  // terminée peut rejoindre les favoris, et doit dire si elle y est déjà.
+  const canAddExercise = !closed && template?.kind === 'adhoc';
+  const [previous, bests, favorited, favoriteExercises] = await Promise.all([
     previousPerformance(
       userId,
       exercises.map((entry) => entry.exercise.id),
@@ -85,6 +90,8 @@ export default async function SessionPage({
       exercises.map((entry) => entry.exercise),
       session.id,
     ),
+    closed ? isSessionFavorited(userId, session.id) : Promise.resolve(false),
+    closed ? Promise.resolve([] as number[]) : favoriteExerciseIdsFor(userId),
   ]);
 
   // Les cartes deviennent des objets simples : une Map ne traverse pas la
@@ -109,6 +116,9 @@ export default async function SessionPage({
       bests={bestByExercise}
       habitual={habitual}
       catalog={available}
+      canAddExercise={canAddExercise}
+      favorited={favorited}
+      favoriteExercises={favoriteExercises}
     />
   );
 }

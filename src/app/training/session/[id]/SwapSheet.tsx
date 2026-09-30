@@ -21,6 +21,7 @@ import { EQUIPMENT_LABELS, swapCandidates, type Exercise } from '@/lib/workout';
 export function SwapSheet({
   target,
   catalog,
+  favorites,
   excluded,
   onPick,
   onClose,
@@ -28,6 +29,8 @@ export function SwapSheet({
   /** L'exercice à remplacer, ou `null` quand la feuille est fermée. */
   target: Exercise | null;
   catalog: readonly Exercise[];
+  /** Les exercices favoris, proposés avant les autres quand ils conviennent. */
+  favorites: ReadonlySet<number>;
   /** Les exercices déjà dans la séance, qu'on ne peut pas choisir deux fois. */
   excluded: ReadonlySet<number>;
   onPick: (exercise: Exercise) => void;
@@ -43,11 +46,18 @@ export function SwapSheet({
     );
   const { closest, others } =
     target === null ? { closest: [], others: [] } : swapCandidates(target, catalog, excluded);
+  // Un favori de même nature passe devant tout : c'est celui qu'on cherche
+  // des yeux quand la machine prévue est prise.
+  const isFavorite = (exercise: Exercise) => favorites.has(exercise.id);
   const groups = [
-    { label: 'Même groupe musculaire', items: closest.filter(matches) },
+    { label: 'Tes favoris', items: [...closest, ...others].filter(isFavorite).filter(matches) },
+    {
+      label: 'Même groupe musculaire',
+      items: closest.filter((exercise) => !isFavorite(exercise)).filter(matches),
+    },
     {
       label: closest.length > 0 ? 'Autres exercices' : 'Exercices de la salle',
-      items: others.filter(matches),
+      items: others.filter((exercise) => !isFavorite(exercise)).filter(matches),
     },
   ].filter((group) => group.items.length > 0);
 

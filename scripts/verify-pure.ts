@@ -65,6 +65,9 @@ import {
   restSecondsFor,
   suggestLoad,
   resolveSessionExercises,
+  composedFromSets,
+  composedToPrescription,
+  defaultComposed,
   sessionVolume,
   setVolume,
   swapCandidates,
@@ -1313,6 +1316,59 @@ assert.equal(
     ],
     'couples valides, 0 garde le prevu',
   );
+  // Une seance sans modele : ses series seules disent ce qu'elle contenait.
+  const saisie = resolveSessionExercises(
+    [],
+    [
+      { exerciseId: 2, position: 1, setIndex: 1 },
+      { exerciseId: 2, position: 1, setIndex: 2 },
+      { exerciseId: 4, position: 0, setIndex: 1 },
+    ],
+    new Map(),
+    catalogue,
+  );
+  assert.deepEqual(
+    saisie.map((entry) => [entry.position, entry.exercise.id, entry.targetSets]),
+    [
+      [0, 4, 1],
+      [1, 2, 2],
+    ],
+    'les rangs hors modele apparaissent, dans l ordre, avec leurs series',
+  );
+  assert.ok(saisie.every((entry) => entry.id < 0 && entry.locked), 'lignes synthetiques verrouillees');
+  const complete = resolveSessionExercises(
+    prevu,
+    [{ exerciseId: 3, position: 1, setIndex: 1 }, { exerciseId: 2, position: 5, setIndex: 1 }],
+    new Map(),
+    catalogue,
+  );
+  assert.equal(complete.length, 3, 'le rang ajoute s ajoute au modele sans rien remplacer');
+
+  assert.deepEqual(
+    composedFromSets([
+      { exerciseId: 2, position: 1, setIndex: 2, reps: 12, seconds: null },
+      { exerciseId: 2, position: 1, setIndex: 1, reps: 10, seconds: null },
+      { exerciseId: 4, position: 0, setIndex: 1, reps: null, seconds: 45 },
+    ]),
+    [
+      { exerciseId: 4, sets: 1, reps: null, seconds: 45 },
+      { exerciseId: 2, sets: 2, reps: 12, seconds: null },
+    ],
+    'la seance faite se relit rang par rang, avec la cible la plus haute tenue',
+  );
+  assert.deepEqual(
+    composedToPrescription({ exerciseId: 2, sets: 4, reps: 8, seconds: null }, 'strength'),
+    { targetSets: 4, targetRepsMin: 8, targetRepsMax: 8, targetSeconds: null },
+    'une cible unique : deux bornes egales',
+  );
+  assert.equal(
+    composedToPrescription({ exerciseId: 9, sets: 3, reps: null, seconds: 1200 }, 'cardio').targetSets,
+    1,
+    'un cardio n a qu une serie',
+  );
+  assert.equal(defaultComposed(planche).seconds, 45, 'un gainage se propose en duree');
+  assert.equal(defaultComposed(tirage).reps, 10, 'une force se propose en repetitions');
+
   const garde = resolveSessionExercises(prevu, [], new Map([[0, 0]]), catalogue);
   assert.equal(garde[0]?.exercise.id, 1, 'rang:0 garde l exercice prevu');
   assert.equal(garde[0]?.planned, null, 'rien n est remplace');
