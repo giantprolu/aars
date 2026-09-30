@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { NavHeader, PageTitle } from '@/components/ScreenHeader';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -159,7 +159,8 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <ScreenHeader title="Réglages" />
+      <NavHeader label="Moi" href="/me" />
+      <PageTitle title="Compte et données" className="mb-4" />
 
       <Card asChild className="flex-row items-center gap-3 p-4">
         <Link href="/profile" className="transition-colors active:bg-accent">

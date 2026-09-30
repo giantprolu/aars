@@ -569,12 +569,15 @@ export interface ProgressOverview {
  * La fenêtre commence un lundi, pour que la première semaine du graphique
  * soit complète et ne se lise pas comme une semaine creuse.
  */
-export async function progressOverview(userId: number): Promise<ProgressOverview> {
+export async function progressOverview(
+  userId: number,
+  weekCount: number = PROGRESS_WEEKS,
+): Promise<ProgressOverview> {
   const today = todayInParis();
-  const sinceDate = shiftDate(startOfWeek(today), -7 * (PROGRESS_WEEKS - 1));
+  const sinceDate = shiftDate(startOfWeek(today), -7 * (weekCount - 1));
   const { exercises, sets } = await progressSets(userId, { sinceDate });
   return {
-    weeks: weeklyTotals(sets, PROGRESS_WEEKS, today),
+    weeks: weeklyTotals(sets, weekCount, today),
     exercises: progressByExercise(exercises, sets),
   };
 }
