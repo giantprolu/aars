@@ -15,8 +15,8 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { MAX_QUANTITY_G, formatGrams, formatKcal, scaleMacros } from '@/lib/nutrition';
 import type { Macros } from '@/lib/types';
-import { MEALS, MEAL_LABELS, type Meal, isMeal, mealForHour } from '@/lib/meal';
-import { hourInParis } from '@/lib/date';
+import { MEALS, MEAL_LABELS, type Meal, isMeal } from '@/lib/meal';
+import { useInitialMeal } from '@/lib/client/meal-param';
 import type { QuantityShortcut } from '@/lib/shortcuts';
 
 /**
@@ -58,7 +58,8 @@ export function QuantityPad({
   onSubmit: (quantityG: number, meal: Meal) => void | Promise<void>;
 }) {
   const [raw, setRaw] = useState('');
-  const [meal, setMeal] = useState<Meal>(() => mealForHour(hourInParis()));
+  const initialMeal = useInitialMeal();
+  const [meal, setMeal] = useState<Meal>(initialMeal);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Le champ reçoit le focus à l'ouverture (EXPERIENCE.md, motifs de composants).

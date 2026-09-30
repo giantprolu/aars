@@ -21,8 +21,8 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { journalRecipe } from '@/lib/client/recipes';
 import { MAX_PLANNED_SERVINGS } from '@/lib/basket';
-import { hourInParis } from '@/lib/date';
-import { MEALS, MEAL_LABELS, isMeal, mealForHour, type Meal } from '@/lib/meal';
+import { MEALS, MEAL_LABELS, isMeal, type Meal } from '@/lib/meal';
+import { useInitialMeal } from '@/lib/client/meal-param';
 import { formatKcal, formatGrams, scaleMacros } from '@/lib/nutrition';
 import { formatServings, suggestedServings } from '@/lib/recipe';
 import type { Macros } from '@/lib/types';
@@ -93,7 +93,8 @@ export function RecipeFlow({
   // La saisie reste du texte : « 1, » doit survivre le temps de taper le 5.
   const [servingsText, setServingsText] = useState(String(DEFAULT_SERVINGS));
   const servings = parseDecimal(servingsText);
-  const [meal, setMeal] = useState<Meal>(() => mealForHour(hourInParis()));
+  const initialMeal = useInitialMeal();
+  const [meal, setMeal] = useState<Meal>(initialMeal);
   // Tant qu'on n'a pas touché aux parts, elles suivent la cible et le repas :
   // passer du déjeuner au dîner change la part conseillée.
   const [servingsTouched, setServingsTouched] = useState(false);

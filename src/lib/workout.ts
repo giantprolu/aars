@@ -828,3 +828,33 @@ export function habitualSwaps(
   }
   return habits;
 }
+
+/**
+ * La séance du programme qui vient ensuite.
+ *
+ * Un programme se fait dans l'ordre et en boucle : A, B, C, puis A de nouveau.
+ * La suivante est donc celle qui suit la dernière séance du programme
+ * terminée, quelle que soit la date. Une séance libre ou à soi ne décale pas
+ * la rotation. Sans aucune séance faite, on commence par la première.
+ *
+ * `history` va de la plus récente à la plus ancienne, comme l'historique.
+ */
+export function nextProgramTemplate<T extends Pick<WorkoutTemplate, 'id' | 'kind'>>(
+  templates: readonly T[],
+  history: readonly Pick<WorkoutSession, 'templateId' | 'finishedAt'>[],
+): T | null {
+  const program = templates.filter((template) => template.kind === 'program');
+  if (program.length === 0) {
+    return null;
+  }
+  for (const session of history) {
+    if (session.finishedAt === null || session.templateId === null) {
+      continue;
+    }
+    const index = program.findIndex((template) => template.id === session.templateId);
+    if (index !== -1) {
+      return program[(index + 1) % program.length] ?? null;
+    }
+  }
+  return program[0] ?? null;
+}

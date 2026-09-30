@@ -16,9 +16,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { deleteFavorite, replayFavorite } from '@/lib/client/favorites';
-import { hourInParis } from '@/lib/date';
 import { favoriteTotals, type FavoriteMeal } from '@/lib/favorites';
-import { MEALS, MEAL_LABELS, isMeal, mealForHour, type Meal } from '@/lib/meal';
+import { MEALS, MEAL_LABELS, isMeal, type Meal } from '@/lib/meal';
+import { useInitialMeal } from '@/lib/client/meal-param';
 import { formatGrams, formatKcal } from '@/lib/nutrition';
 
 /**
@@ -33,7 +33,8 @@ import { formatGrams, formatKcal } from '@/lib/nutrition';
  */
 export function FavoritesFlow({ favorites }: { favorites: readonly FavoriteMeal[] }) {
   const router = useRouter();
-  const [meal, setMeal] = useState<Meal>(() => mealForHour(hourInParis()));
+  const initialMeal = useInitialMeal();
+  const [meal, setMeal] = useState<Meal>(initialMeal);
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removed, setRemoved] = useState<ReadonlySet<number>>(new Set());

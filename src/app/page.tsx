@@ -1,6 +1,5 @@
-import { CalendarIcon, DumbbellIcon, PlusIcon } from 'lucide-react';
+import { CalendarIcon, DumbbellIcon, PlusIcon, SettingsIcon } from 'lucide-react';
 import Link from 'next/link';
-import { AddFab } from '@/components/AddFab';
 import { DayDial } from '@/components/DayDial';
 import { MealJournal } from '@/components/MealJournal';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -41,11 +40,19 @@ export default async function JournalPage() {
         title="Journal"
         kicker={formatJournalDate(today)}
         action={
-          <Button asChild variant="outline" size="icon">
-            <Link href="/history" aria-label="Voir les journaux passés">
-              <CalendarIcon className="size-[19px]" />
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild variant="outline" size="icon">
+              <Link href="/history" aria-label="Voir les journaux passés">
+                <CalendarIcon className="size-[19px]" />
+              </Link>
+            </Button>
+            {/* Réglages a quitté la barre : l'écran Moi (story 15-7) le reprendra. */}
+            <Button asChild variant="outline" size="icon">
+              <Link href="/settings" aria-label="Réglages">
+                <SettingsIcon className="size-[19px]" />
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -106,7 +113,6 @@ export default async function JournalPage() {
         </p>
       ) : null}
 
-      <AddFab />
     </div>
   );
 }

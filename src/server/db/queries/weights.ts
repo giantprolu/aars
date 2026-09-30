@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, asc, eq, gte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, sql } from 'drizzle-orm';
 import { db, schema } from '../client';
 import type { WeighIn } from '@/lib/weight';
 
@@ -28,4 +28,15 @@ export async function listWeighIns(userId: number, sinceDate: string): Promise<W
     .where(and(eq(schema.weightLogs.userId, userId), gte(schema.weightLogs.day, sinceDate)))
     .orderBy(asc(schema.weightLogs.day));
   return rows.map((row) => ({ day: String(row.day).slice(0, 10), weightKg: Number(row.weightKg) }));
+}
+
+/** La dernière pesée de l'utilisateur, ou `null` s'il ne s'est jamais pesé. */
+export async function latestWeighIn(userId: number): Promise<WeighIn | null> {
+  const [row] = await db()
+    .select({ day: schema.weightLogs.day, weightKg: schema.weightLogs.weightKg })
+    .from(schema.weightLogs)
+    .where(eq(schema.weightLogs.userId, userId))
+    .orderBy(desc(schema.weightLogs.day))
+    .limit(1);
+  return row ? { day: String(row.day).slice(0, 10), weightKg: Number(row.weightKg) } : null;
 }

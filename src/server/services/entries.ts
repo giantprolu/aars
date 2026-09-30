@@ -5,7 +5,9 @@ import { hourInParis, todayInParis } from '@/lib/date';
 import { type Meal, mealForHour } from '@/lib/meal';
 import {
   deleteEntry,
+  findEntry,
   insertEntry,
+  listRecentEntries,
   listDayTotals,
   listEntriesForDate,
   recentQuantities,
@@ -100,4 +102,62 @@ export function quantityShortcuts(
   foodLabel: string,
 ): Promise<number[]> {
   return recentQuantities(userId, sourceKind, sourceRef, foodLabel);
+}
+
+/** Entrées relues pour trouver les aliments récents : assez pour en isoler trois distincts. */
+const RECENT_WINDOW = 60;
+
+/**
+ * Les derniers aliments distincts notés, la dernière saisie de chacun.
+ *
+ * Deux saisies du même aliment comptent pour un : la référence le dit quand
+ * elle existe, la désignation sinon (une entrée faite à la main n'en a pas).
+ * C'est la dernière quantité qui est gardée, celle qu'on refait d'un appui.
+ */
+export async function recentFoods(userId: number, count: number): Promise<Entry[]> {
+  const seen = new Set<string>();
+  const kept: Entry[] = [];
+  for (const entry of await listRecentEntries(userId, RECENT_WINDOW)) {
+    const key = `${entry.sourceKind}:${entry.sourceRef ?? entry.foodLabel}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    kept.push(entry);
+    if (kept.length === count) {
+      break;
+    }
+  }
+  return kept;
+}
+
+export type RepeatEntryResult = { kind: 'created'; entry: Entry } | { kind: 'not_found' };
+
+/**
+ * Refait une entrée passée, aujourd'hui et au repas choisi.
+ *
+ * Les macros sont recopiées telles quelles : ce sont celles, figées, de la
+ * saisie d'origine (AD-1). Rien n'est recalculé, la même quantité du même
+ * aliment vaut la même chose.
+ */
+export async function repeatEntry(
+  userId: number,
+  entryId: number,
+  meal: Meal,
+): Promise<RepeatEntryResult> {
+  const source = await findEntry(userId, entryId);
+  if (source === null) {
+    return { kind: 'not_found' };
+  }
+  const entry = await insertEntry({
+    userId,
+    entryDate: todayInParis(),
+    meal,
+    foodLabel: source.foodLabel,
+    quantityG: source.quantityG,
+    macros: source.macros,
+    sourceKind: source.sourceKind,
+    sourceRef: source.sourceRef,
+  });
+  return { kind: 'created', entry };
 }

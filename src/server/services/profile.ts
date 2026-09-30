@@ -6,7 +6,7 @@ import {
   type EnergyTarget,
   type TrainingCycle,
 } from '@/lib/energy';
-import { isValidWeighIn, weeklyWeights, type WeekWeight } from '@/lib/weight';
+import { isValidWeighIn, weeklyWeights, type WeekWeight, type WeighIn } from '@/lib/weight';
 import {
   findProfile,
   saveProfile,
@@ -15,7 +15,7 @@ import {
 } from '../db/queries/profiles';
 import { activityBaseline, lastActivity } from '../db/queries/activity';
 import { trainingDates } from '../db/queries/workouts';
-import { listWeighIns, upsertWeighIn } from '../db/queries/weights';
+import { latestWeighIn, listWeighIns, upsertWeighIn } from '../db/queries/weights';
 
 /**
  * Service du profil et de la cible calorique.
@@ -193,4 +193,14 @@ export async function weightHistory(userId: number, weeks: number): Promise<Week
   const today = todayInParis();
   const since = shiftDate(today, -7 * weeks);
   return weeklyWeights(await listWeighIns(userId, since), weeks, today);
+}
+
+/** La dernière pesée, pour la proposer comme point de départ de la suivante. */
+export function lastWeighIn(userId: number): Promise<WeighIn | null> {
+  return latestWeighIn(userId);
+}
+
+/** Les pesées une à une depuis `sinceDate`, la plus ancienne en tête. */
+export function weighInsSince(userId: number, sinceDate: string): Promise<WeighIn[]> {
+  return listWeighIns(userId, sinceDate);
 }

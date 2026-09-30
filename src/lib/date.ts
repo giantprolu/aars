@@ -185,3 +185,63 @@ export function formatWeekRange(startIsoDate: string): string {
     : formatDayMonth(startIsoDate);
   return `du ${start} au ${formatDayMonth(end)}`;
 }
+
+const shortDayMonthFormatter = new Intl.DateTimeFormat('fr-FR', {
+  timeZone: 'UTC',
+  day: 'numeric',
+  month: 'short',
+});
+
+/** « 29 sept. », pour les surtitres serrés. */
+export function formatShortDayMonth(isoDate: string): string {
+  return shortDayMonthFormatter.format(new Date(`${isoDate}T00:00:00Z`));
+}
+
+/**
+ * « aujourd'hui », « hier », le nom du jour dans la semaine écoulée, sinon la
+ * date courte. C'est ainsi qu'on parle d'une pesée ou d'une séance récente :
+ * « jeudi » se lit plus vite que « 25 septembre ».
+ */
+export function formatRecentDay(isoDate: string, today: string = todayInParis()): string {
+  if (isoDate === today) {
+    return 'aujourd’hui';
+  }
+  if (isoDate === shiftDate(today, -1)) {
+    return 'hier';
+  }
+  if (isoDate > shiftDate(today, -7) && isoDate < today) {
+    return formatWeekday(isoDate);
+  }
+  return formatShortDayMonth(isoDate);
+}
+
+/** « 29 sept. – 5 oct. », la semaine en surtitre court. */
+export function formatShortWeekRange(startIsoDate: string): string {
+  return `${formatShortDayMonth(startIsoDate)} – ${formatShortDayMonth(shiftDate(startIsoDate, 6))}`;
+}
+
+/** Numéro de semaine ISO 8601 : celle qui contient le premier jeudi de l'année est la 1. */
+export function isoWeekNumber(isoDate: string): number {
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  const weekday = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - weekday + 3);
+  const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+  const firstWeekday = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstWeekday + 3);
+  return 1 + Math.round((date.getTime() - firstThursday.getTime()) / (7 * 86_400_000));
+}
+
+const weekdayInitials = ['D', 'L', 'M', 'M', 'J', 'V', 'S'] as const;
+const weekdayShort = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'] as const;
+
+/** « L 29 » : l'initiale du jour et son quantième, pour la bande de la semaine. */
+export function formatDayInitial(isoDate: string): string {
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  return `${weekdayInitials[date.getUTCDay()]} ${date.getUTCDate()}`;
+}
+
+/** « Lun 29 » : le jour abrégé et son quantième, pour les lignes du plan. */
+export function formatDayShort(isoDate: string): string {
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  return `${weekdayShort[date.getUTCDay()]} ${date.getUTCDate()}`;
+}

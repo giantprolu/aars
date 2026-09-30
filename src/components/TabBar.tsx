@@ -1,15 +1,10 @@
 'use client';
 
-import {
-  DumbbellIcon,
-  NotebookTextIcon,
-  SettingsIcon,
-  UtensilsIcon,
-  type LucideIcon,
-} from 'lucide-react';
+import { DumbbellIcon, SunIcon, UsersIcon, UtensilsIcon, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { AddFab } from './AddFab';
 
 /**
  * Barre d'onglets basse, à quatre destinations.
@@ -26,20 +21,28 @@ interface Destination {
   href: string;
   label: string;
   icon: LucideIcon;
+  /** Couleur de l'onglet actif : celle de son domaine. */
+  active: string;
 }
 
-const DESTINATIONS: Destination[] = [
-  { href: '/', label: 'Journal', icon: NotebookTextIcon },
-  { href: '/kitchen', label: 'Cuisine', icon: UtensilsIcon },
-  { href: '/training', label: 'Sport', icon: DumbbellIcon },
-  { href: '/settings', label: 'Réglages', icon: SettingsIcon },
+// Deux destinations de part et d'autre du bouton +, comme sur la maquette 5a.
+const LEFT: Destination[] = [
+  { href: '/', label: 'Aujourd’hui', icon: SunIcon, active: 'text-nutri-ink' },
+  { href: '/kitchen', label: 'Cuisine', icon: UtensilsIcon, active: 'text-cook-ink' },
+];
+const RIGHT: Destination[] = [
+  { href: '/training', label: 'Sport', icon: DumbbellIcon, active: 'text-sport-ink' },
+  { href: '/training/community', label: 'Communauté', icon: UsersIcon, active: 'text-social-ink' },
 ];
 
 function isActive(pathname: string, href: string): boolean {
   if (href === '/') {
     return pathname === '/' || pathname.startsWith('/history');
   }
-  return pathname.startsWith(href) || (href === '/settings' && pathname.startsWith('/profile'));
+  if (href === '/training') {
+    return pathname.startsWith('/training') && !pathname.startsWith('/training/community');
+  }
+  return pathname.startsWith(href);
 }
 
 export function TabBar() {
@@ -68,28 +71,34 @@ export function TabBar() {
     */
     <nav
       aria-label="Navigation principale"
-      className="sticky bottom-0 z-40 border-t bg-background/85 pb-[var(--safe-bottom)] backdrop-blur-xl backdrop-saturate-150 [body:has([data-bottom-bar])_&]:hidden"
+      className="sticky bottom-0 z-40 border-t bg-card/95 pb-[var(--safe-bottom)] [body:has([data-bottom-bar])_&]:hidden"
     >
-      <div className="mx-auto flex h-14 max-w-lg items-stretch px-1.5">
-        {DESTINATIONS.map((destination) => {
-          const active = isActive(pathname, destination.href);
-          const Icon = destination.icon;
-          return (
-            <Link
-              key={destination.href}
-              href={destination.href}
-              aria-current={active ? 'page' : undefined}
-              className={cn(
-                'flex min-w-11 flex-1 flex-col items-center justify-center gap-[3px] text-[10.5px] font-medium text-muted-foreground transition-colors',
-                active && 'text-foreground',
-              )}
-            >
-              <Icon aria-hidden className="size-[21px]" strokeWidth={1.75} />
-              <span>{destination.label}</span>
-            </Link>
-          );
-        })}
+      <div className="mx-auto flex h-[58px] max-w-lg items-center px-1">
+        {LEFT.map((destination) => renderTab(destination, pathname))}
+        <div className="flex flex-1 justify-center">
+          <AddFab />
+        </div>
+        {RIGHT.map((destination) => renderTab(destination, pathname))}
       </div>
     </nav>
+  );
+}
+
+function renderTab(destination: Destination, pathname: string) {
+  const active = isActive(pathname, destination.href);
+  const Icon = destination.icon;
+  return (
+    <Link
+      key={destination.href}
+      href={destination.href}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'flex min-w-11 flex-1 flex-col items-center justify-center gap-[3px] text-[10.5px] font-medium text-nav transition-colors',
+        active && `font-bold ${destination.active}`,
+      )}
+    >
+      <Icon aria-hidden className="size-[22px]" strokeWidth={1.9} />
+      <span>{destination.label}</span>
+    </Link>
   );
 }

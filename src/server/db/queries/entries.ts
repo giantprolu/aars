@@ -55,6 +55,27 @@ export async function listEntriesForDate(
   return rows.map(toEntry);
 }
 
+/** Les dernières entrées de l'utilisateur, toutes dates confondues, la plus récente en tête. */
+export async function listRecentEntries(userId: number, limit: number): Promise<Entry[]> {
+  const rows = await db()
+    .select()
+    .from(schema.entries)
+    .where(eq(schema.entries.userId, userId))
+    .orderBy(desc(schema.entries.createdAt), desc(schema.entries.id))
+    .limit(limit);
+  return rows.map(toEntry);
+}
+
+/** Une entrée de l'utilisateur, ou `null` si elle n'est pas la sienne. */
+export async function findEntry(userId: number, id: number): Promise<Entry | null> {
+  const [row] = await db()
+    .select()
+    .from(schema.entries)
+    .where(and(eq(schema.entries.userId, userId), eq(schema.entries.id, id)))
+    .limit(1);
+  return row ? toEntry(row) : null;
+}
+
 /** Totaux d'une date, sommés par Postgres (FR-4, AD-9). */
 export async function totalsForDate(userId: number, entryDate: string): Promise<DayTotals> {
   const [row] = await db()
