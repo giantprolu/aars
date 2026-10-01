@@ -1,7 +1,16 @@
 # Projet : NutriPerso
 
-App PWA de suivi alimentaire. Comptes distincts, inscription libre.
-Pas d'App Store.
+App de suivi alimentaire. Comptes distincts, inscription libre.
+PWA d'abord ; des apps natives iOS et Android sont prévues (décision du
+01/10/2026, qui lève l'ancien « Pas d'App Store »).
+
+## Organisation du dépôt (monorepo npm workspaces)
+- `apps/web` : l'app Next.js, PWA et API. Tout ce qui suit sur la stack la
+  concerne. Les commandes `npm run …` se lancent à la racine et lui délèguent
+- `apps/ios` : SwiftUI, `apps/android` : Kotlin + Compose. Aucun code partagé
+  avec le web : elles consomment l'API HTTP
+- `packages/api-contract` : contrat OpenAPI de l'API, seul point commun entre
+  la PWA et les apps natives
 
 Le projet a commencé mono-utilisateur avec un mot de passe unique en variable
 d'environnement. Cette décision a été renversée le 11/09/2026 : chaque personne
@@ -12,7 +21,7 @@ d'une seule personne. Poids, âge et repas de tiers sont des données de santé.
 
 ## Stack imposée
 - Next.js 15 (App Router) + TypeScript strict
-- Tailwind + shadcn/ui (composants dans `src/components/ui`, icônes lucide).
+- Tailwind + shadcn/ui (composants dans `apps/web/src/components/ui`, icônes lucide).
   Aucun autre kit de composants : un écran se compose des primitives shadcn
 - Postgres (Neon) + Drizzle ORM, extensions `pg_trgm` et `unaccent`
 - Déploiement Vercel

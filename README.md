@@ -7,6 +7,19 @@ Le sprint BMAD est terminé : 7 epics, 15 stories. Les artefacts de conception
 vivent dans `_bmad-output/`, le suivi dans
 `_bmad-output/implementation-artifacts/sprint-status.yaml`.
 
+## Organisation du dépôt
+
+Monorepo npm workspaces.
+
+| Dossier | Contenu |
+|---|---|
+| `apps/web` | App Next.js : PWA et API |
+| `apps/ios` | App native SwiftUI (à créer) |
+| `apps/android` | App native Kotlin + Compose (à créer) |
+| `packages/api-contract` | Contrat OpenAPI partagé avec les apps natives (à écrire) |
+
+Sauf mention contraire, les chemins ci-dessous sont relatifs à `apps/web`.
+
 ## Ce qu'il reste à faire pour que l'application tourne
 
 Le code compile et l'analyse statique passe, mais rien n'a pu être exécuté
@@ -17,7 +30,7 @@ Le détail de chaque blocage est dans `BLOCKERS.md`.
 connexion, puis :
 
 ```bash
-cp .env.example .env.local
+cp apps/web/.env.example apps/web/.env.local
 # renseigner DATABASE_URL, APP_PASSWORD et SESSION_SECRET
 npm run db:migrate
 ```
@@ -28,8 +41,8 @@ npm run db:migrate
 site de l'ANSES et son téléchargement demande une intervention humaine.
 
 ```bash
-# placer le CSV dans data/ciqual.csv
-npm run import:ciqual -- data/ciqual.csv
+# placer le CSV dans apps/web/data/ciqual.csv
+npm run import:ciqual -w @nutri/web -- data/ciqual.csv
 ```
 
 Le script est idempotent. Le relancer met à jour les lignes existantes sans
@@ -50,6 +63,10 @@ git push -u origin bmad/dev
 ```
 
 ## Commandes
+
+À lancer à la racine. `dev`, `build`, `start`, `lint`, `typecheck`,
+`db:generate` et `db:migrate` y sont relayées vers l'app web ; les autres
+demandent `-w @nutri/web` (par exemple `npm run verify -w @nutri/web`).
 
 | Commande | Rôle |
 |---|---|

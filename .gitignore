@@ -14,11 +14,22 @@ yarn-error.log*
 next-env.d.ts
 .venv/
 __pycache__/
-public/sw.js
-public/swe-worker-*.js
-public/zxing/
+apps/web/public/sw.js
+apps/web/public/swe-worker-*.js
+apps/web/public/zxing/
 
 # Table CIQUAL de l'ANSES : telechargee, jamais versionnee (B-4)
-data/*.csv
-data/*.xls
-data/*.xlsx
+apps/web/data/*.csv
+apps/web/data/*.xls
+apps/web/data/*.xlsx
+
+# iOS (Xcode)
+xcuserdata/
+DerivedData/
+*.xcuserstate
+
+# Android (Gradle)
+.gradle/
+local.properties
+*.apk
+*.aab
