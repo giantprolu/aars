@@ -179,6 +179,37 @@ class Api(private val tokens: TokenStore) {
         json.encodeToString(CheckItemBody.serializer(), CheckItemBody(checked, null, item.refKind, item.refValue)),
     )
 
+    suspend fun generateShopping(weekStart: String) =
+        send("POST", "/api/shopping", json.encodeToString(FromBody.serializer(), FromBody(weekStart)))
+
+    suspend fun addShoppingItem(weekStart: String, hit: SearchHit, quantityG: Int): ApiResult<Unit> {
+        cacheIfOff(hit)
+        val body = AddItemBody(weekStart, hit.kind, hit.ref, hit.name, quantityG)
+        return send("POST", "/api/shopping/items", json.encodeToString(AddItemBody.serializer(), body))
+    }
+
+    suspend fun scanMatch(barcode: String, weekStart: String) =
+        get("/api/shopping/scan?barcode=$barcode&from=$weekStart", ScanMatch.serializer())
+
+    suspend fun checkItemScanned(item: ShoppingItemRow, barcode: String) = send(
+        "PATCH", "/api/shopping/items/${item.id}",
+        json.encodeToString(CheckItemBody.serializer(), CheckItemBody(true, barcode, item.refKind, item.refValue)),
+    )
+
+    /** Une recette écrite sur l'app ; ses ingrédients viennent de la recherche. */
+    suspend fun createRecipe(body: RecipeCreateBody, hits: List<SearchHit>): ApiResult<Unit> {
+        hits.forEach { cacheIfOff(it) }
+        return send("POST", "/api/recipes", json.encodeToString(RecipeCreateBody.serializer(), body))
+    }
+
+    /** Un produit venu d'Open Food Facts doit être en base avant d'être référencé. */
+    private suspend fun cacheIfOff(hit: SearchHit) {
+        if (hit.origin == "off") {
+            val product = CacheProductBody(hit.ref, hit.name, hit.per100g, hit.servingSizeG, "off")
+            send("POST", "/api/products", json.encodeToString(CacheProductBody.serializer(), product))
+        }
+    }
+
     suspend fun kudos(sessionId: Long, given: Boolean) =
         send("PUT", "/api/social/kudos", json.encodeToString(KudosBody.serializer(), KudosBody(sessionId, given)))
 

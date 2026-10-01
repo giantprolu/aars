@@ -200,9 +200,9 @@ fun BoxScope.ScannerOverlay(visible: Boolean, model: AppModel, onDismiss: () -> 
     }
 }
 
-/** L'aperçu caméra plein écran ; chaque code lu remonte une seule fois tant que [paused] est vrai. */
+/** L'aperçu caméra plein écran ; aucun code ne remonte tant que [paused] est vrai. */
 @Composable
-private fun CameraPreview(paused: Boolean, onBarcode: (String) -> Unit) {
+fun CameraPreview(paused: Boolean, onBarcode: (String) -> Unit) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current
     val latest by rememberUpdatedState(onBarcode)

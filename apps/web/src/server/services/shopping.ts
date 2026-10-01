@@ -239,6 +239,26 @@ export function addItem(
   return insertShoppingItem(userId, listId, item);
 }
 
+/**
+ * Ajoute à la main un article à la liste ouverte d'une semaine, rangé au
+ * même rayon que s'il venait d'une recette. `null` sans liste pour la semaine.
+ */
+export async function addManualItem(
+  userId: number,
+  weekStart: string,
+  item: { refKind: 'ciqual' | 'product'; refValue: string; label: string; quantityG: number },
+): Promise<number | null> {
+  const list = await listForWeek(userId, weekStart);
+  if (list === null) {
+    return null;
+  }
+  const groups = item.refKind === 'ciqual' ? await groupCodesFor([item.refValue]) : new Map<string, string>();
+  return addItem(userId, list.id, {
+    ...item,
+    aisle: aisleFor(item.label, groups.get(item.refValue) ?? null),
+  });
+}
+
 export interface CheckItemInput {
   itemId: number;
   checked: boolean;

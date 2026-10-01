@@ -82,7 +82,14 @@ data class PlanSlot(val date: LocalDate, val meal: Meal)
 
 /** Cuisine (C3) : Plan, Recettes, Courses, sur la semaine en cours. */
 @Composable
-fun KitchenScreen(model: AppModel, onMe: () -> Unit, onPlanSlot: (PlanSlot, List<BasketRow>) -> Unit) {
+fun KitchenScreen(
+    model: AppModel,
+    onMe: () -> Unit,
+    onPlanSlot: (PlanSlot, List<BasketRow>) -> Unit,
+    onScanCheck: (String, List<ShoppingItemRow>) -> Unit,
+    onAddItem: (String) -> Unit,
+    onNewRecipe: () -> Unit,
+) {
     val kitchen = Domains.kitchen
     val scope = rememberCoroutineScope()
     var section by rememberSaveable { mutableStateOf(0) }
@@ -139,12 +146,35 @@ fun KitchenScreen(model: AppModel, onMe: () -> Unit, onPlanSlot: (PlanSlot, List
                     },
                 )
             }
-            1 -> RecipesSection(model, week)
+            1 -> RecipesSection(model, week, onNewRecipe)
             else -> if (LoadedGate(shopping)) {
                 if (shopping.value?.list == null) {
-                    EmptyCard("Pas encore de liste", "Elle se compose à partir des plats choisis pour la semaine, depuis l'app web pour l'instant.")
+                    EmptyCard("Pas encore de liste", "Elle se compose à partir des plats choisis pour la semaine.")
+                    fr.nutriperso.app.ui.components.PrimaryButton("Composer la liste de courses", kitchen, {
+                        scope.launch {
+                            when (val result = model.api.generateShopping(week)) {
+                                is ApiResult.Ok -> model.bump()
+                                is ApiResult.Failed -> model.toast(result.message)
+                            }
+                        }
+                    }, height = 48.dp, textSize = 15f)
                 } else {
-                    ShoppingSection(items, ::isChecked) { item, checked ->
+                    ShoppingSection(
+                        items, ::isChecked,
+                        onScan = { onScanCheck(week, items) },
+                        onAddItem = { onAddItem(week) },
+                        onRegenerate = {
+                            scope.launch {
+                                when (val result = model.api.generateShopping(week)) {
+                                    is ApiResult.Ok -> {
+                                        model.toast("Liste recomposée depuis les plats de la semaine")
+                                        model.bump()
+                                    }
+                                    is ApiResult.Failed -> model.toast(result.message)
+                                }
+                            }
+                        },
+                    ) { item, checked ->
                         checking[item.id] = checked
                         scope.launch {
                             if (model.api.checkItem(item, checked) is ApiResult.Failed) {
@@ -293,7 +323,7 @@ fun StatTile(
 
 /** Les recettes de l'utilisateur ; un toucher ajoute deux parts au panier de la semaine. */
 @Composable
-private fun RecipesSection(model: AppModel, week: String) {
+private fun RecipesSection(model: AppModel, week: String, onNewRecipe: () -> Unit) {
     val kitchen = Domains.kitchen
     val scope = rememberCoroutineScope()
     val recipes = rememberLoaded(model.revision) { model.api.recipes() }
@@ -310,12 +340,21 @@ private fun RecipesSection(model: AppModel, week: String) {
         focusColor = kitchen.textOnLight,
         textSize = 14f,
     )
+    Row(
+        Modifier.fillMaxWidth().tinted(kitchen.soft, Radius.tile).tap(onClick = onNewRecipe).padding(12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(R.drawable.lucide_plus, 16.dp, kitchen.textOnLight)
+        Spacer(Modifier.width(6.dp))
+        Txt("Nouvelle recette", nt(14f, 600, kitchen.textOnLight))
+    }
     if (!LoadedGate(recipes)) return
     val shown = recipes.value?.recipes.orEmpty().filter { query.isBlank() || it.name.contains(query.trim(), ignoreCase = true) }
     if (shown.isEmpty()) {
         EmptyCard(
             if (query.isBlank()) "Aucune recette" else "Aucun résultat",
-            if (query.isBlank()) "Tes recettes, créées depuis l'app web, apparaîtront ici." else "Essaie un autre mot.",
+            if (query.isBlank()) "Crée ta première recette avec le bouton ci-dessus." else "Essaie un autre mot.",
         )
         return
     }
@@ -364,6 +403,9 @@ private fun RecipeCard(recipe: RecipeRow, modifier: Modifier, onClick: () -> Uni
 private fun ShoppingSection(
     items: List<ShoppingItemRow>,
     isChecked: (ShoppingItemRow) -> Boolean,
+    onScan: () -> Unit,
+    onAddItem: () -> Unit,
+    onRegenerate: () -> Unit,
     onToggle: (ShoppingItemRow, Boolean) -> Unit,
 ) {
     val kitchen = Domains.kitchen
@@ -375,6 +417,21 @@ private fun ShoppingSection(
             Txt("$done / ${items.size}", nt(13f, 600, kitchen.textOnLight))
         }
         ProgressTrack(done / items.size.coerceAtLeast(1).toFloat(), kitchen.soft, kitchen.fill, 7.dp)
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(
+            Triple("Scanner pour cocher", R.drawable.lucide_scan_barcode, onScan),
+            Triple("Un article", R.drawable.lucide_plus, onAddItem),
+        ).forEach { (label, icon, action) ->
+            Row(
+                Modifier.weight(1f).tinted(kitchen.soft, Radius.tile).tap(onClick = action).padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(icon, 18.dp, kitchen.textOnLight)
+                Txt(label, nt(13f, 600, kitchen.textOnLight), maxLines = 1)
+            }
+        }
     }
     items.groupBy { it.aisleLabel }.forEach { (aisle, rows) ->
         Column(Modifier.fillMaxWidth().card().padding(horizontal = 14.dp, vertical = 4.dp)) {
@@ -409,6 +466,12 @@ private fun ShoppingSection(
             }
         }
     }
+    Txt(
+        "Recomposer depuis les plats de la semaine",
+        nt(13f, 600, kitchen.textOnLight),
+        Modifier.fillMaxWidth().tap(onClick = onRegenerate).padding(10.dp),
+        align = androidx.compose.ui.text.style.TextAlign.Center,
+    )
 }
 
 /** Placer un plat choisi sur une case vide : la feuille. */

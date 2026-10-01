@@ -61,6 +61,9 @@ import fr.nutriperso.app.R
 import fr.nutriperso.app.data.ApiResult
 import fr.nutriperso.app.data.QuickSession
 import fr.nutriperso.app.data.SearchHit
+import fr.nutriperso.app.ui.kitchen.AddItemScreen
+import fr.nutriperso.app.ui.kitchen.RecipeEditorScreen
+import fr.nutriperso.app.ui.kitchen.ScanCheckScreen
 import fr.nutriperso.app.ui.onboarding.OnboardingFlow
 import fr.nutriperso.app.ui.training.ComposeScreen
 import fr.nutriperso.app.ui.training.ImportScreen
@@ -111,6 +114,7 @@ fun MainShell(model: AppModel) {
     var fabOpen by remember { mutableStateOf(false) }
     var sheet by remember { mutableStateOf<AddSheet?>(null) }
     var scanned by remember { mutableStateOf<SearchHit?>(null) }
+    var kitchenFlow by remember { mutableStateOf<KitchenFlow?>(null) }
     var historyDate by rememberSaveable { mutableStateOf<String?>(null) }
     var editingGoal by rememberSaveable { mutableStateOf(false) }
     var workoutId by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -173,10 +177,17 @@ fun MainShell(model: AppModel) {
                     onHistory = { stack = listOf(Pushed.History) },
                     onEditGoal = { editingGoal = true },
                 )
-                Tab.Kitchen -> KitchenScreen(model, onMe = openMe, onPlanSlot = { slot, basket ->
-                    planBasket = basket
-                    planSlot = slot
-                })
+                Tab.Kitchen -> KitchenScreen(
+                    model,
+                    onMe = openMe,
+                    onPlanSlot = { slot, basket ->
+                        planBasket = basket
+                        planSlot = slot
+                    },
+                    onScanCheck = { week, items -> kitchenFlow = KitchenFlow.ScanCheck(week, items) },
+                    onAddItem = { week -> kitchenFlow = KitchenFlow.AddItem(week) },
+                    onNewRecipe = { kitchenFlow = KitchenFlow.NewRecipe },
+                )
                 Tab.Training -> TrainingScreen(model, onMe = openMe, onStart = { pick(AddSheet.Session) })
                 Tab.Community -> CommunityScreen(model, onMe = openMe, onPeople = { stack = listOf(Pushed.People) })
             }
@@ -266,6 +277,13 @@ fun MainShell(model: AppModel) {
             OnboardingFlow(model, editGoal = true, onClose = { editingGoal = false })
         }
 
+        when (val current = kitchenFlow) {
+            is KitchenFlow.ScanCheck -> ScanCheckScreen(model, current.week, current.items, onClose = { kitchenFlow = null })
+            is KitchenFlow.AddItem -> AddItemScreen(model, current.week, onClose = { kitchenFlow = null })
+            KitchenFlow.NewRecipe -> RecipeEditorScreen(model, onClose = { kitchenFlow = null })
+            null -> Unit
+        }
+
         when (flow) {
             TrainingFlow.Compose -> ComposeScreen(model, onClose = { flow = null }, onStarted = { id ->
                 flow = null
@@ -295,6 +313,13 @@ fun MainShell(model: AppModel) {
 }
 
 enum class TrainingFlow { Compose, Import }
+
+/** Les écrans plein écran de Cuisine. */
+sealed interface KitchenFlow {
+    data class ScanCheck(val week: String, val items: List<fr.nutriperso.app.data.ShoppingItemRow>) : KitchenFlow
+    data class AddItem(val week: String) : KitchenFlow
+    data object NewRecipe : KitchenFlow
+}
 
 /** La barre d'onglets : 58 de haut, fond crème à 96 %, filet en haut, place vide au centre pour le +. */
 @Composable

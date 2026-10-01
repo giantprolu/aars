@@ -1,7 +1,6 @@
 import { apiError } from '@/server/errors';
 import { hasSession } from '@/server/guard';
-import { findProduct, upsertProduct } from '@/server/db/queries/products';
-import { lookupBarcode } from '@/lib/client/openfoodfacts';
+import { resolveBarcodeOnServer } from '@/server/services/products';
 
 export const runtime = 'nodejs';
 
@@ -27,28 +26,6 @@ export async function GET(
     return apiError('invalid_input');
   }
 
-  const cached = await findProduct(barcode);
-  if (cached) {
-    return Response.json({ kind: 'found', product: cached });
-  }
-
-  const lookup = await lookupBarcode(barcode);
-  switch (lookup.kind) {
-    case 'found': {
-      const product = await upsertProduct({
-        barcode: lookup.product.barcode,
-        name: lookup.product.name,
-        per100g: lookup.product.per100g,
-        servingSizeG: lookup.product.servingSizeG,
-        source: 'off',
-      });
-      return Response.json({ kind: 'found', product });
-    }
-    case 'incomplete':
-      return Response.json({ kind: 'incomplete', partial: lookup.partial });
-    case 'not_found':
-      return Response.json({ kind: 'not_found' });
-    case 'error':
-      return apiError('upstream_unavailable');
-  }
+  const result = await resolveBarcodeOnServer(barcode);
+  return result.kind === 'error' ? apiError('upstream_unavailable') : Response.json(result);
 }

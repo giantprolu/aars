@@ -631,3 +631,35 @@ data class PeopleResponse(val people: List<FoundPerson> = emptyList())
 
 @Serializable
 data class RelationBody(val action: String, val userId: Long)
+
+// Cuisine, écritures.
+
+@Serializable
+data class FromBody(val from: String)
+
+@Serializable
+data class AddItemBody(val from: String, val refKind: String, val refValue: String, val label: String, val quantityG: Int)
+
+@Serializable
+data class ScanMatch(val barcode: String, val productName: String? = null, val suggestedItemId: Long? = null)
+
+@Serializable
+data class IngredientBody(
+    val refKind: String,
+    val refValue: String,
+    val label: String,
+    val quantityG: Int,
+    val unitName: String? = null,
+    val unitGrams: Double? = null,
+)
+
+@Serializable
+data class RecipeCreateBody(
+    val action: String = "create",
+    val name: String,
+    val servings: Double,
+    val steps: List<String>,
+    val prepMinutes: Int?,
+    val notes: String?,
+    val ingredients: List<IngredientBody>,
+)
