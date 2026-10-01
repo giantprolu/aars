@@ -55,6 +55,21 @@ recopie d'office). À défaut, extraire ces fichiers avec
 les convertir en `{ "lose": […], "maintain": […], "gain": […] }`, puis
 lancer l'import.
 
+**Photos des plats.** Elles sont dans Vercel Blob, et `catalog_meals.image_url`
+pointe vers elles. On les génère à la main (prompts dans
+`docs/prompts-photos-plats.md`), on les nomme `<slug>.png`, on les met dans un
+dossier, puis :
+
+```bash
+npm run upload:photos -w @nutri/web -- chemin/vers/dossier
+```
+
+Le script les réduit à 1200 px en WebP, les envoie et remplace l'éventuelle
+photo précédente. Il demande `BLOB_READ_WRITE_TOKEN` dans `.env.local`. L'app
+n'en a pas besoin : elle ne lit que des URL publiques. Les URL s'écrivent dans
+la base de `DATABASE_URL` : c'est celle de production qu'il faut viser pour
+que l'app en ligne affiche les photos.
+
 **2. Importer la table CIQUAL.** Le fichier n'est pas versionné : il vient du
 site de l'ANSES et son téléchargement demande une intervention humaine.
 
@@ -99,6 +114,7 @@ demandent `-w @nutri/web` (par exemple `npm run verify -w @nutri/web`).
 | `npm run import:ciqual` | Importe la table CIQUAL |
 | `npm run seed:catalog` | Importe des plats du catalogue depuis un JSON |
 | `npm run verify:catalog` | Vérifie le catalogue contre CIQUAL |
+| `npm run upload:photos` | Envoie les photos des plats dans Vercel Blob |
 
 ## Ce qui structure le code
 

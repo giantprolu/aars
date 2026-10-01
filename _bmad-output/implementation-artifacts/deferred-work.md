@@ -7,3 +7,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-catalogue-en-base.md`
   summary: Couvrir par un test automatisé l'ordre rétabli, le dédoublonnage et l'abandon des slugs inconnus dans chooseCatalogMeals.
   evidence: Aucun harnais de test avec base dans apps/web ; vérifié à la main le 02/10/2026 (POST /api/basket → 201, slug inconnu ignoré).
+- source_spec: `_bmad-output/implementation-artifacts/spec-photos-catalogue.md`
+  summary: Tester la jointure recettes ↔ catalogue (recette maison toujours rendue, imageUrl nul ou posé) et fixer imageUrl dans le contrat d'API commun.
+  evidence: Aucun harnais de test avec base, et packages/api-contract n'est pas encore écrit ; vérifié à la main le 02/10/2026.

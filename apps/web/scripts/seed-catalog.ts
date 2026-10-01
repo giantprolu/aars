@@ -108,6 +108,8 @@ for (const [goal, meals] of Object.entries(parsed.data)) {
     // Un plat qui change d'objectif repart en fin de liste : son ancien rang
     // n'a pas de sens dans l'autre objectif.
     const keepsRank = known !== undefined && known.goal === goal;
+    // `image_url` n'y figure pas, et c'est voulu : `values` sert aussi de `set`
+    // à l'upsert, et un import ne doit jamais effacer une photo envoyée.
     const values = {
       goal,
       position: keepsRank ? known.position : next,

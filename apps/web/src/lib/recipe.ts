@@ -128,6 +128,11 @@ export interface Recipe {
   prepMinutes: number | null;
   notes: string | null;
   ingredients: RecipeIngredient[];
+  /**
+   * Photo du plat du catalogue dont la recette est la copie ; `null` pour une
+   * recette écrite à la main, ou un plat encore sans photo.
+   */
+  imageUrl: string | null;
 }
 
 /** Bornes de garde-fou, partagées par le formulaire et la validation serveur. */

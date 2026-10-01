@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -37,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import fr.nutriperso.app.AppModel
 import fr.nutriperso.app.Meal
 import fr.nutriperso.app.R
@@ -384,7 +386,13 @@ private fun RecipesSection(model: AppModel, week: String, onNewRecipe: () -> Uni
 private fun RecipeCard(recipe: RecipeRow, modifier: Modifier, onClick: () -> Unit) {
     val kitchen = Domains.kitchen
     Column(modifier.card(Radius.tile).tap(onClick = onClick)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(1.3f).clip(RoundedCornerShape(topStart = Radius.tile, topEnd = Radius.tile)).photoStripes(kitchen.soft, kitchen.seg))
+        // Le motif reste dessous : il tient lieu de photo pendant le chargement,
+        // et pour toute recette qui n'en a pas.
+        Box(Modifier.fillMaxWidth().aspectRatio(1.3f).clip(RoundedCornerShape(topStart = Radius.tile, topEnd = Radius.tile)).photoStripes(kitchen.soft, kitchen.seg)) {
+            recipe.imageUrl?.let { url ->
+                AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
+            }
+        }
         Column(Modifier.padding(10.dp)) {
             Txt(recipe.name, nt(14f, 600, line = 1.25f), maxLines = 2)
             Txt(

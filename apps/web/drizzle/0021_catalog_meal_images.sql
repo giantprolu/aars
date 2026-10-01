@@ -1,0 +1,1 @@
+ALTER TABLE "catalog_meals" ADD COLUMN "image_url" text;

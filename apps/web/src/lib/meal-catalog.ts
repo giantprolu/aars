@@ -79,6 +79,8 @@ export interface CatalogMeal {
   steps: string[];
   ingredients: CatalogIngredient[];
   estimate: CatalogEstimate;
+  /** Photo du plat, servie par Vercel Blob ; `null` tant qu'il n'en a pas. */
+  imageUrl: string | null;
 }
 
 /**

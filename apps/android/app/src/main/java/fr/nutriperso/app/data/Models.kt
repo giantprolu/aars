@@ -308,6 +308,8 @@ data class RecipeRow(
     val servings: Double,
     val prepMinutes: Int? = null,
     val kcalPerServing: Double = 0.0,
+    /** Photo du plat du catalogue ; absente pour une recette écrite à la main. */
+    val imageUrl: String? = null,
 )
 
 @Serializable

@@ -2,6 +2,7 @@ import { ChefHatIcon, ClockIcon, PencilIcon } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BottomBar } from '@/components/BottomBar';
+import { DishImage } from '@/components/DishImage';
 import { NavHeader } from '@/components/ScreenHeader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -95,7 +96,12 @@ export default async function RecipePage({
         }
       />
 
-      <div aria-hidden className="hatch h-[150px] rounded-xl border" />
+      <DishImage
+        src={recipe.imageUrl}
+        alt=""
+        sizes="(max-width: 32rem) 100vw, 32rem"
+        className="h-[190px] rounded-xl border"
+      />
 
       <h1 className="mt-4 text-[22px] font-semibold tracking-tight">{recipe.name}</h1>
       <div className="mt-2 flex flex-wrap items-center gap-2">

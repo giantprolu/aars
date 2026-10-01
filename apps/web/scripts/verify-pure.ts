@@ -526,6 +526,7 @@ const recette = {
   prepMinutes: null,
   notes: null,
   ingredients: [riz, oeufs],
+  imageUrl: null,
 };
 assert.equal(macrosPerServing(recette).macros.kcal, 150, 'kcal par part');
 

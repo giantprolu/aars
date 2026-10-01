@@ -1,4 +1,5 @@
 import { ClockIcon } from 'lucide-react';
+import { DishImage } from '@/components/DishImage';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -51,6 +52,14 @@ export function CatalogMealSheet({
           <SheetTitle className="sr-only">Détail du plat</SheetTitle>
         ) : (
           <>
+            {card.imageUrl === null ? null : (
+              <DishImage
+                src={card.imageUrl}
+                alt=""
+                sizes="(max-width: 32rem) 100vw, 32rem"
+                className="mb-3.5 h-[180px] rounded-xl"
+              />
+            )}
             <SheetHeader className="p-0 pr-10">
               <SheetTitle className="text-[17px]">{card.name}</SheetTitle>
               <SheetDescription>{MEAL_LABELS[card.slot]}</SheetDescription>

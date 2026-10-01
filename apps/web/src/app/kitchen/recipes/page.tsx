@@ -45,6 +45,7 @@ export default async function RecipesPage() {
       prepMinutes: recipe.prepMinutes,
       kcalPerServing: macros.kcal,
       partial: unresolvedCount > 0,
+      imageUrl: recipe.imageUrl,
     };
   });
 

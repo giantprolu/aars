@@ -104,6 +104,9 @@ dependencies {
     implementation(libs.androidx.camera.mlkit)
     implementation(libs.mlkit.barcode)
     implementation(libs.androidx.health.connect)
+    // Photos des plats, servies par Vercel Blob. Le module réseau réutilise OkHttp.
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
 }

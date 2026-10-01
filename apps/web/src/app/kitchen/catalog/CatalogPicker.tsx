@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { BottomBar } from '@/components/BottomBar';
+import { DishImage } from '@/components/DishImage';
 import { ErrorAlert } from '@/components/ErrorAlert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ export interface CatalogCard {
     /** Rendement de cuisson, pour lire le poids cru à acheter. */
     cookedYield: number | null;
   }[];
+  imageUrl: string | null;
   /** Ordre de grandeur d'une part. Les valeurs justes viennent avec la recette. */
   kcal: number;
   proteinG: number;
@@ -209,9 +211,10 @@ export function CatalogPicker({
               <button
                 type="button"
                 onClick={() => setDetail(card)}
-                className="flex min-w-0 flex-1 items-center gap-2 py-3 text-left transition-colors active:bg-accent"
+                className="flex min-w-0 flex-1 items-center gap-2.5 py-2 text-left transition-colors active:bg-accent"
                 aria-haspopup="dialog"
               >
+                <DishImage src={card.imageUrl} alt="" sizes="44px" className="size-11 flex-none rounded-md" />
                 <span
                   className={cn(
                     'min-w-0 flex-1 truncate text-[14.5px] font-medium tracking-tight',

@@ -467,6 +467,11 @@ export const catalogMeals = pgTable(
     /** Ordre de grandeur d'une part, recalculé par `npm run verify:catalog`. */
     estimateKcal: integer('estimate_kcal').notNull(),
     estimateProteinG: integer('estimate_protein_g').notNull(),
+    /**
+     * La photo du plat, dans Vercel Blob (`npm run upload:photos`). Nulle tant
+     * qu'aucune n'a été envoyée : l'écran garde alors son motif.
+     */
+    imageUrl: text('image_url'),
   },
   (table) => [
     index('catalog_meals_goal_position_idx').on(table.goal, table.position),

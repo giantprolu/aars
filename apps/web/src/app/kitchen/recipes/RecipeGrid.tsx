@@ -3,6 +3,7 @@
 import { SearchIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { DishImage } from '@/components/DishImage';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { formatKcal } from '@/lib/nutrition';
@@ -16,6 +17,7 @@ export interface RecipeTile {
   kcalPerServing: number;
   /** Au moins un ingrédient sans fiche : le chiffre est un plancher. */
   partial: boolean;
+  imageUrl: string | null;
 }
 
 /** Sans accents ni casse : « creme » doit trouver « Crème brûlée ». */
@@ -63,7 +65,12 @@ export function RecipeGrid({ recipes }: { recipes: readonly RecipeTile[] }) {
             <li key={recipe.id}>
               <Card asChild className="h-full gap-0 p-3.5 transition-colors active:bg-accent">
                 <Link href={`/kitchen/recipes/${recipe.id}`}>
-                  <span aria-hidden className="hatch block h-[60px] rounded-md" />
+                  <DishImage
+                    src={recipe.imageUrl}
+                    alt=""
+                    sizes="(max-width: 32rem) 50vw, 16rem"
+                    className="h-[96px] rounded-md"
+                  />
                   <span className="mt-2.5 line-clamp-2 text-[13.5px] font-medium tracking-tight">
                     {recipe.name}
                   </span>

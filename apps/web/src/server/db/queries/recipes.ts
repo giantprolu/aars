@@ -154,6 +154,7 @@ async function ingredientsFor(
 function toRecipe(
   row: typeof schema.recipes.$inferSelect,
   ingredients: RecipeIngredient[],
+  imageUrl: string | null,
 ): Recipe {
   return {
     id: row.id,
@@ -163,19 +164,33 @@ function toRecipe(
     prepMinutes: row.prepMinutes,
     notes: row.notes,
     ingredients,
+    imageUrl,
   };
+}
+
+/**
+ * La recette et la photo du plat dont elle est la copie.
+ *
+ * Jointure à gauche sur `catalog_slug` : une recette écrite à la main, ou dont
+ * le plat a quitté le catalogue, garde sa ligne et reçoit simplement `null`.
+ */
+function recipesWithImage() {
+  return db()
+    .select({ recipe: schema.recipes, imageUrl: schema.catalogMeals.imageUrl })
+    .from(schema.recipes)
+    .leftJoin(schema.catalogMeals, eq(schema.catalogMeals.slug, schema.recipes.catalogSlug));
 }
 
 /** Toutes les recettes d'un utilisateur, ingrédients compris, par ordre alphabétique. */
 export async function listRecipes(userId: number): Promise<Recipe[]> {
-  const rows = await db()
-    .select()
-    .from(schema.recipes)
+  const rows = await recipesWithImage()
     .where(eq(schema.recipes.userId, userId))
     .orderBy(asc(schema.recipes.name), asc(schema.recipes.id));
 
-  const ingredients = await ingredientsFor(rows.map((row) => row.id));
-  return rows.map((row) => toRecipe(row, ingredients.get(row.id) ?? []));
+  const ingredients = await ingredientsFor(rows.map((row) => row.recipe.id));
+  return rows.map((row) =>
+    toRecipe(row.recipe, ingredients.get(row.recipe.id) ?? [], row.imageUrl),
+  );
 }
 
 /**
@@ -183,17 +198,15 @@ export async function listRecipes(userId: number): Promise<Recipe[]> {
  * quelqu'un d'autre, ce qui de l'extérieur doit être indiscernable.
  */
 export async function findRecipe(userId: number, id: number): Promise<Recipe | null> {
-  const [row] = await db()
-    .select()
-    .from(schema.recipes)
+  const [row] = await recipesWithImage()
     .where(and(eq(schema.recipes.userId, userId), eq(schema.recipes.id, id)))
     .limit(1);
 
   if (!row) {
     return null;
   }
-  const ingredients = await ingredientsFor([row.id]);
-  return toRecipe(row, ingredients.get(row.id) ?? []);
+  const ingredients = await ingredientsFor([row.recipe.id]);
+  return toRecipe(row.recipe, ingredients.get(row.recipe.id) ?? [], row.imageUrl);
 }
 
 /** Les lignes d'ingrédients prêtes à écrire, dans l'ordre reçu. */

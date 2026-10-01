@@ -26,6 +26,7 @@ function toCatalogMeal(row: CatalogMealRow): CatalogMeal {
     steps: row.steps,
     ingredients: row.ingredients,
     estimate: { kcal: row.estimateKcal, proteinG: row.estimateProteinG },
+    imageUrl: row.imageUrl,
   };
 }
 

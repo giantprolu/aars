@@ -83,6 +83,7 @@ export default async function CatalogPage({
         unitGrams: ingredient.unitGrams ?? null,
         cookedYield: cookingYield(ingredient.searchTerm),
       })),
+      imageUrl: meal.imageUrl,
       kcal: meal.estimate.kcal,
       proteinG: meal.estimate.proteinG,
       inBasket: recipeId !== undefined && chosenRecipeIds.has(recipeId),
