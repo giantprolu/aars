@@ -1,4 +1,5 @@
 import 'server-only';
+import { canAddRecipe } from './premium';
 import {
   MAX_INGREDIENTS,
   MAX_STEPS,
@@ -54,6 +55,9 @@ export type SaveRecipeResult =
   | { kind: 'saved'; id: number }
   | { kind: 'invalid'; reason: RecipeRejection }
   | { kind: 'not_found' };
+
+/** Seule la création bute sur la limite gratuite : modifier n'ajoute rien. */
+export type CreateRecipeResult = SaveRecipeResult | { kind: 'premium_required' };
 
 /**
  * Contrôles qui ne demandent pas la base. Séparés de ceux qui l'interrogent :
@@ -139,11 +143,16 @@ export function recipeFor(userId: number, id: number): Promise<Recipe | null> {
 export async function createRecipe(
   userId: number,
   input: RecipeInput,
-): Promise<SaveRecipeResult> {
+): Promise<CreateRecipeResult> {
   const clean = normalize(input);
   const rejection = await validate(clean);
   if (rejection !== null) {
     return { kind: 'invalid', reason: rejection };
+  }
+  // Après la validation : une recette mal formée dit d'abord ce qui ne va pas,
+  // l'invitation à s'abonner ne doit pas masquer une erreur de saisie.
+  if (!(await canAddRecipe(userId))) {
+    return { kind: 'premium_required' };
   }
   return { kind: 'saved', id: await insertRecipe(userId, clean) };
 }

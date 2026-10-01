@@ -84,6 +84,8 @@ export type ApiErrorCode =
   | 'model_quota_exceeded'
   | 'model_bad_format'
   | 'upstream_unavailable'
+  | 'premium_required'
+  | 'purchase_invalid'
   | 'internal';
 
 /**

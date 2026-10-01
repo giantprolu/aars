@@ -46,7 +46,8 @@ async function send(
   if (response.status === 401) {
     return { kind: 'unauthorized' };
   }
-  if (response.status === 400) {
+  // 403 : limite de la version gratuite, dont le message invite à s'abonner.
+  if (response.status === 400 || response.status === 403) {
     return { kind: 'invalid', message: await readRejection(response) };
   }
   if (!response.ok) {

@@ -15,6 +15,7 @@ import {
   insertFavorite,
   listFavorites,
 } from '../db/queries/favorites';
+import { canAddFavorite } from './premium';
 
 /**
  * Service des repas favoris.
@@ -34,7 +35,8 @@ export function favoritesFor(userId: number): Promise<FavoriteMeal[]> {
 export type SaveFavoriteResult =
   | { kind: 'saved'; favorite: FavoriteMeal }
   | { kind: 'empty' }
-  | { kind: 'too_large' };
+  | { kind: 'too_large' }
+  | { kind: 'premium_required' };
 
 /** Met en favori un repas du journal du jour, tel qu'il y est écrit. */
 export async function saveMealAsFavorite(
@@ -50,6 +52,9 @@ export async function saveMealAsFavorite(
   }
   if (entries.length > MAX_FAVORITE_ITEMS) {
     return { kind: 'too_large' };
+  }
+  if (!(await canAddFavorite(userId))) {
+    return { kind: 'premium_required' };
   }
 
   const items: FavoriteItem[] = entries.map((entry) => ({

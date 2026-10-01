@@ -32,6 +32,7 @@ export default function PrivacyPage() {
         <li>Activité physique : l&apos;énergie active dépensée par jour (kilocalories), lue avec ton accord dans Health Connect sur Android ou envoyée par un raccourci iOS.</li>
         <li>Communauté : pseudonyme, nom affiché, abonnements, et les séances que tu choisis de partager.</li>
         <li>Notifications : l&apos;adresse d&apos;abonnement du navigateur si tu actives le rappel du déjeuner.</li>
+        <li>Abonnement, si tu en prends un : l&apos;offre choisie, son état, sa date d&apos;échéance et le jeton d&apos;achat de Google Play. Aucune donnée de paiement : la carte et l&apos;adresse de facturation restent chez Google.</li>
       </ul>
 
       <h2>Health Connect</h2>
@@ -60,6 +61,7 @@ export default function PrivacyPage() {
         <li>Neon (base de données Postgres).</li>
         <li>Mistral AI ou Google (reconnaissance d&apos;une photo d&apos;assiette, seulement quand tu en envoies une).</li>
         <li>Resend (envoi du courriel de réinitialisation du mot de passe, si tu le demandes).</li>
+        <li>Google (Google Play encaisse l&apos;abonnement ; le serveur lui demande l&apos;état d&apos;un achat à partir de son jeton, avec un identifiant de compte opaque qui ne contient ni ton adresse ni ton nom).</li>
         <li>Open Food Facts reçoit seulement le code-barres d&apos;un produit, jamais ton identité.</li>
       </ul>
 

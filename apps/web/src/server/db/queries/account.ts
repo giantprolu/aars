@@ -41,6 +41,7 @@ export async function exportUserData(userId: number) {
     follows,
     kudos,
     subscriptions,
+    storeSubscriptions,
   ] = await Promise.all([
     database
       .select({
@@ -108,6 +109,19 @@ export async function exportUserData(userId: number) {
       .select({ createdAt: schema.pushSubscriptions.createdAt })
       .from(schema.pushSubscriptions)
       .where(eq(schema.pushSubscriptions.userId, userId)),
+    // Le jeton d'achat est omis : il ne dit rien à la personne, et il suffit
+    // à interroger Google sur son achat.
+    database
+      .select({
+        store: schema.storeSubscriptions.store,
+        productId: schema.storeSubscriptions.productId,
+        state: schema.storeSubscriptions.state,
+        expiresAt: schema.storeSubscriptions.expiresAt,
+        autoRenewing: schema.storeSubscriptions.autoRenewing,
+        createdAt: schema.storeSubscriptions.createdAt,
+      })
+      .from(schema.storeSubscriptions)
+      .where(eq(schema.storeSubscriptions.userId, userId)),
   ]);
 
   const recipeIds = recipes.map((recipe) => recipe.id);
@@ -155,5 +169,6 @@ export async function exportUserData(userId: number) {
     },
     community: { follows, kudosGiven: kudos },
     notifications: { devices: subscriptions.length },
+    billing: { subscriptions: storeSubscriptions },
   };
 }

@@ -51,5 +51,11 @@ export async function POST(request: Request): Promise<Response> {
   if (result.kind === 'too_large') {
     return apiError('invalid_input', 'Ce repas compte trop d’aliments pour un favori.');
   }
+  if (result.kind === 'premium_required') {
+    return apiError(
+      'premium_required',
+      'La version gratuite garde 10 favoris. Abonne-toi pour en enregistrer davantage.',
+    );
+  }
   return Response.json({ favorite: result.favorite }, { status: 201 });
 }

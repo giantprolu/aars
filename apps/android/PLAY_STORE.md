@@ -101,10 +101,9 @@ la même que `LEGAL_CONTACT_EMAIL` côté serveur.
 - **Accès à l'app** : la connexion est requise. Fournir un compte de test
   (adresse et mot de passe) avec un profil déjà rempli, sinon l'examen échoue.
 - **Annonces** : non.
-- **Classification du contenu** : questionnaire IARC, aucune réponse « oui »
-  attendue (pas de violence, pas d'achats). La Communauté permet aux
-  utilisateurs d'interagir : répondre oui à « partage de contenu entre
-  utilisateurs ».
+- **Classification du contenu** : questionnaire IARC, pas de violence. Répondre
+  oui à « achats numériques » (l'abonnement) et à « partage de contenu entre
+  utilisateurs » (la Communauté).
 - **Public cible** : 16 ans et plus (aligné sur la politique). Pas destinée
   aux enfants.
 - **Applications de santé** (déclaration obligatoire depuis 2025) : cocher
@@ -131,6 +130,7 @@ agissant pour notre compte ne comptent pas comme un partage).
 | Santé et remise en forme | Informations sur la santé (poids, taille, masse grasse, repas) | Oui | Oui | Fonctionnalités de l'app |
 | Santé et remise en forme | Informations sur la remise en forme (séances, énergie active) | Oui | Non | Fonctionnalités de l'app |
 | Activité dans l'app | Autre contenu généré (recettes, listes de courses) | Oui | Non | Fonctionnalités de l'app |
+| Infos financières | Historique des achats (offre, état, échéance de l'abonnement) | Oui | Non | Fonctionnalités de l'app, gestion du compte |
 
 Photos : l'app Android n'envoie pas encore de photo d'assiette (le scanner
 lit le code-barres sur le téléphone, sans rien envoyer). Le jour où
@@ -138,7 +138,7 @@ lit le code-barres sur le téléphone, sans rien envoyer). Le jour où
 éphémère, facultatives ».
 
 Non collectés : position, contacts, identifiants publicitaires, données
-financières, historique de navigation, fichiers audio, journaux de plantage
+de paiement (carte, facturation : elles restent chez Google Play), historique de navigation, fichiers audio, journaux de plantage
 (aucun SDK d'analyse ni de crash n'est embarqué).
 
 ### Health Connect
@@ -155,3 +155,37 @@ Ni écriture, ni lecture en arrière-plan, ni lecture de l'historique au-delà
 de 30 jours. L'écran d'explication (`HealthRationaleActivity`) répond aux
 deux intentions exigées (`ACTION_SHOW_PERMISSIONS_RATIONALE`,
 `VIEW_PERMISSION_USAGE`).
+
+## Abonnement (freemium)
+
+Le serveur décide seul de qui est abonné : l'app envoie le jeton d'achat à
+`POST /api/billing/google`, le serveur le fait lire à Google, puis confirme
+l'achat (sans confirmation sous trois jours, Google rembourse). Gratuit pour
+toujours : le journal, l'export et la suppression du compte. Payant : recettes
+et favoris au-delà de 10, puis le plan automatique, l'import de recette et le
+sport adaptatif.
+
+1. **Profil de paiement** : Play Console › *Paramètres* › *Profil de
+   paiement*, avec le SIRET. Sans lui, aucun produit payant ne se crée.
+2. **Produit** : *Monétiser* › *Abonnements* › créer `nutriperso_premium`,
+   avec deux forfaits de base, `mensuel` et `annuel`. L'essai gratuit se règle
+   ici, comme offre sur un forfait, sans rien changer au code.
+3. **Compte de service** : Google Cloud › *IAM* › *Comptes de service*, en
+   créer un et télécharger sa clé JSON. Play Console › *Utilisateurs et
+   autorisations* › l'inviter avec les droits « Afficher les données
+   financières » et « Gérer les commandes et les abonnements ». Activer l'API
+   *Google Play Android Developer* sur le projet Cloud.
+4. **Notifications** : Google Cloud › *Pub/Sub*, créer un sujet, donner le rôle
+   *Éditeur Pub/Sub* à `google-play-developer-notifications@system.gserviceaccount.com`,
+   puis un abonnement *push* vers
+   `https://nutri-rosy-one.vercel.app/api/billing/google/notify?secret=<GOOGLE_PLAY_RTDN_SECRET>`.
+   Play Console › *Monétiser* › *Configuration de la monétisation* : nommer le
+   sujet, puis *Envoyer une notification de test*.
+5. **Vercel** : `GOOGLE_PLAY_SERVICE_ACCOUNT` (la clé JSON entière, sur une
+   ligne), `GOOGLE_PLAY_RTDN_SECRET` (32 caractères aléatoires, le même que
+   dans l'URL), et `GOOGLE_PLAY_PACKAGE_NAME` si le paquet n'est pas
+   `fr.nutriperso.app`. Puis `npm run db:migrate` pour la table
+   `store_subscriptions`.
+6. **Testeurs de licence** : Play Console › *Paramètres* › *Test de licence*,
+   ajouter ses adresses Gmail. Leurs achats sont gratuits et les abonnements
+   s'y renouvellent en quelques minutes, ce qui permet de tester l'expiration.

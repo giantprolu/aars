@@ -66,6 +66,22 @@ const schema = z.object({
   VAPID_SUBJECT: z.string().min(1).optional(),
   /** Secret que Vercel joint aux appels de ses tâches planifiées. */
   CRON_SECRET: z.string().min(16).optional(),
+  /**
+   * Abonnement vendu par Google Play.
+   *
+   * Le compte de service est la clé JSON entière, telle que Google Cloud la
+   * télécharge, collée sur une ligne. Il lit l'état des achats auprès de
+   * l'API Google Play Developer : le serveur ne croit jamais un téléphone qui
+   * dit avoir payé. Absent, l'abonnement ne peut pas s'activer, et l'app reste
+   * gratuite pour tout le monde.
+   *
+   * Le secret des notifications est ajouté à l'URL de push que Pub/Sub
+   * appelle à chaque renouvellement ou résiliation : sans lui, n'importe qui
+   * pourrait déclencher des relectures.
+   */
+  GOOGLE_PLAY_PACKAGE_NAME: z.string().min(1).default('fr.nutriperso.app'),
+  GOOGLE_PLAY_SERVICE_ACCOUNT: z.string().min(1).optional(),
+  GOOGLE_PLAY_RTDN_SECRET: z.string().min(16).optional(),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   OFF_USER_AGENT: z
     .string()
@@ -157,6 +173,12 @@ export const env = {
   get cronSecret(): string | undefined {
     return read().CRON_SECRET;
   },
+  get googlePlayPackageName(): string {
+    return read().GOOGLE_PLAY_PACKAGE_NAME;
+  },
+  get googlePlayRtdnSecret(): string | undefined {
+    return read().GOOGLE_PLAY_RTDN_SECRET;
+  },
   /** Vrai sur Vercel, faux sous `next dev`. Sert aux attributs du cookie. */
   get isProduction(): boolean {
     return read().NODE_ENV === 'production';
@@ -168,7 +190,12 @@ export const env = {
  * (B-2, B-3 de BLOCKERS.md), la requête qui en a besoin échoue explicitement.
  */
 export function requireEnv(
-  name: 'DATABASE_URL' | 'SESSION_SECRET' | 'MISTRAL_API_KEY' | 'GEMINI_API_KEY',
+  name:
+    | 'DATABASE_URL'
+    | 'SESSION_SECRET'
+    | 'MISTRAL_API_KEY'
+    | 'GEMINI_API_KEY'
+    | 'GOOGLE_PLAY_SERVICE_ACCOUNT',
 ): string {
   const value = read()[name];
   if (!value) {

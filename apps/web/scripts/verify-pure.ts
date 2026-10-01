@@ -13,6 +13,7 @@ import {
 } from '../src/lib/date';
 import { buildQuantityShortcuts } from '../src/lib/shortcuts';
 import { parseItems } from '../src/lib/vision-parse';
+import { FREE_RECIPE_LIMIT, grantsPremium, parseStoreState, underFreeLimit } from '../src/lib/premium';
 import { isValidBarcode } from '../src/lib/client/scanner';
 import { mapColumns, parseNutrient, isCompleteRow, normalizeHeader } from './ciqual-parse';
 import {
@@ -227,6 +228,24 @@ assert.deepEqual(
 assert.deepEqual(parseItems('{"aliments": []}'), [], 'assiette vide');
 assert.equal(parseItems('desole, je ne vois rien'), null, 'texte libre illisible');
 assert.equal(parseItems(''), null, 'reponse vide illisible');
+
+// Freemium : qui a acces aux fonctions payantes.
+const billingNow = new Date('2026-10-01T12:00:00Z');
+const nextMonth = new Date('2026-11-01T12:00:00Z');
+const lastMonth = new Date('2026-09-01T12:00:00Z');
+assert.equal(parseStoreState('SUBSCRIPTION_STATE_IN_GRACE_PERIOD'), 'in_grace_period', 'prefixe Google retire');
+assert.equal(parseStoreState('SUBSCRIPTION_STATE_NOUVEAU'), 'unspecified', 'etat inconnu');
+assert.equal(parseStoreState(undefined), 'unspecified', 'etat absent');
+assert.equal(grantsPremium('active', nextMonth, billingNow), true, 'actif avant echeance');
+assert.equal(grantsPremium('canceled', nextMonth, billingNow), true, 'resilie : paye jusqu a l echeance');
+assert.equal(grantsPremium('in_grace_period', nextMonth, billingNow), true, 'delai de grace');
+assert.equal(grantsPremium('active', lastMonth, billingNow), false, 'echeance passee');
+assert.equal(grantsPremium('active', null, billingNow), false, 'sans echeance');
+assert.equal(grantsPremium('on_hold', nextMonth, billingNow), false, 'suspendu');
+assert.equal(grantsPremium('pending', nextMonth, billingNow), false, 'paiement en attente');
+assert.equal(grantsPremium('expired', nextMonth, billingNow), false, 'expire');
+assert.equal(underFreeLimit(FREE_RECIPE_LIMIT - 1, FREE_RECIPE_LIMIT), true, 'une place gratuite');
+assert.equal(underFreeLimit(FREE_RECIPE_LIMIT, FREE_RECIPE_LIMIT), false, 'limite atteinte');
 
 // FR-16 : un code-barres exploitable fait 8, 12 ou 13 chiffres.
 assert.equal(isValidBarcode('3017620422003'), true, 'EAN-13');

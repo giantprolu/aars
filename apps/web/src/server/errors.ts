@@ -14,6 +14,8 @@ const MESSAGES: Record<ApiErrorCode, string> = {
   model_quota_exceeded: 'Quota du modèle de reconnaissance épuisé.',
   model_bad_format: 'Réponse du modèle inexploitable.',
   upstream_unavailable: 'Service indisponible.',
+  premium_required: 'Réservé aux abonnés.',
+  purchase_invalid: 'Achat introuvable ou déjà rattaché à un autre compte.',
   internal: 'Erreur interne.',
 };
 
@@ -27,6 +29,10 @@ const STATUS: Record<ApiErrorCode, number> = {
   model_quota_exceeded: 429,
   model_bad_format: 422,
   upstream_unavailable: 502,
+  // 403 et non 402 : le client n'a rien à payer pour cette requête, il lui
+  // manque un droit. Les apps l'affichent comme une invitation à s'abonner.
+  premium_required: 403,
+  purchase_invalid: 409,
   internal: 500,
 };
 

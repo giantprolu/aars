@@ -67,6 +67,12 @@ export async function POST(request: Request): Promise<Response> {
   if (result.kind === 'not_found') {
     return apiError('not_found');
   }
+  if (result.kind === 'premium_required') {
+    return apiError(
+      'premium_required',
+      'La version gratuite garde 10 recettes. Abonne-toi pour en écrire davantage.',
+    );
+  }
 
   return Response.json({ id: result.id }, { status: 201 });
 }

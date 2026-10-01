@@ -1147,3 +1147,43 @@ export const pushSubscriptions = pgTable(
 );
 
 export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
+
+/**
+ * Les abonnements achetés dans un magasin d'applications, un par achat.
+ *
+ * Le jeton d'achat est unique : c'est l'identité de l'achat chez Google, et
+ * le premier compte qui le présente le garde. Un même jeton envoyé depuis un
+ * autre compte est refusé, sans quoi un abonnement se partagerait en se
+ * passant le jeton.
+ *
+ * L'état et l'échéance sont recopiés depuis Google, jamais depuis le
+ * téléphone : chaque écriture suit une lecture de l'API Google Play
+ * Developer. La ligne survit à l'expiration, elle sert de trace et permet de
+ * reconnaître un renouvellement.
+ */
+export const storeSubscriptions = pgTable(
+  'store_subscriptions',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    userId: bigint('user_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** `google_play` seulement pour l'instant ; l'App Store viendra. */
+    store: text('store').notNull().default('google_play'),
+    productId: text('product_id').notNull(),
+    purchaseToken: text('purchase_token').notNull().unique(),
+    /** `StoreState`, voir `@/lib/premium`. */
+    state: text('state').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    autoRenewing: boolean('auto_renewing').notNull().default(false),
+    acknowledged: boolean('acknowledged').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('store_subscriptions_user_idx').on(table.userId, table.expiresAt),
+    check('store_subscriptions_store_check', sql`${table.store} in ('google_play')`),
+  ],
+);
+
+export type StoreSubscriptionRow = typeof storeSubscriptions.$inferSelect;
