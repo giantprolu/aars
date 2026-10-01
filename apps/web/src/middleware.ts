@@ -6,7 +6,9 @@ import { SESSION_COOKIE, isValidSessionToken } from '@/server/auth';
  * Les routes /api ne passent pas par ici : elles doivent répondre 401 et non
  * rediriger, ce que fait le garde partagé de src/server/guard.ts.
  */
-const PUBLIC_PATHS = ['/unlock', '/recover'];
+// `/legal` : politique de confidentialité et suppression de compte, que la
+// fiche Google Play doit pouvoir lier sans session.
+const PUBLIC_PATHS = ['/unlock', '/recover', '/legal'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

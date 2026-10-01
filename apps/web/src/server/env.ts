@@ -48,6 +48,12 @@ const schema = z.object({
    * le domaine de qui a forgé la requête.
    */
   RESEND_API_KEY: z.string().min(1).optional(),
+  /**
+   * Adresse de contact affichée par la politique de confidentialité et la
+   * page de suppression de compte, que Google Play exige publiques. Absente,
+   * les pages renvoient vers le formulaire du compte sans adresse.
+   */
+  LEGAL_CONTACT_EMAIL: z.string().email().optional(),
   MAIL_FROM: z.string().min(3).optional(),
   APP_URL: z.string().url().optional(),
   /**
@@ -130,6 +136,9 @@ export const env = {
   },
   get healthShortcutUrl(): string | undefined {
     return read().HEALTH_SHORTCUT_URL;
+  },
+  get legalContactEmail(): string | undefined {
+    return read().LEGAL_CONTACT_EMAIL;
   },
   /** La configuration du courriel, ou `null` si elle est incomplète. */
   get mail(): { apiKey: string; from: string; appUrl: string } | null {

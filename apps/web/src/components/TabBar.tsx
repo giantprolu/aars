@@ -52,6 +52,7 @@ export function TabBar() {
   // Les chemins d'ajout non plus, qui portent leur propre sortie.
   if (
     pathname.startsWith('/unlock') ||
+    pathname.startsWith('/legal') ||
     pathname.startsWith('/add') ||
     pathname.startsWith('/welcome')
   ) {

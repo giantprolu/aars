@@ -52,6 +52,15 @@ export async function GET(): Promise<Response> {
     topRecord: topRecord === undefined ? null : `${topRecord.exercise.name} ${formatSet(topRecord.record.best)}`,
     activeWeeks: progress.weeks.filter((week) => week.sessions > 0).length,
     weeks: WEEKS,
-    health: !tokenExists ? 'inactive' : bridge.dayCount >= bridge.requiredDays ? 'active' : 'pending',
+    // Actif dès que la mesure pilote la cible ; en attente dès qu'une source
+    // est branchée, raccourci iOS (jeton fabriqué) ou Health Connect (une
+    // journée reçue sans jeton).
+    health:
+      bridge.dayCount >= bridge.requiredDays
+        ? 'active'
+        : tokenExists || bridge.lastDay !== null
+          ? 'pending'
+          : 'inactive',
+    healthBridge: bridge,
   });
 }

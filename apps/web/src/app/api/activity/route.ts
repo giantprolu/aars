@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { apiError } from '@/server/errors';
-import { isJournalDate, todayInParis } from '@/lib/date';
+import { isJournalDate, shiftDate, todayInParis } from '@/lib/date';
+import { readSessionToken } from '@/server/auth';
 import { findUserByIngestToken } from '@/server/db/queries/users';
 import { upsertDailyActivity } from '@/server/db/queries/activity';
 
@@ -9,10 +10,18 @@ export const runtime = 'nodejs';
 /**
  * Ingestion de la dépense d'activité (FR-27).
  *
- * Appelée par un raccourci iOS, qui n'a pas de cookie de session : elle
- * s'authentifie par un jeton porté dans l'en-tête, propre à l'utilisateur et
- * révocable. C'est la seule route de l'application dans ce cas, et elle
- * n'écrit qu'un nombre de kilocalories par jour.
+ * Deux appelants, deux jetons, le même en-tête `Authorization: Bearer` :
+ *
+ * - l'app Android, qui lit Health Connect et porte son jeton de session signé
+ *   (`utilisateur.horodatage.signature`) ;
+ * - le raccourci iOS, qui n'a pas de session et porte le jeton d'ingestion
+ *   propre à l'utilisateur, révocable, sans point (voir `rotateIngestToken`).
+ *
+ * Les deux formes ne se confondent pas : un jeton à trois segments est lu
+ * comme une session, et une session invalide ne retombe pas sur la recherche
+ * d'un jeton d'ingestion. Le cookie n'est jamais lu ici : la route accepte un
+ * corps sans prévol, et un cookie `lax` suffirait sinon à faire écrire une page
+ * tierce dans le compte de quelqu'un.
  *
  * Santé d'Apple n'est accessible à aucune page web : HealthKit est réservé aux
  * applications natives iOS. Le raccourci est le seul pont existant qui ne
@@ -30,6 +39,9 @@ export const runtime = 'nodejs';
  * arrive en plusieurs lignes. La sommer ici reviendrait à inventer un total
  * dont personne ne saurait s'il couvre un jour ou six mois.
  */
+/** Jours acceptés en une fois, et jusqu'où dans le passé. */
+const MAX_BATCH_DAYS = 31;
+
 const KCAL_TEXT = /^(\d+(?:[.,]\d+)?)\s*(?:k?cal(?:ories)?)?$/i;
 
 function readKcal(value: unknown): unknown {
@@ -40,11 +52,29 @@ function readKcal(value: unknown): unknown {
   return digits === undefined ? value : Number(digits.replace(',', '.'));
 }
 
-const bodySchema = z.object({
+const kcalSchema = z.preprocess(readKcal, z.number().min(0).max(20000));
+const daySchema = z.string().refine(isJournalDate, 'Date invalide.');
+
+/** Un seul jour : la forme du raccourci iOS. */
+const singleSchema = z.object({
   /** Jour civil concerné. Par défaut le jour courant à Paris. */
-  day: z.string().refine(isJournalDate, 'Date invalide.').optional(),
+  day: daySchema.optional(),
   /** Énergie active du jour, hors métabolisme de base. */
-  activeKcal: z.preprocess(readKcal, z.number().min(0).max(20000)),
+  activeKcal: kcalSchema,
+  source: z.enum(['health']).default('health'),
+});
+
+/**
+ * Plusieurs jours d'un coup : la forme de l'app Android, qui relit à chaque
+ * ouverture les jours que Health Connect a gardés. Une journée ratée parce que
+ * l'app n'a pas été ouverte est ainsi rattrapée à la suivante, sans tâche de
+ * fond ni permission de lecture en arrière-plan.
+ */
+const batchSchema = z.object({
+  days: z
+    .array(z.object({ day: daySchema, activeKcal: kcalSchema }))
+    .min(1)
+    .max(MAX_BATCH_DAYS),
   source: z.enum(['health']).default('health'),
 });
 
@@ -59,10 +89,24 @@ const KCAL_HINT =
 /** `Authorization: Bearer <jeton>`, ou l'en-tête abrégé que pose un raccourci. */
 function readToken(request: Request): string | null {
   const header = request.headers.get('authorization');
-  if (header?.startsWith('Bearer ')) {
-    return header.slice(7).trim() || null;
+  const match = header === null ? null : /^Bearer\s+(\S+)$/i.exec(header.trim());
+  if (match?.[1]) {
+    return match[1];
   }
   return request.headers.get('x-ingest-token')?.trim() || null;
+}
+
+/** Un jeton de session a trois segments ; un jeton d'ingestion n'a pas de point. */
+function looksLikeSession(token: string): boolean {
+  return token.split('.').length === 3;
+}
+
+async function userFor(token: string): Promise<number | null> {
+  if (looksLikeSession(token)) {
+    return readSessionToken(token);
+  }
+  const user = await findUserByIngestToken(token);
+  return user?.id ?? null;
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -78,26 +122,47 @@ export async function POST(request: Request): Promise<Response> {
     return apiError('invalid_input');
   }
 
-  const parsed = bodySchema.safeParse(payload);
+  // La forme est choisie sur la présence de `days`, et non par une union : une
+  // union rendrait une erreur sans chemin, et l'indice sur activeKcal, le seul
+  // que le raccourci sache afficher, serait perdu.
+  const batch = typeof payload === 'object' && payload !== null && 'days' in payload;
+  const parsed = batch ? batchSchema.safeParse(payload) : singleSchema.safeParse(payload);
   if (!parsed.success) {
     const onKcal = parsed.error.issues.some((issue) => issue.path[0] === 'activeKcal');
     return apiError('invalid_input', onKcal ? KCAL_HINT : undefined);
   }
 
-  let user: Awaited<ReturnType<typeof findUserByIngestToken>>;
+  let userId: number | null;
   try {
-    user = await findUserByIngestToken(token);
+    userId = await userFor(token);
   } catch (error) {
     console.error('[activity] lecture du jeton en echec', error);
     return apiError('internal');
   }
 
-  if (!user) {
+  if (userId === null) {
     return apiError('unauthorized');
   }
 
-  const day = parsed.data.day ?? todayInParis();
-  await upsertDailyActivity(user.id, day, parsed.data.source, parsed.data.activeKcal);
+  const today = todayInParis();
+  const data = parsed.data;
+  const days = 'days' in data ? data.days : [{ day: data.day ?? today, activeKcal: data.activeKcal }];
 
-  return Response.json({ ok: true, day, activeKcal: parsed.data.activeKcal });
+  // Un jour à venir n'a pas encore de dépense, et un jour trop ancien est hors
+  // de la fenêtre de calcul : les deux trahissent une horloge ou un fuseau
+  // faux, qu'il vaut mieux dire que d'écrire.
+  const oldest = shiftDate(today, -MAX_BATCH_DAYS);
+  if ('days' in data && days.some(({ day }) => day > today || day < oldest)) {
+    return apiError('invalid_input', 'Jour hors de la fenêtre acceptée.');
+  }
+
+  for (const { day, activeKcal } of days) {
+    await upsertDailyActivity(userId, day, data.source, activeKcal);
+  }
+
+  if ('days' in data) {
+    return Response.json({ ok: true, days: days.length });
+  }
+  const [only] = days;
+  return Response.json({ ok: true, day: only?.day, activeKcal: only?.activeKcal });
 }

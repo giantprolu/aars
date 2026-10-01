@@ -37,3 +37,9 @@ local.properties
 *.iml
 .kotlin/
 apps/android/captures/
+
+# Signature de publication Android : jamais dans le dépôt.
+apps/android/keystore.properties
+*.jks
+*.keystore
+apps/android/app/release/
