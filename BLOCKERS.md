@@ -294,7 +294,7 @@ un domaine d'envoi, et poser `RESEND_API_KEY` (sensible) et `MAIL_FROM`
 Les tâches planifiées sont déclarées dans `vercel.json` (12 h et 13 h UTC,
 seule celle qui tombe à 14 h à Paris envoie).
 
-## B-13 — App Android non compilable dans l'environnement cloud — **ouvert le 01/10/2026**
+## B-13 — App Android non compilable dans l'environnement cloud — **levé le 01/10/2026**
 
 **Constat.** Le conteneur de développement n'atteint pas `dl.google.com`
 (refus du proxy) : ni SDK Android, ni dépôt Maven de Google, donc ni AGP ni
@@ -309,6 +309,11 @@ iOS conservé). Côté Android, le code Health Connect suit l'API de
 **À faire côté humain.** Ouvrir `apps/android` dans Android Studio, *Sync*,
 *Run* sur un téléphone avec Health Connect, puis Moi › Santé › Autoriser.
 Remonter ici toute erreur de compilation.
+
+**Résolution.** `assembleDebug` passe dans Android Studio sur le poste, Health
+Connect compris. Seul avertissement : la constante de coordonnées de
+`MlKitAnalyzer`, passée de `CameraController` à `ImageAnalysis` par CameraX,
+corrigée dans `Scanner.kt`. Reste à dérouler Moi › Santé sur un téléphone.
 
 ## B-14 — Publication Play Store : étapes hors dépôt — **ouvert le 01/10/2026**
 

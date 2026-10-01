@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.mlkit.vision.MlKitAnalyzer
 import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
@@ -223,7 +224,7 @@ fun CameraPreview(paused: Boolean, onBarcode: (String) -> Unit) {
         val executor = ContextCompat.getMainExecutor(context)
         controller.setImageAnalysisAnalyzer(
             executor,
-            MlKitAnalyzer(listOf(scanner), CameraController.COORDINATE_SYSTEM_VIEW_REFERENCED, executor) { result ->
+            MlKitAnalyzer(listOf(scanner), ImageAnalysis.COORDINATE_SYSTEM_VIEW_REFERENCED, executor) { result ->
                 if (isPaused) return@MlKitAnalyzer
                 val value = result.getValue(scanner)?.firstNotNullOfOrNull { it.rawValue?.takeIf(BARCODE::matches) }
                 if (value != null) latest(value)
