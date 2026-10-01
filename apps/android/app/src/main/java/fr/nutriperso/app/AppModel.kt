@@ -157,10 +157,35 @@ class AppModel(application: Application) : AndroidViewModel(application) {
         is ApiResult.Failed -> result
     }
 
-    suspend fun lookupBarcode(barcode: String): SearchHit? =
-        api.product(barcode).valueOrNull()?.product?.let {
-            SearchHit(kind = "product", ref = it.ref, name = it.name, per100g = it.per100g, servingSizeG = it.servingSizeG, origin = "cache")
+    /** Issue d'une lecture de code-barres. */
+    sealed interface BarcodeOutcome {
+        data class Found(val hit: SearchHit) : BarcodeOutcome
+        data class Incomplete(val partial: fr.nutriperso.app.data.PartialProduct) : BarcodeOutcome
+        data class Unknown(val barcode: String) : BarcodeOutcome
+        data class Failed(val message: String) : BarcodeOutcome
+    }
+
+    /** Cache produits, puis Open Food Facts, côté serveur (`/api/products/{code}/resolve`). */
+    suspend fun resolveBarcode(barcode: String): BarcodeOutcome = when (val result = api.resolveBarcode(barcode)) {
+        is ApiResult.Failed -> BarcodeOutcome.Failed(result.message)
+        is ApiResult.Ok -> {
+            val body = result.value
+            val product = body.product
+            val partial = body.partial
+            when {
+                body.kind == "found" && product != null -> BarcodeOutcome.Found(product.toHit())
+                body.kind == "incomplete" && partial != null -> BarcodeOutcome.Incomplete(partial)
+                else -> BarcodeOutcome.Unknown(barcode)
+            }
         }
+    }
+
+    /** Un produit complété à la main entre au cache, puis se note comme un autre. */
+    suspend fun saveManualProduct(barcode: String, name: String, per100g: MacroValues, servingSizeG: Double?): SearchHit? =
+        api.saveManualProduct(barcode, name, per100g, servingSizeG).valueOrNull()?.product?.toHit()
+
+    private fun fr.nutriperso.app.data.CachedProduct.toHit() =
+        SearchHit(kind = "product", ref = ref, name = name, per100g = per100g, servingSizeG = servingSizeG, origin = "cache")
 
     fun addRecent(recent: RecentFood, meal: Meal, done: () -> Unit) = write(
         { api.repeatEntry(recent.entryId, meal.api) },

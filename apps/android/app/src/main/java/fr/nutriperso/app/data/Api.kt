@@ -110,6 +110,16 @@ class Api(private val tokens: TokenStore) {
     suspend fun search(query: String) =
         get("/api/search?q=" + URLEncoder.encode(query, "UTF-8"), SearchResponse.serializer())
     suspend fun product(barcode: String) = get("/api/products/$barcode", ProductResponse.serializer())
+    suspend fun resolveBarcode(barcode: String) = get("/api/products/$barcode/resolve", ResolveResponse.serializer())
+
+    /** Enregistre au cache un produit complété à la main (code-barres inconnu ou incomplet). */
+    suspend fun saveManualProduct(barcode: String, name: String, per100g: MacroValues, servingSizeG: Double?) = decode(
+        raw(
+            "POST", "/api/products",
+            json.encodeToString(CacheProductBody.serializer(), CacheProductBody(barcode, name, per100g, servingSizeG, "manual")),
+        ),
+        ProductResponse.serializer(),
+    )
 
     // Écritures. Leur réponse n'est pas lue : l'écran relit ce qu'il affiche.
 

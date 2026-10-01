@@ -580,3 +580,28 @@ data class SaveLogBody(val action: String = "save", val sessionDate: String, val
 
 @Serializable
 data class SavedLog(val id: Long)
+
+// Code-barres.
+
+@Serializable
+data class PartialMacros(
+    val kcal: Double? = null,
+    val proteinG: Double? = null,
+    val carbsG: Double? = null,
+    val fatG: Double? = null,
+)
+
+@Serializable
+data class PartialProduct(
+    val barcode: String,
+    val name: String? = null,
+    val per100g: PartialMacros = PartialMacros(),
+    val servingSizeG: Double? = null,
+)
+
+@Serializable
+data class ResolveResponse(
+    val kind: String,
+    val product: CachedProduct? = null,
+    val partial: PartialProduct? = null,
+)
