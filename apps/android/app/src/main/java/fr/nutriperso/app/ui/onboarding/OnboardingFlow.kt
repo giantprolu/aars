@@ -640,6 +640,7 @@ private fun RateSlider(value: Double, min: Double, max: Double, onChange: (Doubl
     val nutrition = Domains.nutrition
     BoxWithConstraints(Modifier.fillMaxWidth().height(22.dp)) {
         val widthPx = constraints.maxWidth.toFloat().coerceAtLeast(1f)
+        val trackWidth = maxWidth
         val fraction = ((value - min) / (max - min)).toFloat().coerceIn(0f, 1f)
         fun update(x: Float) {
             val raw = min + (x / widthPx).coerceIn(0f, 1f) * (max - min)
@@ -663,7 +664,7 @@ private fun RateSlider(value: Double, min: Double, max: Double, onChange: (Doubl
             }
             Box(
                 Modifier
-                    .offset(x = maxWidth * fraction - 11.dp)
+                    .offset(x = trackWidth * fraction - 11.dp)
                     .size(22.dp)
                     .shadow(2.dp, CircleShape)
                     .clip(CircleShape)

@@ -19,7 +19,7 @@ val apiUrl: String = localProperties.getProperty("nutriperso.apiUrl")
 
 android {
     namespace = "fr.nutriperso.app"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "fr.nutriperso.app"
