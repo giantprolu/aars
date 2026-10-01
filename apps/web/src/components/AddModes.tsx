@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { PHOTO_RECOGNITION_ENABLED } from '@/lib/features';
 
 /**
  * Les chemins d'ajout, partagés entre la feuille du journal et l'écran
@@ -59,13 +60,17 @@ const MODES: Mode[] = [
     hint: 'Un plat du carnet, en parts',
     icon: <CookingPotIcon />,
   },
-  {
-    href: '/add/photo',
-    label: 'Photo',
-    hint: 'Reconnaissance sur l’assiette',
-    badge: { text: 'Bêta', variant: 'outline' },
-    icon: <CameraIcon />,
-  },
+  ...(PHOTO_RECOGNITION_ENABLED
+    ? [
+        {
+          href: '/add/photo',
+          label: 'Photo',
+          hint: 'Reconnaissance sur l’assiette',
+          badge: { text: 'Bêta', variant: 'outline' },
+          icon: <CameraIcon />,
+        } satisfies Mode,
+      ]
+    : []),
   {
     href: '/add/manual',
     label: 'Saisir à la main',

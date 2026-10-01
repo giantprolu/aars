@@ -33,6 +33,7 @@ import { repeatEntry } from '@/lib/client/quick-add';
 import { startFreeSession, startSession } from '@/lib/client/training';
 import { saveWeighIn } from '@/lib/client/weight';
 import { formatRecentDay, hourInParis } from '@/lib/date';
+import { PHOTO_RECOGNITION_ENABLED } from '@/lib/features';
 import { MEALS, MEAL_LABELS, MEAL_SHORT_LABELS, type Meal, isMeal, mealForHour } from '@/lib/meal';
 import { formatGrams } from '@/lib/nutrition';
 import type { QuickAddContext } from '@/lib/quick-add';
@@ -228,10 +229,12 @@ export function MealSheet({
         </p>
       ) : null}
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className={PHOTO_RECOGNITION_ENABLED ? 'grid grid-cols-4 gap-2' : 'grid grid-cols-3 gap-2'}>
         <Tile href={`/add/scan${query}`} icon={ScanBarcodeIcon} label="Scanner" onNavigate={onClose} />
         <Tile href={`/add/favorites${query}`} icon={StarIcon} label="Favoris" onNavigate={onClose} />
-        <Tile href={`/add/photo${query}`} icon={CameraIcon} label="Photo" onNavigate={onClose} />
+        {PHOTO_RECOGNITION_ENABLED ? (
+          <Tile href={`/add/photo${query}`} icon={CameraIcon} label="Photo" onNavigate={onClose} />
+        ) : null}
         <Tile href={`/add/manual${query}`} icon={PencilIcon} label="À la main" onNavigate={onClose} />
       </div>
       {/* Hors maquette : sans lui, noter un plat du carnet n'aurait plus d'entrée. */}

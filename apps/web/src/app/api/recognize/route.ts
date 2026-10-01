@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { apiError } from '@/server/errors';
 import { hasSession } from '@/server/guard';
 import { recognizeFoods } from '@/server/clients/vision';
+import { PHOTO_RECOGNITION_ENABLED } from '@/lib/features';
 
 export const runtime = 'nodejs';
 
@@ -19,6 +20,11 @@ const bodySchema = z.object({
  * l'appel, puis disparaît avec la requête (NFR-3).
  */
 export async function POST(request: Request): Promise<Response> {
+  // Coupée, la route n'appelle aucun fournisseur, même par une PWA en cache.
+  if (!PHOTO_RECOGNITION_ENABLED) {
+    return apiError('not_found');
+  }
+
   if (!(await hasSession())) {
     return apiError('unauthorized');
   }
