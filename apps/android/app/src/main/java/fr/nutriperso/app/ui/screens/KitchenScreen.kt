@@ -50,6 +50,7 @@ import fr.nutriperso.app.ui.components.DomainHeader
 import fr.nutriperso.app.ui.components.Icon
 import fr.nutriperso.app.ui.components.LinkText
 import fr.nutriperso.app.ui.components.NutriField
+import fr.nutriperso.app.ui.components.NutriSheet
 import fr.nutriperso.app.ui.components.ProgressTrack
 import fr.nutriperso.app.ui.components.SegmentedPill
 import fr.nutriperso.app.ui.components.Txt
@@ -421,7 +422,7 @@ fun BoxScope.PlanSlotSheet(
     val kitchen = Domains.kitchen
     val scope = rememberCoroutineScope()
     val title = slot?.let { "${dayLabel(it.date)} · ${if (it.meal == Meal.Lunch) "midi" else "soir"}" } ?: ""
-    fr.nutriperso.app.ui.components.NutriSheet(slot != null, title, onDismiss, gap = 10) {
+    NutriSheet(slot != null, title, onDismiss, gap = 10) {
         basket.forEach { item ->
             Row(
                 Modifier.fillMaxWidth().tinted(kitchen.soft, Radius.tile).tap {
