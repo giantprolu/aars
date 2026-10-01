@@ -858,3 +858,52 @@ export function nextProgramTemplate<T extends Pick<WorkoutTemplate, 'id' | 'kind
   }
   return program[0] ?? null;
 }
+
+/** Les mesures proposées pour une série pas encore faite. */
+export interface PrefilledMeasures {
+  weightKg: number | null;
+  reps: number | null;
+  seconds: number | null;
+}
+
+/**
+ * Ce qu'une série pas encore faite propose : la suggestion de charge quand il
+ * y en a une, sinon la même série la dernière fois, sinon la consigne.
+ */
+export function prefillMeasures(
+  entry: TemplateExercise,
+  previous: Pick<WorkoutSet, 'weightKg' | 'reps' | 'seconds'> | null,
+  suggestion: LoadSuggestion | null,
+): PrefilledMeasures {
+  if (suggestion !== null) {
+    return { weightKg: suggestion.weightKg, reps: suggestion.reps, seconds: suggestion.seconds };
+  }
+  if (entry.exercise.kind === 'hold' || entry.exercise.kind === 'cardio') {
+    return { weightKg: null, reps: null, seconds: previous?.seconds ?? entry.targetSeconds ?? null };
+  }
+  return {
+    weightKg: previous?.weightKg ?? null,
+    reps: previous?.reps ?? entry.targetRepsMax ?? entry.targetRepsMin ?? null,
+    seconds: null,
+  };
+}
+
+/**
+ * Le repos après une série, sauf au milieu d'un superset : les deux
+ * exercices s'enchaînent sans pause, et le repos vient après le second.
+ */
+export function restAfterSet(
+  entry: TemplateExercise,
+  exercises: readonly Pick<TemplateExercise, 'supersetGroup' | 'position'>[],
+): number | null {
+  if (
+    entry.supersetGroup !== null &&
+    exercises.some(
+      (other) => other.supersetGroup === entry.supersetGroup && other.position > entry.position,
+    )
+  ) {
+    return null;
+  }
+  return restSecondsFor(entry);
+}
+

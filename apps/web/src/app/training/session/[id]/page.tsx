@@ -1,18 +1,7 @@
 import { notFound } from 'next/navigation';
 import { requireUserId } from '@/server/guard';
-import {
-  exerciseCatalog,
-  favoriteExerciseIdsFor,
-  fullExerciseCatalog,
-  habitualSwapsFor,
-  isSessionFavorited,
-  personalBests,
-  previousPerformance,
-  sessionFor,
-  templateFor,
-} from '@/server/services/workouts';
-import { parseSwaps, resolveSessionExercises, type Exercise, type WorkoutSet } from '@/lib/workout';
-import type { PersonalBest } from '@/lib/workout-progress';
+import { sessionRunnerFor } from '@/server/services/session-runner';
+import { parseSwaps } from '@/lib/workout';
 import { SessionRunner } from './SessionRunner';
 
 export const dynamic = 'force-dynamic';
@@ -44,81 +33,22 @@ export default async function SessionPage({
     notFound();
   }
 
-  const session = await sessionFor(userId, id);
-  if (session === null) {
+  const data = await sessionRunnerFor(userId, id, parseSwaps((await searchParams).swap));
+  if (data === null) {
     notFound();
   }
 
-  const closed = session.finishedAt !== null;
-  const [template, catalog, available] = await Promise.all([
-    session.templateId === null ? null : templateFor(userId, session.templateId),
-    fullExerciseCatalog(),
-    // Une séance terminée ne se modifie plus : inutile de lire la salle.
-    closed ? ([] as Exercise[]) : exerciseCatalog(userId),
-  ]);
-
-  // Une séance terminée ne prend plus d'intention : seules ses séries parlent.
-  const habits =
-    closed || template === null
-      ? new Map<number, number>()
-      : await habitualSwapsFor(userId, template, session.id);
-  const swaps = closed ? new Map<number, number>() : parseSwaps((await searchParams).swap);
-  for (const [position, exerciseId] of habits) {
-    if (!swaps.has(position)) {
-      swaps.set(position, exerciseId);
-    }
-  }
-
-  const exercises = resolveSessionExercises(
-    template?.exercises ?? [],
-    session.sets,
-    swaps,
-    new Map(catalog.map((exercise) => [exercise.id, exercise])),
-  );
-
-  // Une séance libre en cours reçoit des exercices en route ; une séance
-  // terminée peut rejoindre les favoris, et doit dire si elle y est déjà.
-  const canAddExercise = !closed && template?.kind === 'adhoc';
-  const [previous, bests, favorited, favoriteExercises] = await Promise.all([
-    previousPerformance(
-      userId,
-      exercises.map((entry) => entry.exercise.id),
-      session.id,
-    ),
-    personalBests(
-      userId,
-      exercises.map((entry) => entry.exercise),
-      session.id,
-    ),
-    closed ? isSessionFavorited(userId, session.id) : Promise.resolve(false),
-    closed ? Promise.resolve([] as number[]) : favoriteExerciseIdsFor(userId),
-  ]);
-
-  // Les cartes deviennent des objets simples : une Map ne traverse pas la
-  // frontière serveur/client, qui sérialise en JSON.
-  const previousByExercise: Record<number, WorkoutSet[]> = {};
-  for (const [exerciseId, sets] of previous) {
-    previousByExercise[exerciseId] = sets;
-  }
-  const bestByExercise: Record<number, PersonalBest | null> = {};
-  for (const [exerciseId, best] of bests) {
-    bestByExercise[exerciseId] = best;
-  }
-  const habitual = exercises
-    .filter((entry) => entry.planned !== null && habits.get(entry.position) === entry.exercise.id)
-    .map((entry) => entry.position);
-
   return (
     <SessionRunner
-      session={session}
-      exercises={exercises}
-      previous={previousByExercise}
-      bests={bestByExercise}
-      habitual={habitual}
-      catalog={available}
-      canAddExercise={canAddExercise}
-      favorited={favorited}
-      favoriteExercises={favoriteExercises}
+      session={data.session}
+      exercises={data.exercises}
+      previous={data.previous}
+      bests={data.bests}
+      habitual={data.habitual}
+      catalog={data.catalog}
+      canAddExercise={data.canAddExercise}
+      favorited={data.favorited}
+      favoriteExercises={data.favoriteExercises}
     />
   );
 }

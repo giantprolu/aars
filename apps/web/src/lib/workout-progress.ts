@@ -384,3 +384,31 @@ export function formatTonnage(kg: number): string {
     ? `${(Math.round(kg / 100) / 10).toLocaleString('fr-FR')} t`
     : `${Math.round(kg).toLocaleString('fr-FR')} kg`;
 }
+
+/**
+ * La meilleure série de la séance sur un exercice, si elle bat le record.
+ *
+ * Une seule par exercice : trois séries à la même charge record ne font
+ * qu'un record, et le trophée sur chacune n'en dirait pas plus.
+ */
+export function recordSetIndex(
+  exerciseId: number,
+  best: PersonalBest | null,
+  sets: readonly (MeasuredSet & { exerciseId: number; setIndex: number })[],
+): number | null {
+  if (best === null) {
+    return null;
+  }
+  let winner: { setIndex: number; value: number } | null = null;
+  for (const set of sets) {
+    if (set.exerciseId !== exerciseId) {
+      continue;
+    }
+    const value = setMeasure(best.metric, set);
+    if (value !== null && value > best.value && (winner === null || value > winner.value)) {
+      winner = { setIndex: set.setIndex, value };
+    }
+  }
+  return winner?.setIndex ?? null;
+}
+

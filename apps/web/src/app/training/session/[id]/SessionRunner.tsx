@@ -66,6 +66,8 @@ import {
   formatSet,
   KEEP_PLANNED,
   REST_CHOICES,
+  prefillMeasures,
+  restAfterSet,
   restSecondsFor,
   sessionVolume,
   suggestLoad,
@@ -76,7 +78,7 @@ import {
   type WorkoutSession,
   type WorkoutSet,
 } from '@/lib/workout';
-import { setMeasure, type PersonalBest } from '@/lib/workout-progress';
+import { recordSetIndex, setMeasure, type PersonalBest } from '@/lib/workout-progress';
 import { SessionClock, type Rest } from './SessionClock';
 import { SwapSheet } from './SwapSheet';
 
@@ -137,28 +139,11 @@ function initialDraft(
   previous: WorkoutSet | null,
   suggestion: LoadSuggestion | null,
 ): Draft {
-  if (suggestion !== null) {
-    return {
-      weightKg: suggestion.weightKg === null ? '' : String(suggestion.weightKg),
-      reps: suggestion.reps === null ? '' : String(suggestion.reps),
-      seconds: suggestion.seconds === null ? '' : String(suggestion.seconds),
-      toFailure: false,
-    };
-  }
-  if (entry.exercise.kind === 'hold' || entry.exercise.kind === 'cardio') {
-    return {
-      weightKg: '',
-      reps: '',
-      seconds: String(previous?.seconds ?? entry.targetSeconds ?? ''),
-      toFailure: false,
-    };
-  }
+  const measures = prefillMeasures(entry, previous, suggestion);
   return {
-    weightKg: previous?.weightKg === null || previous === null ? '' : String(previous.weightKg),
-    // La borne haute de la fourchette, pas la basse : c'est elle qu'on vise,
-    // et l'atteindre sur toutes les séries est le signal qu'il faut charger.
-    reps: String(previous?.reps ?? entry.targetRepsMax ?? entry.targetRepsMin ?? ''),
-    seconds: '',
+    weightKg: measures.weightKg === null ? '' : String(measures.weightKg),
+    reps: measures.reps === null ? '' : String(measures.reps),
+    seconds: measures.seconds === null ? '' : String(measures.seconds),
     toFailure: false,
   };
 }
@@ -269,16 +254,9 @@ export function SessionRunner({
    * exercices s'enchaînent sans pause, et le repos vient après le second.
    */
   function restAfter(entry: TemplateExercise): number | null {
-    if (
-      entry.supersetGroup !== null &&
-      exercises.some(
-        (other) => other.supersetGroup === entry.supersetGroup && other.position > entry.position,
-      )
-    ) {
-      return null;
-    }
-    return restSecondsFor(entry);
+    return restAfterSet(entry, exercises);
   }
+
 
   /** Règle le repos d'un exercice dans le programme, pour les séances suivantes aussi. */
   async function changeRest(entry: TemplateExercise, value: string) {
@@ -316,23 +294,10 @@ export function SessionRunner({
    * Une seule par exercice : trois séries à la même charge record ne font
    * qu'un record, et le trophée sur chacune n'en dirait pas plus.
    */
-  function recordSetIndex(entry: TemplateExercise): number | null {
-    const best = bests[entry.exercise.id] ?? null;
-    if (best === null) {
-      return null;
-    }
-    let winner: { setIndex: number; value: number } | null = null;
-    for (const set of session.sets) {
-      if (set.exerciseId !== entry.exercise.id) {
-        continue;
-      }
-      const value = setMeasure(best.metric, set);
-      if (value !== null && value > best.value && (winner === null || value > winner.value)) {
-        winner = { setIndex: set.setIndex, value };
-      }
-    }
-    return winner?.setIndex ?? null;
+  function recordSetIndexOf(entry: TemplateExercise): number | null {
+    return recordSetIndex(entry.exercise.id, bests[entry.exercise.id] ?? null, session.sets);
   }
+
 
   /** Vrai si la série qu'on vient de valider devient le record de l'exercice. */
   function isNewRecord(
@@ -565,7 +530,7 @@ export function SessionRunner({
           );
           const suggestion = closed ? null : suggestLoad(entry, history);
           const restSeconds = restSecondsFor(entry);
-          const trophy = recordSetIndex(entry);
+          const trophy = recordSetIndexOf(entry);
           const isHabit = habitual.includes(entry.position);
 
           return (
