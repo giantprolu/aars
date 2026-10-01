@@ -1,14 +1,21 @@
 import 'server-only';
 import { env } from '../env';
+import type { RecognizedItem } from '@/lib/vision-parse';
 import { recognizeWithMistral } from './mistral';
 import { recognizeWithGemini } from './gemini';
 
 /**
  * Contrat du modèle de vision (FR-17, AD-4).
  *
- * Un seul rôle, quel que soit le fournisseur : nommer des aliments. Ni
- * quantité ni calories, parce qu'un modèle de vision n'a aucun moyen fiable
- * d'évaluer la masse d'une portion sur une image.
+ * Un seul rôle, quel que soit le fournisseur : nommer les aliments d'une
+ * photo et estimer la masse de chacun.
+ *
+ * L'estimation de masse était exclue à l'origine, faute de fiabilité. La
+ * décision a été renversée le 01/10/2026 avec la reconnaissance payante : une
+ * photo qui oblige encore à tout peser n'apporte pas assez pour être vendue.
+ * L'estimation reste une proposition. Elle pré-remplit le premier raccourci
+ * du pavé de quantité, l'utilisateur la valide ou la corrige, et les calories
+ * viennent toujours de la fiche CIQUAL choisie, jamais du modèle.
  *
  * Le fournisseur est une variable d'environnement et non une dépendance en
  * dur. La raison est vécue : le compte Mistral du projet s'est retrouvé avec
@@ -16,8 +23,8 @@ import { recognizeWithGemini } from './gemini';
  * sans réécriture. Le reste du code ne connaît que `recognizeFoods` et ne sait
  * pas qui répond.
  *
- * La consigne et l'analyse de la réponse vivent ici plutôt que chez chaque
- * fournisseur : c'est ce qui garantit que changer de modèle ne change pas la
+ * La consigne vit ici plutôt que chez chaque fournisseur, et l'analyse de la
+ * réponse dans `lib/vision-parse.ts` : changer de modèle ne change pas la
  * forme des noms rendus, donc pas la qualité de la recherche CIQUAL en aval.
  */
 
@@ -30,114 +37,65 @@ import { recognizeWithGemini } from './gemini';
  * rendu d'un bloc est pire encore : aucune ligne CIQUAL ne porte une recette
  * entière, alors que chacun de ses ingrédients y figure.
  *
- * Vérifié sur photos réelles : la consigne rend « poulet rôti », « riz cuit »,
- * « petit pois », « carotte », que la recherche retrouve tous en tête.
+ * La consigne pousse aussi le modèle à toujours proposer quelque chose. Elle
+ * l'autorisait à rendre une liste vide « si aucun aliment n'est
+ * identifiable », et un modèle rapide à température nulle prenait trop
+ * souvent cette sortie sur une photo floue ou mal cadrée : l'utilisateur
+ * voyait « Aucun aliment identifié » devant une assiette pleine.
  */
 export const SYSTEM_PROMPT = [
-  "Tu identifies les aliments visibles sur une photo de repas. Ces noms serviront à",
-  "retrouver chaque aliment dans la table CIQUAL de l'Anses, dont les libellés sont",
-  'génériques et au singulier.',
+  "Tu identifies les aliments d'une photo de repas et tu estimes la masse de chacun.",
+  "Les noms serviront à retrouver chaque aliment dans la table CIQUAL de l'Anses, dont",
+  'les libellés sont génériques et au singulier.',
   '',
   'Règles de nommage, impératives :',
   "- Décompose un plat composé en ses ingrédients principaux, un par entrée. Une pizza",
   "  donne « pâte à pizza », « fromage », « tomate ». Un couscous donne « semoule »,",
-  '  « agneau », « carotte ».',
+  "  « agneau », « carotte ». Un plat qu'on ne décompose pas à l'œil (soupe, purée,",
+  '  gratin, lasagne) garde son nom courant : « soupe de légumes », « lasagne ».',
   "- Chaque nom fait un à trois mots : l'aliment de base, puis sa cuisson ou sa forme",
   '  quand elle est visible. « riz cuit », « poulet rôti », « haricot vert », « pain complet ».',
   "- Emploie le mot courant et générique du français, au singulier. Jamais de marque,",
   "  de nom de recette, ni d'adjectif d'aspect. Écris « poulet », pas « émincé de volaille",
   '  fermière ». Écris « tomate », pas « tomate bien mûre ».',
+  '- Compte aussi les boissons, sauces et accompagnements visibles.',
   '- Ne nomme ni la vaisselle, ni les couverts, ni la nappe, ni le décor.',
   '- Au plus huit entrées, les plus nourrissantes en premier.',
   '',
-  "N'estime jamais de quantité, de poids, de calories ni de valeur nutritionnelle :",
-  "l'utilisateur pèse lui-même.",
+  'Estimation des masses :',
+  "- Pour chaque entrée, estime en grammes la quantité qui sera mangée, telle qu'elle",
+  '  est servie (cuite si elle est cuite).',
+  "- Sers-toi des repères de taille visibles : une assiette plate mesure environ 26 cm,",
+  "  une fourchette 19 cm, une tranche de pain environ 30 g, un œuf environ 50 g.",
+  '- Donne un nombre entier, sans fourchette ni unité.',
   '',
-  'Réponds par un objet JSON de la forme {"aliments": ["riz cuit", "poulet rôti"]}.',
-  'Si aucun aliment n\'est identifiable, réponds {"aliments": []}.',
+  "Même sur une photo floue, sombre ou partielle, donne ta meilleure hypothèse :",
+  "l'utilisateur corrige ensuite. Ne rends une liste vide que si la photo ne montre",
+  'manifestement aucun aliment ni aucune boisson.',
+  '',
+  'Réponds par un objet JSON de la forme',
+  '{"aliments": [{"nom": "riz cuit", "grammes": 150}, {"nom": "poulet rôti", "grammes": 120}]}.',
 ].join('\n');
 
 /** Question posée avec l'image. Identique chez les deux fournisseurs. */
-export const USER_PROMPT = 'Quels aliments vois-tu ?';
+export const USER_PROMPT = 'Quels aliments vois-tu, et combien de grammes de chacun ?';
 
-const MAX_NAMES = 12;
-
-/** De quoi énumérer une dizaine de noms courts, pas de quoi disserter. */
-export const MAX_TOKENS = 400;
+/**
+ * Plafond de la réponse, raisonnement compris.
+ *
+ * Il était de 400, calibré pour une dizaine de noms courts. Mais les modèles
+ * Gemini récents raisonnent avant de répondre, et ce raisonnement est décompté
+ * du même plafond : il pouvait l'épuiser avant que la liste ne soit écrite.
+ * La réponse utile reste courte ; ce plafond ne fait que laisser la place de
+ * réfléchir.
+ */
+export const MAX_TOKENS = 4096;
 
 export type RecognizeResult =
-  | { kind: 'recognized'; names: string[] }
+  | { kind: 'recognized'; items: RecognizedItem[] }
   | { kind: 'unavailable' }
   | { kind: 'quota_exceeded' }
   | { kind: 'bad_format' };
-
-/**
- * Le modèle encadre parfois sa réponse dans un bloc de code, malgré la
- * consigne. On retire ces délimiteurs avant d'analyser, plutôt que de
- * traiter une réponse par ailleurs correcte comme un échec.
- */
-function stripCodeFence(text: string): string {
-  return text
-    .trim()
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/, '')
-    .trim();
-}
-
-/**
- * Retient les chaînes exploitables d'un tableau.
- *
- * Une entrée aberrante au milieu d'une réponse par ailleurs bonne est écartée,
- * là où la version précédente rejetait la réponse entière : perdre les six
- * aliments corrects d'une photo parce que le septième est un nombre n'aidait
- * personne, et se présentait à l'utilisateur comme une panne du modèle.
- */
-function usableNames(items: readonly unknown[]): string[] {
-  const names = items
-    .filter((item): item is string => typeof item === 'string')
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0 && item.length <= 100);
-
-  // Le modèle répète parfois un ingrédient vu à deux endroits de l'assiette.
-  const unique = new Map<string, string>();
-  for (const name of names) {
-    const key = name.toLowerCase();
-    if (!unique.has(key)) {
-      unique.set(key, name);
-    }
-  }
-
-  return [...unique.values()].slice(0, MAX_NAMES);
-}
-
-/**
- * Extrait la liste de noms d'une réponse.
- *
- * Trois formes sont acceptées : l'objet demandé, un tableau nu, et un objet à
- * clé unique portant un tableau. Le mode JSON garantit du JSON valide, pas la
- * forme exacte, et un modèle qui rend `["riz"]` au lieu de `{"aliments":
- * ["riz"]}` a fait le travail utile.
- */
-export function parseNames(raw: string): string[] | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stripCodeFence(raw));
-  } catch {
-    return null;
-  }
-
-  if (Array.isArray(parsed)) {
-    return usableNames(parsed);
-  }
-
-  if (typeof parsed !== 'object' || parsed === null) {
-    return null;
-  }
-
-  const record = parsed as Record<string, unknown>;
-  const candidate = record.aliments ?? record.foods ?? Object.values(record)[0];
-  return Array.isArray(candidate) ? usableNames(candidate) : null;
-}
 
 /**
  * Sépare l'en-tête d'une data URL de sa charge base64.

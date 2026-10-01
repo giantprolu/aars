@@ -6,6 +6,8 @@
  * ordre et l'utilisateur verrait les puces bouger d'un chemin à l'autre.
  *
  * Ordre fixe (EXPERIENCE.md, motifs de composants) :
+ *   0. la portion estimée sur la photo, quand le modèle en donne une : c'est
+ *      la quantité de ce repas-ci, plus pertinente que toute habitude
  *   1. la portion de référence, quand le produit en déclare une
  *   2. les deux dernières quantités distinctes, la plus récente d'abord
  *   3. 100 g, toujours proposé
@@ -23,9 +25,11 @@ export interface QuantityShortcut {
 export const MAX_RECENT_SHORTCUTS = 2;
 
 export function buildQuantityShortcuts({
+  estimatedG,
   servingSizeG,
   recentQuantities,
 }: {
+  estimatedG?: number | null;
   servingSizeG?: number | null;
   recentQuantities?: readonly number[];
 }): QuantityShortcut[] {
@@ -38,6 +42,11 @@ export function buildQuantityShortcuts({
     }
     seen.add(shortcut.grams);
     shortcuts.push(shortcut);
+  }
+
+  if (typeof estimatedG === 'number' && estimatedG > 0) {
+    const grams = Math.round(estimatedG);
+    push({ label: `Estimé (${grams} g)`, grams });
   }
 
   if (typeof servingSizeG === 'number' && servingSizeG > 0) {

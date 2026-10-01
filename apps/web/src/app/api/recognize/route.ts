@@ -49,7 +49,12 @@ export async function POST(request: Request): Promise<Response> {
 
   switch (result.kind) {
     case 'recognized':
-      return Response.json({ names: result.names });
+      // `names` reste pour les PWA installées dont le service worker sert
+      // encore l'ancien client, qui ne lit que ce champ.
+      return Response.json({
+        items: result.items,
+        names: result.items.map((item) => item.name),
+      });
     case 'bad_format':
       return apiError('model_bad_format');
     case 'quota_exceeded':

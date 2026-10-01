@@ -1,10 +1,10 @@
 import 'server-only';
 import { env, requireEnv } from '../env';
+import { parseItems } from '@/lib/vision-parse';
 import {
   MAX_TOKENS,
   SYSTEM_PROMPT,
   USER_PROMPT,
-  parseNames,
   splitDataUrl,
   type RecognizeResult,
 } from './vision';
@@ -44,18 +44,28 @@ const TIMEOUT_MS = 30_000;
 const RESPONSE_SCHEMA = {
   type: 'OBJECT',
   properties: {
-    aliments: { type: 'ARRAY', items: { type: 'STRING' } },
+    aliments: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          nom: { type: 'STRING' },
+          grammes: { type: 'INTEGER' },
+        },
+        required: ['nom', 'grammes'],
+      },
+    },
   },
   required: ['aliments'],
 } as const;
 
 interface GeminiResponse {
-  candidates?: { content?: { parts?: { text?: string }[] } }[];
+  candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
   error?: { code?: number; message?: string; status?: string };
 }
 
 type Attempt =
-  | { kind: 'text'; text: string }
+  | { kind: 'text'; text: string; finishReason: string }
   | { kind: 'retry'; reason: string }
   | { kind: 'quota' }
   | { kind: 'fatal'; reason: string };
@@ -116,11 +126,10 @@ async function askOnce(apiKey: string, mimeType: string, base64: string): Promis
     };
   }
 
-  const text = (body.candidates?.[0]?.content?.parts ?? [])
-    .map((part) => part.text ?? '')
-    .join('');
+  const candidate = body.candidates?.[0];
+  const text = (candidate?.content?.parts ?? []).map((part) => part.text ?? '').join('');
 
-  return { kind: 'text', text };
+  return { kind: 'text', text, finishReason: candidate?.finishReason ?? 'absent' };
 }
 
 export async function recognizeWithGemini(
@@ -145,10 +154,17 @@ export async function recognizeWithGemini(
     const result = await askOnce(apiKey, image.mimeType, image.base64);
 
     if (result.kind === 'text') {
-      const names = parseNames(result.text);
-      return names === null
-        ? { kind: 'bad_format' }
-        : { kind: 'recognized', names };
+      const items = parseItems(result.text);
+      if (items === null || items.length === 0) {
+        // Seule trace d'un échec qui ne lève aucune erreur : sans elle, une
+        // liste vide en production restait inexplicable. Ni l'image ni la
+        // réponse ne sont journalisées, seulement leur forme.
+        console.error(
+          `[recognize] Gemini ${env.geminiModel} : ${items === null ? 'reponse illisible' : 'liste vide'}, ` +
+            `finishReason=${result.finishReason}, ${result.text.length} caracteres`,
+        );
+      }
+      return items === null ? { kind: 'bad_format' } : { kind: 'recognized', items };
     }
 
     if (result.kind === 'quota') {

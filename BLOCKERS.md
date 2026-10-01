@@ -328,3 +328,24 @@ Le code est prêt (voir `apps/android/PLAY_STORE.md`). Restent, côté humain :
 - formulaires Sécurité des données, Health Connect, applications de santé,
   compte de test pour l'examen ;
 - captures d'écran de la fiche.
+
+## B-15 — `npm run build` échoue au prérendu de `/legal/privacy` — **résolu le 01/10/2026**
+
+Sur la branche `feat/freemium`, deux builds de suite échouent au même
+endroit. La vérification des types passe, et `npm run lint` et `npm run verify` aussi :
+
+```
+Could not find files for /_error in .next/build-manifest.json
+TypeError: Cannot read properties of undefined (reading 'call')
+    at Object.c [as require] (apps/web/.next/server/webpack-runtime.js:1:143)
+Error occurred prerendering page "/legal/privacy".
+```
+
+La page n'est pas touchée par la branche. Le cache `apps/web/.next` date
+d'avant l'avance rapide de `main` de 39 commits. L'absence de `/_error` dans
+le manifeste désigne ce cache périmé plutôt que le code. La suppression du
+dossier a été refusée pendant la session et n'a pas été contournée.
+
+**Résolution.** `apps/web/.next` supprimé à la main
+(`rd /s /q`, l'Explorateur refusait), puis `npm run build` passe. C'était bien
+le cache.

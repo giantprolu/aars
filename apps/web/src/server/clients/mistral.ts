@@ -2,13 +2,8 @@ import 'server-only';
 import { Mistral } from '@mistralai/mistralai';
 import { MistralError } from '@mistralai/mistralai/models/errors';
 import { env, requireEnv } from '../env';
-import {
-  MAX_TOKENS,
-  SYSTEM_PROMPT,
-  USER_PROMPT,
-  parseNames,
-  type RecognizeResult,
-} from './vision';
+import { parseItems } from '@/lib/vision-parse';
+import { MAX_TOKENS, SYSTEM_PROMPT, USER_PROMPT, type RecognizeResult } from './vision';
 
 /**
  * Reconnaissance d'aliments par l'API Mistral (FR-17, AD-4).
@@ -109,6 +104,12 @@ export async function recognizeWithMistral(
             .join('')
         : '';
 
-  const names = parseNames(text);
-  return names === null ? { kind: 'bad_format' } : { kind: 'recognized', names };
+  const items = parseItems(text);
+  if (items === null || items.length === 0) {
+    console.error(
+      `[recognize] Mistral ${env.mistralModel} : ${items === null ? 'reponse illisible' : 'liste vide'}, ` +
+        `${text.length} caracteres`,
+    );
+  }
+  return items === null ? { kind: 'bad_format' } : { kind: 'recognized', items };
 }

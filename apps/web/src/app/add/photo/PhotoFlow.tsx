@@ -22,6 +22,7 @@ import { fetchCandidates, rememberAlias, type CandidatesForName } from '@/lib/cl
 import { formatKcal } from '@/lib/nutrition';
 import type { Meal } from '@/lib/meal';
 import type { Candidate, SearchHit } from '@/lib/types';
+import type { RecognizedItem } from '@/lib/vision-parse';
 
 /**
  * Reconnaissance d'aliments par photo (FR-17 à FR-19, UJ-3).
@@ -36,15 +37,25 @@ import type { Candidate, SearchHit } from '@/lib/types';
  * portée de doigt, sur place.
  */
 
+/** Masse estimée sur la photo, par nom reconnu tel que le modèle l'a écrit. */
+type Estimates = ReadonlyMap<string, number | null>;
+
 type Step =
   | { name: 'capture' }
   | { name: 'working'; preview: string; label: string }
   | { name: 'failed'; preview: string; message: string; retryable: boolean }
-  | { name: 'resolving'; preview: string; pending: CandidatesForName[]; done: number }
+  | {
+      name: 'resolving';
+      preview: string;
+      pending: CandidatesForName[];
+      done: number;
+      estimates: Estimates;
+    }
   | {
       name: 'quantity';
       preview: string;
       pending: CandidatesForName[];
+      estimates: Estimates;
       done: number;
       recognizedName: string;
       candidate: Candidate;
@@ -63,15 +74,18 @@ const SOURCE_LABEL: Record<Candidate['kind'], string> = {
  * l'assiette. Sans cette déduplication, deux fiches identiques s'affichaient et
  * en traiter une retirait les deux, le filtrage se faisant sur le nom.
  */
-function distinct(names: readonly string[]): string[] {
-  const seen = new Map<string, string>();
-  for (const name of names) {
-    const key = name.trim().toLowerCase();
+function distinct(items: readonly RecognizedItem[]): Map<string, number | null> {
+  const seen = new Set<string>();
+  const estimates = new Map<string, number | null>();
+  for (const item of items) {
+    const name = item.name.trim();
+    const key = name.toLowerCase();
     if (key !== '' && !seen.has(key)) {
-      seen.set(key, name.trim());
+      seen.add(key);
+      estimates.set(name, item.grams);
     }
   }
-  return [...seen.values()];
+  return estimates;
 }
 
 function CandidateRow({
@@ -253,7 +267,7 @@ export function PhotoFlow() {
     setStep({ name: 'working', preview, label: 'Reconnaissance…' });
 
     const outcome = await recognizePhoto(preview);
-    if (outcome.kind !== 'names') {
+    if (outcome.kind !== 'items') {
       const message =
         outcome.kind === 'too_large'
           ? 'Image trop lourde.'
@@ -271,7 +285,8 @@ export function PhotoFlow() {
       return;
     }
 
-    const names = distinct(outcome.names);
+    const estimates = distinct(outcome.items);
+    const names = [...estimates.keys()];
     if (names.length === 0) {
       setStep({
         name: 'failed',
@@ -284,7 +299,7 @@ export function PhotoFlow() {
 
     setStep({ name: 'working', preview, label: 'Recherche des correspondances…' });
     const results = await fetchCandidates(names);
-    setStep({ name: 'resolving', preview, pending: results, done: 0 });
+    setStep({ name: 'resolving', preview, pending: results, done: 0, estimates });
   }
 
   async function handleFile(file: File) {
@@ -311,11 +326,13 @@ export function PhotoFlow() {
       name: 'quantity',
       preview: step.preview,
       pending: step.pending.filter((item) => item.name !== recognizedName),
+      estimates: step.estimates,
       done: step.done,
       recognizedName,
       candidate,
       origin,
       shortcuts: buildQuantityShortcuts({
+        estimatedG: step.estimates.get(recognizedName) ?? null,
         servingSizeG: candidate.servingSizeG,
         recentQuantities: recent,
       }),
@@ -331,6 +348,7 @@ export function PhotoFlow() {
       step.pending.filter((item) => item.name !== entry.name),
       step.preview,
       step.done,
+      step.estimates,
     );
   }
 
@@ -347,17 +365,23 @@ export function PhotoFlow() {
       preview: step.preview,
       pending: [step.origin, ...step.pending],
       done: step.done,
+      estimates: step.estimates,
     });
   }
 
-  function finishOrContinue(pending: CandidatesForName[], preview: string, done: number) {
+  function finishOrContinue(
+    pending: CandidatesForName[],
+    preview: string,
+    done: number,
+    estimates: Estimates,
+  ) {
     if (pending.length === 0) {
       // Tous les noms traités ou ignorés : retour au journal (UX-DR-7).
       router.replace('/');
       router.refresh();
       return;
     }
-    setStep({ name: 'resolving', preview, pending, done });
+    setStep({ name: 'resolving', preview, pending, done, estimates });
   }
 
   async function save(quantityG: number, meal: Meal) {
@@ -386,7 +410,7 @@ export function PhotoFlow() {
     await rememberAlias(step.recognizedName, step.candidate.kind, step.candidate.ref);
 
     setSubmitting(false);
-    finishOrContinue(step.pending, step.preview, step.done + 1);
+    finishOrContinue(step.pending, step.preview, step.done + 1, step.estimates);
   }
 
   if (step.name === 'capture') {
@@ -396,7 +420,7 @@ export function PhotoFlow() {
         <div className="mb-5 flex items-start justify-between gap-3">
           <PageTitle
             title="Photo du repas"
-            description="Le modèle nomme les aliments. Tu choisis et tu pèses."
+            description="Le modèle nomme les aliments et estime les portions. Tu valides ou tu corriges."
           />
           <Badge variant="outline" className="mt-1.5">
             Bêta

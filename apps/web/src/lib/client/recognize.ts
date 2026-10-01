@@ -1,5 +1,7 @@
+import type { RecognizedItem } from '@/lib/vision-parse';
+
 export type RecognizeOutcome =
-  | { kind: 'names'; names: string[] }
+  | { kind: 'items'; items: RecognizedItem[] }
   | { kind: 'too_large' }
   | { kind: 'bad_format' }
   | { kind: 'quota_exceeded' }
@@ -35,6 +37,6 @@ export async function recognizePhoto(dataUrl: string): Promise<RecognizeOutcome>
     return { kind: 'unavailable' };
   }
 
-  const body = (await response.json()) as { names: string[] };
-  return { kind: 'names', names: body.names };
+  const body = (await response.json()) as { items: RecognizedItem[] };
+  return { kind: 'items', items: body.items };
 }

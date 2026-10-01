@@ -12,6 +12,7 @@ import {
   ageInYears,
 } from '../src/lib/date';
 import { buildQuantityShortcuts } from '../src/lib/shortcuts';
+import { parseItems } from '../src/lib/vision-parse';
 import { isValidBarcode } from '../src/lib/client/scanner';
 import { mapColumns, parseNutrient, isCompleteRow, normalizeHeader } from './ciqual-parse';
 import {
@@ -177,6 +178,55 @@ assert.deepEqual(
   [100],
   'une portion nulle est ignoree',
 );
+
+// FR-17 : la portion estimee sur la photo passe devant tout le reste.
+const estimated = buildQuantityShortcuts({ estimatedG: 182.4, servingSizeG: 125 });
+assert.deepEqual(estimated.map((s) => s.grams), [182, 125, 100], 'estimation en tete, arrondie');
+assert.equal(estimated[0]?.label, 'Estimé (182 g)', 'l estimation porte son libelle');
+assert.deepEqual(
+  buildQuantityShortcuts({ estimatedG: null }).map((s) => s.grams),
+  [100],
+  'sans estimation, rien ne change',
+);
+
+// FR-17 : lecture des reponses du modele de vision.
+assert.deepEqual(
+  parseItems('{"aliments": [{"nom": "riz cuit", "grammes": 150}, {"nom": "poulet rôti", "grammes": 120}]}'),
+  [
+    { name: 'riz cuit', grams: 150 },
+    { name: 'poulet rôti', grams: 120 },
+  ],
+  'forme demandee',
+);
+assert.deepEqual(
+  parseItems('{"foods": [{"name": "rice", "grams": "200"}]}'),
+  [{ name: 'rice', grams: 200 }],
+  'cles anglaises et masse en texte : une reponse juste n est plus une liste vide',
+);
+assert.deepEqual(
+  parseItems('```json\n["riz cuit", "carotte"]\n```'),
+  [
+    { name: 'riz cuit', grams: null },
+    { name: 'carotte', grams: null },
+  ],
+  'ancienne forme, tableau de noms dans un bloc de code',
+);
+assert.deepEqual(
+  parseItems('{"aliments": [{"nom": "riz", "grammes": 100}, {"nom": "Riz", "grammes": 50}, 42]}'),
+  [{ name: 'riz', grams: 150 }],
+  'doublons additionnes, entree aberrante ecartee',
+);
+assert.deepEqual(
+  parseItems('{"aliments": [{"nom": "pâtes", "grammes": 9000}, {"nom": "sel", "grammes": -2}]}'),
+  [
+    { name: 'pâtes', grams: null },
+    { name: 'sel', grams: null },
+  ],
+  'masse absurde ignoree, le nom reste',
+);
+assert.deepEqual(parseItems('{"aliments": []}'), [], 'assiette vide');
+assert.equal(parseItems('desole, je ne vois rien'), null, 'texte libre illisible');
+assert.equal(parseItems(''), null, 'reponse vide illisible');
 
 // FR-16 : un code-barres exploitable fait 8, 12 ou 13 chiffres.
 assert.equal(isValidBarcode('3017620422003'), true, 'EAN-13');
