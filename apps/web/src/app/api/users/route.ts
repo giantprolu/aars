@@ -9,6 +9,7 @@ import {
   sessionCookieOptions,
 } from '@/server/auth';
 import { apiError } from '@/server/errors';
+import { isMobileClient } from '@/server/guard';
 import { createUser } from '@/server/db/queries/users';
 
 export const runtime = 'nodejs';
@@ -58,11 +59,13 @@ export async function POST(request: Request): Promise<Response> {
 
   // La session est ouverte dans la foulée : redemander le mot de passe juste
   // après l'avoir choisi n'apporte rien.
+  const token = await issueSessionToken(result.user.id);
+  // Une app native n'a pas de cookie : elle reçoit le jeton dans le corps et le
+  // renvoie en `Authorization: Bearer`. Le navigateur ne le voit jamais.
+  if (isMobileClient(request)) {
+    return Response.json({ ok: true, token }, { status: 201 });
+  }
   const store = await cookies();
-  store.set(
-    SESSION_COOKIE,
-    await issueSessionToken(result.user.id),
-    sessionCookieOptions(SESSION_MAX_AGE_SECONDS),
-  );
+  store.set(SESSION_COOKIE, token, sessionCookieOptions(SESSION_MAX_AGE_SECONDS));
   return Response.json({ ok: true }, { status: 201 });
 }

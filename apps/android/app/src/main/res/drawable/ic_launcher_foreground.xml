@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Le + du bouton central, sur la zone sûre de 66 dp d'une icône adaptative. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M54,36L54,72M36,54L72,54"
+        android:strokeColor="#FF0B3B26"
+        android:strokeWidth="7"
+        android:strokeLineCap="round" />
+</vector>

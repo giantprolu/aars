@@ -8,7 +8,7 @@ import {
   verifyPassword,
 } from '@/server/auth';
 import { apiError } from '@/server/errors';
-import { hasSession } from '@/server/guard';
+import { hasSession, isMobileClient } from '@/server/guard';
 import { findUserByEmail } from '@/server/db/queries/users';
 
 export const runtime = 'nodejs';
@@ -54,12 +54,14 @@ export async function POST(request: Request): Promise<Response> {
     return apiError('unauthorized', 'Adresse ou mot de passe incorrect.');
   }
 
+  const token = await issueSessionToken(user.id);
+  // Une app native n'a pas de cookie : elle reçoit le jeton dans le corps et le
+  // renvoie en `Authorization: Bearer`. Le navigateur ne le voit jamais.
+  if (isMobileClient(request)) {
+    return Response.json({ ok: true, token });
+  }
   const store = await cookies();
-  store.set(
-    SESSION_COOKIE,
-    await issueSessionToken(user.id),
-    sessionCookieOptions(SESSION_MAX_AGE_SECONDS),
-  );
+  store.set(SESSION_COOKIE, token, sessionCookieOptions(SESSION_MAX_AGE_SECONDS));
   return Response.json({ ok: true });
 }
 

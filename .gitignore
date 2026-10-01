@@ -33,3 +33,7 @@ DerivedData/
 local.properties
 *.apk
 *.aab
+.idea/
+*.iml
+.kotlin/
+apps/android/captures/

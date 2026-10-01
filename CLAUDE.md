@@ -38,6 +38,10 @@ d'une seule personne. Poids, âge et repas de tiers sont des données de santé.
 4. `git push origin bmad/dev`
 5. Marquer la story comme terminée dans le sprint status BMAD
 
+Pour `apps/android`, le point 1 devient : le projet se synchronise et
+`assembleDebug` passe dans Android Studio (aucun SDK Android n'est installé
+hors d'Android Studio sur ce poste).
+
 Ne jamais passer à la story suivante si le build échoue.
 Le travail se committe sur `bmad/dev`. Reporter ensuite `main` dessus est
 autorisé, en avance rapide uniquement : c'est le même historique, pas une
@@ -53,3 +57,4 @@ dans `BLOCKERS.md` plutôt que de contourner.
   l'utilisateur. Les fonctions le reçoivent en premier argument et ne le
   déduisent jamais seules : le compilateur doit pouvoir refuser un oubli
 - L'identifiant d'utilisateur ne vient jamais du client, toujours du cookie
+  ou du jeton `Authorization: Bearer` des apps natives (même jeton signé)

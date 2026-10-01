@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE, readSessionToken } from './auth';
 
@@ -14,8 +14,21 @@ import { SESSION_COOKIE, readSessionToken } from './auth';
  * cet identifiant, jamais d'un paramètre fourni par le client.
  */
 export async function currentUserId(): Promise<number | null> {
+  // Les apps natives portent le même jeton signé, en en-tête plutôt qu'en
+  // cookie. Un en-tête présent mais invalide ne retombe pas sur le cookie :
+  // le client a dit qui il était, et ce n'est pas vérifiable.
+  const authorization = (await headers()).get('authorization');
+  if (authorization !== null) {
+    const match = /^Bearer\s+(\S+)$/i.exec(authorization);
+    return readSessionToken(match?.[1]);
+  }
   const store = await cookies();
   return readSessionToken(store.get(SESSION_COOKIE)?.value);
+}
+
+/** Vrai pour une app native, qui s'annonce par `X-Client: mobile`. */
+export function isMobileClient(request: Request): boolean {
+  return request.headers.get('x-client') === 'mobile';
 }
 
 /** Vrai si une session est ouverte, sans se soucier de qui. */
