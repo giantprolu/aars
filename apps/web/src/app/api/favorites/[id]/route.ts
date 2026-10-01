@@ -3,6 +3,7 @@ import { apiError } from '@/server/errors';
 import { currentUserId } from '@/server/guard';
 import { removeFavorite, replayFavorite } from '@/server/services/favorites';
 import { MEALS } from '@/lib/meal';
+import { recordMeal } from '@/server/services/usage';
 
 export const runtime = 'nodejs';
 
@@ -41,9 +42,11 @@ export async function POST(
   }
 
   const result = await replayFavorite(userId, id, parsed.data.meal);
-  return result.kind === 'added'
-    ? Response.json({ count: result.count }, { status: 201 })
-    : apiError('not_found');
+  if (result.kind !== 'added') {
+    return apiError('not_found');
+  }
+  await recordMeal(userId, 'favorite');
+  return Response.json({ count: result.count }, { status: 201 });
 }
 
 export async function DELETE(

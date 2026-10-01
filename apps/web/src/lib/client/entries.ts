@@ -1,5 +1,6 @@
 import type { Entry, Macros, SourceKind } from '../types';
 import type { Meal } from '../meal';
+import type { EntryVia } from '../usage';
 
 /**
  * Appels navigateur vers les routes d'entrées.
@@ -20,6 +21,8 @@ export interface CreateEntryPayload {
   sourceKind: SourceKind;
   sourceRef: string | null;
   meal: Meal;
+  /** Pour la mesure d'usage : la recherche est supposée quand il manque. */
+  via?: EntryVia;
 }
 
 export async function createEntry(payload: CreateEntryPayload): Promise<CreateEntryResult> {

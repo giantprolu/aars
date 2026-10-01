@@ -26,6 +26,7 @@ import {
   type BodyProfile,
 } from '../src/lib/energy';
 import { weeklyWeights, weightChange } from '../src/lib/weight';
+import { USAGE_EVENTS, entryMethod, mealEvent } from '../src/lib/usage';
 import {
   cleanDisplayName,
   isSessionVisibility,
@@ -1724,6 +1725,16 @@ assert.equal(
   assert.equal(personLabel({ handle: 'cam', displayName: 'Camille' }), 'Camille', 'le nom d abord');
   assert.equal(isSessionVisibility('detailed'), true, 'visibilite connue');
   assert.equal(isSessionVisibility('public'), false, 'pas de public : on partage a ses abonnes');
+}
+
+
+// Mesure d'usage : la methode d'une entree, et un evenement de repas toujours dans la liste.
+{
+  assert.equal(entryMethod('barcode', 'product'), 'barcode', 'la methode declaree l emporte');
+  assert.equal(entryMethod(undefined, 'manual'), 'manual', 'sans declaration, saisie libre : manuelle');
+  assert.equal(entryMethod(undefined, 'product'), 'search', 'sans declaration, sinon : recherche');
+  assert.equal(USAGE_EVENTS.includes(mealEvent('favorite')), true, 'repas favori dans la liste');
+  assert.equal(new Set(USAGE_EVENTS).size, USAGE_EVENTS.length, 'aucun evenement en double');
 }
 
 console.log('Toutes les verifications pures passent.');

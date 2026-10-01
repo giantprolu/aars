@@ -32,6 +32,7 @@ export default function PrivacyPage() {
         <li>Activité physique : l&apos;énergie active dépensée par jour (kilocalories), lue avec ton accord dans Health Connect sur Android ou envoyée par un raccourci iOS.</li>
         <li>Communauté : pseudonyme, nom affiché, abonnements, et les séances que tu choisis de partager.</li>
         <li>Notifications : l&apos;adresse d&apos;abonnement du navigateur si tu actives le rappel du déjeuner.</li>
+        <li>Mesure d&apos;usage : pour chaque jour, combien de fois tu as ouvert l&apos;accueil, ajouté un repas (et par quel moyen : recherche, scan, favori…), enregistré ton profil, synchronisé ta dépense ou atteint une limite de la version gratuite. Rien sur ce que tu manges. Ces compteurs servent seulement à savoir ce qui est utilisé et ce qui ne l&apos;est pas, restent dans notre base (aucun outil d&apos;analyse externe), et sont effacés au bout de treize mois.</li>
         <li>Abonnement, si tu en prends un : l&apos;offre choisie, son état, sa date d&apos;échéance et le jeton d&apos;achat de Google Play. Aucune donnée de paiement : la carte et l&apos;adresse de facturation restent chez Google.</li>
       </ul>
 

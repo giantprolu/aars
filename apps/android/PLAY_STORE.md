@@ -130,6 +130,7 @@ agissant pour notre compte ne comptent pas comme un partage).
 | Santé et remise en forme | Informations sur la santé (poids, taille, masse grasse, repas) | Oui | Oui | Fonctionnalités de l'app |
 | Santé et remise en forme | Informations sur la remise en forme (séances, énergie active) | Oui | Non | Fonctionnalités de l'app |
 | Activité dans l'app | Autre contenu généré (recettes, listes de courses) | Oui | Non | Fonctionnalités de l'app |
+| Activité dans l'app | Interactions avec l'appli (compteurs par jour : ouvertures, repas ajoutés et leur moyen de saisie, limites gratuites atteintes) | Oui | Oui | Analyses |
 | Infos financières | Historique des achats (offre, état, échéance de l'abonnement) | Oui | Non | Fonctionnalités de l'app, gestion du compte |
 
 Photos : l'app Android n'envoie pas encore de photo d'assiette (le scanner
@@ -139,7 +140,8 @@ lit le code-barres sur le téléphone, sans rien envoyer). Le jour où
 
 Non collectés : position, contacts, identifiants publicitaires, données
 de paiement (carte, facturation : elles restent chez Google Play), historique de navigation, fichiers audio, journaux de plantage
-(aucun SDK d'analyse ni de crash n'est embarqué).
+(aucun SDK d'analyse ni de crash n'est embarqué : la mesure d'usage est
+comptée par notre serveur, dans notre base, et effacée après treize mois).
 
 ### Health Connect
 

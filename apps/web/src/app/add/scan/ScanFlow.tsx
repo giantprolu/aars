@@ -114,6 +114,7 @@ export function ScanFlow() {
       sourceKind: 'product',
       sourceRef: step.product.ref,
       meal,
+      via: 'barcode',
     });
 
     if (result.kind === 'created') {

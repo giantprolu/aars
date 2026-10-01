@@ -4,6 +4,7 @@ import { currentUserId } from '@/server/guard';
 import { favoritesFor, saveMealAsFavorite } from '@/server/services/favorites';
 import { MAX_FAVORITE_NAME } from '@/lib/favorites';
 import { MEALS } from '@/lib/meal';
+import { recordUsage } from '@/server/services/usage';
 
 export const runtime = 'nodejs';
 
@@ -52,6 +53,7 @@ export async function POST(request: Request): Promise<Response> {
     return apiError('invalid_input', 'Ce repas compte trop d’aliments pour un favori.');
   }
   if (result.kind === 'premium_required') {
+    await recordUsage(userId, 'paywall_hit');
     return apiError(
       'premium_required',
       'La version gratuite garde 10 favoris. Abonne-toi pour en enregistrer davantage.',

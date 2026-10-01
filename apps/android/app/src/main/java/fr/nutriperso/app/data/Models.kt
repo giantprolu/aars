@@ -233,6 +233,8 @@ data class NewEntryBody(
     val sourceKind: String,
     val sourceRef: String?,
     val meal: String,
+    /** `search` ou `barcode`, pour la mesure d'usage. Sans effet sur l'entrée. */
+    val via: String? = null,
 )
 
 @Serializable

@@ -208,8 +208,9 @@ class AppModel(application: Application) : AndroidViewModel(application) {
         done,
     )
 
-    fun addHit(hit: SearchHit, quantityG: Int, meal: Meal, done: () -> Unit) = write(
-        { api.addEntry(hit, quantityG, meal.api) },
+    /** [fromScan] dit si l'aliment vient du scanner plutôt que de la recherche. */
+    fun addHit(hit: SearchHit, quantityG: Int, meal: Meal, fromScan: Boolean, done: () -> Unit) = write(
+        { api.addEntry(hit, quantityG, meal.api, if (fromScan) "barcode" else "search") },
         "${hit.name} ajouté ${meal.inPhrase}",
         done,
     )

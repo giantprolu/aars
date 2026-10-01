@@ -161,7 +161,7 @@ class Api(private val tokens: TokenStore) {
     suspend fun replayFavorite(id: Long, meal: String) =
         send("POST", "/api/favorites/$id", json.encodeToString(MealBody.serializer(), MealBody(meal)))
 
-    suspend fun addEntry(hit: SearchHit, quantityG: Int, meal: String): ApiResult<Unit> {
+    suspend fun addEntry(hit: SearchHit, quantityG: Int, meal: String, via: String): ApiResult<Unit> {
         // Un produit venu d'Open Food Facts doit être en base avant d'être
         // journalisé, sinon sa référence ne pointe vers rien (SearchFlow web).
         // L'entrée porte ses propres macros : un échec ici ne l'empêche pas.
@@ -169,7 +169,7 @@ class Api(private val tokens: TokenStore) {
             val product = CacheProductBody(hit.ref, hit.name, hit.per100g, hit.servingSizeG, "off")
             send("POST", "/api/products", json.encodeToString(CacheProductBody.serializer(), product))
         }
-        val body = NewEntryBody(hit.name, hit.per100g, quantityG, hit.kind, hit.ref, meal)
+        val body = NewEntryBody(hit.name, hit.per100g, quantityG, hit.kind, hit.ref, meal, via)
         return send("POST", "/api/entries", json.encodeToString(NewEntryBody.serializer(), body))
     }
 

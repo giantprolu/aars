@@ -15,6 +15,7 @@ import {
   unique,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import { USAGE_EVENTS } from '../../lib/usage';
 
 /**
  * Schéma Drizzle. `snake_case` en base, `camelCase` en TypeScript
@@ -1187,3 +1188,34 @@ export const storeSubscriptions = pgTable(
 );
 
 export type StoreSubscriptionRow = typeof storeSubscriptions.$inferSelect;
+
+/**
+ * Mesure d'usage (étape « mesurer », 01/10/2026). Une ligne par compte, par
+ * jour et par événement, avec un compteur : rien de plus fin que la journée,
+ * et aucune donnée du repas. Voir `@/lib/usage` pour ce qui est compté.
+ *
+ * Supprimée avec le compte, et rendue dans l'export : c'est une donnée sur la
+ * personne, même réduite à des compteurs.
+ */
+export const usageDays = pgTable(
+  'usage_days',
+  {
+    userId: bigint('user_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** Jour en Europe/Paris, comme le journal (AD-11). */
+    day: date('day').notNull(),
+    event: text('event').notNull(),
+    count: integer('count').notNull().default(1),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.day, table.event] }),
+    // Le rapport lit par jour, tous comptes confondus : la clé, qui commence
+    // par le compte, ne le sert pas.
+    index('usage_days_day_idx').on(table.day, table.event),
+    check(
+      'usage_days_event_check',
+      sql`${table.event} in (${sql.raw(USAGE_EVENTS.map((event) => `'${event}'`).join(', '))})`,
+    ),
+  ],
+);

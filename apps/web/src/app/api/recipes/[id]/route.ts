@@ -5,6 +5,7 @@ import { recipeFor, removeRecipe, saveRecipe } from '@/server/services/recipes';
 import { MAX_PLANNED_SERVINGS, journalRecipe } from '@/server/services/recipe-journal';
 import { REJECTION_MESSAGES, recipeSchema } from '@/server/validation/recipes';
 import { MEALS } from '@/lib/meal';
+import { recordMeal } from '@/server/services/usage';
 
 export const runtime = 'nodejs';
 
@@ -92,6 +93,7 @@ export async function POST(
   });
   switch (result.kind) {
     case 'journaled':
+      await recordMeal(userId, 'recipe');
       return Response.json({ created: result.created, skipped: result.skipped });
     case 'nothing_to_journal':
       return apiError('invalid_input', "Aucun ingrédient de cette recette n'a de fiche.");

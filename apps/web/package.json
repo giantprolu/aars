@@ -15,6 +15,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "import:ciqual": "tsx scripts/import-ciqual.ts",
+    "usage:report": "tsx scripts/usage-report.ts",
     "verify:off": "tsx scripts/verify-off.ts",
     "verify:catalog": "tsx --conditions=react-server scripts/verify-catalog.ts",
     "images:exercises": "tsx scripts/fetch-exercise-images.ts"

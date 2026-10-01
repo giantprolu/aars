@@ -4,6 +4,7 @@ import { currentUserId } from '@/server/guard';
 import { createRecipe, recipesFor } from '@/server/services/recipes';
 import { REJECTION_MESSAGES, recipeSchema } from '@/server/validation/recipes';
 import { macrosPerServing } from '@/lib/recipe';
+import { recordUsage } from '@/server/services/usage';
 
 export const runtime = 'nodejs';
 
@@ -68,6 +69,7 @@ export async function POST(request: Request): Promise<Response> {
     return apiError('not_found');
   }
   if (result.kind === 'premium_required') {
+    await recordUsage(userId, 'paywall_hit');
     return apiError(
       'premium_required',
       'La version gratuite garde 10 recettes. Abonne-toi pour en écrire davantage.',

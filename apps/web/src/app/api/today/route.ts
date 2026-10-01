@@ -10,6 +10,7 @@ import { preferencesFor, sessionHistory } from '@/server/services/workouts';
 import { daysFrom, hourInParis, isoWeekNumber, startOfWeek, todayInParis } from '@/lib/date';
 import { macrosPerServing } from '@/lib/recipe';
 import { weightChange } from '@/lib/weight';
+import { recordUsage } from '@/server/services/usage';
 
 export const runtime = 'nodejs';
 
@@ -29,6 +30,8 @@ export async function GET(): Promise<Response> {
   if (userId === null) {
     return apiError('unauthorized');
   }
+
+  await recordUsage(userId, 'app_opened');
 
   const today = todayInParis();
   const weekStart = startOfWeek(today);

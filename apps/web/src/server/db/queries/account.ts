@@ -1,6 +1,7 @@
 import 'server-only';
 import { eq, inArray, or } from 'drizzle-orm';
 import { db, schema } from '../client';
+import { usageFor } from './usage';
 
 /**
  * Tout ce que la base garde d'un utilisateur, pour l'export.
@@ -42,6 +43,7 @@ export async function exportUserData(userId: number) {
     kudos,
     subscriptions,
     storeSubscriptions,
+    usage,
   ] = await Promise.all([
     database
       .select({
@@ -122,6 +124,7 @@ export async function exportUserData(userId: number) {
       })
       .from(schema.storeSubscriptions)
       .where(eq(schema.storeSubscriptions.userId, userId)),
+    usageFor(userId),
   ]);
 
   const recipeIds = recipes.map((recipe) => recipe.id);
@@ -170,5 +173,6 @@ export async function exportUserData(userId: number) {
     community: { follows, kudosGiven: kudos },
     notifications: { devices: subscriptions.length },
     billing: { subscriptions: storeSubscriptions },
+    usage,
   };
 }

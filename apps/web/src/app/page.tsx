@@ -27,6 +27,7 @@ import { weightChange } from '@/lib/weight';
 import { cn } from '@/lib/utils';
 import { TodayTiles, type PlannedTonight } from './TodayTiles';
 import { WelcomeCard } from './WelcomeCard';
+import { recordUsage } from '@/server/services/usage';
 
 // Le journal vient du serveur à chaque navigation : rien n'est mis en cache (AD-5).
 export const dynamic = 'force-dynamic';
@@ -53,6 +54,7 @@ export default async function TodayPage({
   const today = todayInParis();
   const weekStart = startOfWeek(today);
   const userId = await requireUserId();
+  await recordUsage(userId, 'app_opened');
   const [
     { totals, entries },
     target,

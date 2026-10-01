@@ -4,6 +4,7 @@ import { currentUserId } from '@/server/guard';
 import { profileFor, recordProfile, targetFor } from '@/server/services/profile';
 import { ACTIVITY_FACTORS } from '@/lib/energy';
 import { isJournalDate } from '@/lib/date';
+import { recordUsage } from '@/server/services/usage';
 
 export const runtime = 'nodejs';
 
@@ -60,5 +61,6 @@ export async function PUT(request: Request): Promise<Response> {
     return apiError('invalid_input', 'Mesures hors des bornes admises.');
   }
 
+  await recordUsage(userId, 'target_set');
   return Response.json({ target: result.target });
 }

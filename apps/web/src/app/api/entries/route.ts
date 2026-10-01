@@ -5,6 +5,8 @@ import { recordEntry } from '@/server/services/entries';
 import { MAX_QUANTITY_G } from '@/lib/nutrition';
 import { isJournalDate } from '@/lib/date';
 import { MEALS } from '@/lib/meal';
+import { ENTRY_VIAS, entryMethod } from '@/lib/usage';
+import { recordMeal } from '@/server/services/usage';
 
 export const runtime = 'nodejs';
 
@@ -26,6 +28,10 @@ const createSchema = z.object({
   // Facultatif : le service retombe sur l'heure quand le client n'en envoie
   // pas, ce qui est le cas du raccourci iOS.
   meal: z.enum(MEALS).optional(),
+  // Facultatif aussi : la façon dont l'aliment a été trouvé, pour la mesure
+  // d'usage seulement. Elle ne change rien à l'entrée.
+  // `nullish` : l'app Android envoie `null` plutôt que d'omettre le champ.
+  via: z.enum(ENTRY_VIAS).nullish(),
 });
 
 /** Enregistre une entrée avec ses macros figées (FR-10, FR-25). */
@@ -47,10 +53,12 @@ export async function POST(request: Request): Promise<Response> {
     return apiError('invalid_input');
   }
 
-  const result = await recordEntry({ ...parsed.data, userId });
+  const { via, ...entry } = parsed.data;
+  const result = await recordEntry({ ...entry, userId });
   if (result.kind === 'invalid_quantity') {
     return apiError('invalid_input', 'Quantité invalide.');
   }
 
+  await recordMeal(userId, entryMethod(via ?? undefined, entry.sourceKind));
   return Response.json({ entry: result.entry }, { status: 201 });
 }

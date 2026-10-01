@@ -398,6 +398,7 @@ export function PhotoFlow() {
       sourceKind: step.candidate.kind,
       sourceRef: step.candidate.ref,
       meal,
+      via: 'photo',
     });
 
     if (result.kind !== 'created') {

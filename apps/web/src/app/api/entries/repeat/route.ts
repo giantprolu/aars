@@ -3,6 +3,7 @@ import { apiError } from '@/server/errors';
 import { currentUserId } from '@/server/guard';
 import { repeatEntry } from '@/server/services/entries';
 import { MEALS } from '@/lib/meal';
+import { recordMeal } from '@/server/services/usage';
 
 export const runtime = 'nodejs';
 
@@ -39,5 +40,6 @@ export async function POST(request: Request): Promise<Response> {
   if (result.kind === 'not_found') {
     return apiError('not_found');
   }
+  await recordMeal(userId, 'recent');
   return Response.json({ entry: result.entry }, { status: 201 });
 }

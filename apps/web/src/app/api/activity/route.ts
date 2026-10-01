@@ -4,6 +4,7 @@ import { isJournalDate, shiftDate, todayInParis } from '@/lib/date';
 import { readSessionToken } from '@/server/auth';
 import { findUserByIngestToken } from '@/server/db/queries/users';
 import { upsertDailyActivity } from '@/server/db/queries/activity';
+import { recordUsage } from '@/server/services/usage';
 
 export const runtime = 'nodejs';
 
@@ -159,6 +160,8 @@ export async function POST(request: Request): Promise<Response> {
   for (const { day, activeKcal } of days) {
     await upsertDailyActivity(userId, day, data.source, activeKcal);
   }
+
+  await recordUsage(userId, 'activity_synced');
 
   if ('days' in data) {
     return Response.json({ ok: true, days: days.length });

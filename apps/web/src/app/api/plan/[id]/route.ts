@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { apiError } from '@/server/errors';
 import { currentUserId } from '@/server/guard';
 import { journalPlannedMeal, reopenMeal, unplanMeal } from '@/server/services/meal-plan';
+import { recordMeal } from '@/server/services/usage';
 
 export const runtime = 'nodejs';
 
@@ -54,6 +55,7 @@ export async function POST(
   const result = await journalPlannedMeal(userId, id);
   switch (result.kind) {
     case 'journaled':
+      await recordMeal(userId, 'planned');
       return Response.json({ created: result.created, skipped: result.skipped });
     case 'already_journaled':
       return apiError('invalid_input', 'Ce plat est déjà au journal.');

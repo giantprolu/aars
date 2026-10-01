@@ -167,7 +167,7 @@ fun BoxScope.MealSheet(
                     if (grams == null || grams <= 0) {
                         onMessage("Une quantité en grammes.")
                     } else {
-                        model.addHit(pick, grams, meal) { done() }
+                        model.addHit(pick, grams, meal, fromScan = preset != null && pick == preset) { done() }
                     }
                 },
                 onBack = { selected = null },

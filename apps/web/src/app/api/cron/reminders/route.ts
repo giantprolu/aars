@@ -1,6 +1,7 @@
 import { apiError } from '@/server/errors';
 import { env } from '@/server/env';
 import { REMINDER_HOUR, sendLunchReminders } from '@/server/services/reminders';
+import { purgeOldUsage } from '@/server/services/usage';
 import { hourInParis } from '@/lib/date';
 
 export const runtime = 'nodejs';
@@ -29,5 +30,8 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json({ skipped: 'hors de l’heure du rappel' });
   }
 
+  // Le passage quotidien sert aussi à tenir la durée de conservation des
+  // compteurs d'usage : une tâche de plus pour une ligne n'en vaudrait pas la peine.
+  await purgeOldUsage();
   return Response.json(await sendLunchReminders());
 }
