@@ -13,6 +13,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -36,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -55,7 +58,12 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import fr.nutriperso.app.AppModel
 import fr.nutriperso.app.R
+import fr.nutriperso.app.data.ApiResult
+import fr.nutriperso.app.data.QuickSession
 import fr.nutriperso.app.data.SearchHit
+import fr.nutriperso.app.ui.training.ComposeScreen
+import fr.nutriperso.app.ui.training.ImportScreen
+import fr.nutriperso.app.ui.training.WorkoutScreen
 import fr.nutriperso.app.ui.add.MealSheet
 import fr.nutriperso.app.ui.add.ScannerOverlay
 import fr.nutriperso.app.ui.add.SessionSheet
@@ -102,6 +110,9 @@ fun MainShell(model: AppModel) {
     var fabOpen by remember { mutableStateOf(false) }
     var sheet by remember { mutableStateOf<AddSheet?>(null) }
     var scanned by remember { mutableStateOf<SearchHit?>(null) }
+    var workoutId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var flow by rememberSaveable { mutableStateOf<TrainingFlow?>(null) }
+    val scope = rememberCoroutineScope()
     var planSlot by remember { mutableStateOf<PlanSlot?>(null) }
     var planBasket by remember { mutableStateOf<List<fr.nutriperso.app.data.BasketRow>>(emptyList()) }
     val toast = remember { ToastState() }
@@ -119,6 +130,24 @@ fun MainShell(model: AppModel) {
         fabOpen = false
         sheet = target
         if (target != AddSheet.Scan) model.loadQuick()
+    }
+
+    /** Reprend la séance ouverte, lance la suivante du programme, ou une libre. */
+    fun startSession(session: QuickSession?) {
+        closeAll()
+        if (session?.kind == "open" && session.sessionId != null) {
+            workoutId = session.sessionId
+            return
+        }
+        scope.launch {
+            when (val result = model.api.startSession(session?.templateId)) {
+                is ApiResult.Ok -> {
+                    model.bump()
+                    workoutId = result.value.id
+                }
+                is ApiResult.Failed -> toast.show(result.message)
+            }
+        }
     }
 
     BackHandler(enabled = fabOpen || sheet != null || planSlot != null || stack.isNotEmpty()) {
@@ -197,7 +226,20 @@ fun MainShell(model: AppModel) {
             onMessage = toast::show,
         )
         PlanSlotSheet(planSlot, planBasket, model, onDismiss = ::closeAll)
-        SessionSheet(visible = sheet == AddSheet.Session, model = model, onDismiss = ::closeAll, onMessage = toast::show)
+        SessionSheet(
+            visible = sheet == AddSheet.Session,
+            model = model,
+            onDismiss = ::closeAll,
+            onStart = ::startSession,
+            onImport = {
+                closeAll()
+                flow = TrainingFlow.Import
+            },
+            onCompose = {
+                closeAll()
+                flow = TrainingFlow.Compose
+            },
+        )
         WeighSheet(visible = sheet == AddSheet.Weigh, model = model, onDismiss = ::closeAll)
         ScannerOverlay(
             visible = sheet == AddSheet.Scan,
@@ -209,9 +251,35 @@ fun MainShell(model: AppModel) {
             },
         )
 
+        when (flow) {
+            TrainingFlow.Compose -> ComposeScreen(model, onClose = { flow = null }, onStarted = { id ->
+                flow = null
+                workoutId = id
+            })
+            TrainingFlow.Import -> ImportScreen(model, onClose = { flow = null })
+            null -> Unit
+        }
+
+        AnimatedVisibility(
+            visible = workoutId != null,
+            enter = slideInVertically(tween(Motion.SHEET_IN_MS, easing = Motion.sheet)) { it },
+            exit = slideOutVertically(tween(260)) { it },
+        ) {
+            // Garde l'identifiant pendant l'animation de sortie.
+            val id = remember { mutableStateOf(workoutId ?: 0L) }
+            workoutId?.let { id.value = it }
+            WorkoutScreen(model, id.value, onClose = {
+                workoutId = null
+                model.bump()
+                model.refreshToday()
+            })
+        }
+
         ToastHost(toast)
     }
 }
+
+enum class TrainingFlow { Compose, Import }
 
 /** La barre d'onglets : 58 de haut, fond crème à 96 %, filet en haut, place vide au centre pour le +. */
 @Composable

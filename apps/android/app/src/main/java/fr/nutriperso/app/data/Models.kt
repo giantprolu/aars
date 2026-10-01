@@ -456,3 +456,127 @@ data class MeResponse(
     val weeks: Int,
     val health: String,
 )
+
+// Séance en cours.
+
+@Serializable
+data class StartSessionBody(val templateId: Long? = null, val free: Boolean = false)
+
+@Serializable
+data class StartedSession(val id: Long, val alreadyOpen: Boolean = false)
+
+@Serializable
+data class RunnerSet(
+    val setIndex: Int,
+    val done: Boolean,
+    val weightKg: Double? = null,
+    val reps: Int? = null,
+    val seconds: Int? = null,
+    val toFailure: Boolean = false,
+)
+
+@Serializable
+data class RunnerSuggestion(val reason: String, val trend: String)
+
+@Serializable
+data class RunnerExercise(
+    val position: Int,
+    val entryId: Long,
+    val exerciseId: Long,
+    val name: String,
+    val kind: String,
+    val prescription: String,
+    val restSeconds: Int? = null,
+    val suggestion: RunnerSuggestion? = null,
+    val previous: String? = null,
+    val recordSetIndex: Int? = null,
+    val sets: List<RunnerSet> = emptyList(),
+)
+
+@Serializable
+data class VisibilityOption(val value: String, val label: String, val note: String)
+
+@Serializable
+data class CatalogExercise(val id: Long, val name: String, val kind: String = "strength", val muscleGroup: String? = null)
+
+@Serializable
+data class Runner(
+    val id: Long,
+    val name: String,
+    val startedAt: String,
+    val finishedAt: String? = null,
+    val closed: Boolean,
+    val visibility: String,
+    val favorited: Boolean,
+    val canAddExercise: Boolean,
+    val plannedSets: Int,
+    val recordedSets: Int,
+    val volumeKg: Double,
+    val visibilities: List<VisibilityOption> = emptyList(),
+    val exercises: List<RunnerExercise> = emptyList(),
+    val catalog: List<CatalogExercise> = emptyList(),
+)
+
+@Serializable
+data class SetBody(
+    val sessionId: Long,
+    val exerciseId: Long,
+    val position: Int,
+    val setIndex: Int,
+    val weightKg: Double?,
+    val reps: Int?,
+    val seconds: Int?,
+    val toFailure: Boolean,
+)
+
+@Serializable
+data class VisibilityBody(val visibility: String)
+
+@Serializable
+data class ExerciseIdBody(val exerciseId: Long)
+
+@Serializable
+data class NameBody(val name: String? = null)
+
+@Serializable
+data class ExercisesResponse(val exercises: List<CatalogExercise> = emptyList(), val favoriteIds: List<Long> = emptyList())
+
+@Serializable
+data class ComposedExercise(val exerciseId: Long, val sets: Int, val reps: Int?, val seconds: Int?)
+
+@Serializable
+data class ComposeBody(val name: String?, val exercises: List<ComposedExercise>, val keep: Boolean, val start: Boolean)
+
+@Serializable
+data class ComposeResponse(val templateId: Long, val sessionId: Long? = null)
+
+@Serializable
+data class AnalyseBody(val action: String = "analyse", val text: String)
+
+@Serializable
+data class ParsedSet(val reps: Int? = null, val seconds: Int? = null, val weightKg: Double? = null, val toFailure: Boolean = false)
+
+@Serializable
+data class AnalysedCandidate(val id: Long, val name: String)
+
+@Serializable
+data class AnalysedLine(
+    val raw: String,
+    val name: String,
+    val sets: List<ParsedSet> = emptyList(),
+    val warning: String = "none",
+    val matchedExerciseId: Long? = null,
+    val candidates: List<AnalysedCandidate> = emptyList(),
+)
+
+@Serializable
+data class AnalyseResponse(val lines: List<AnalysedLine> = emptyList())
+
+@Serializable
+data class WrittenLine(val exerciseId: Long?, val name: String, val sets: List<ParsedSet>)
+
+@Serializable
+data class SaveLogBody(val action: String = "save", val sessionDate: String, val lines: List<WrittenLine>)
+
+@Serializable
+data class SavedLog(val id: Long)

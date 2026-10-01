@@ -162,6 +162,53 @@ class Api(private val tokens: TokenStore) {
     suspend fun kudos(sessionId: Long, given: Boolean) =
         send("PUT", "/api/social/kudos", json.encodeToString(KudosBody.serializer(), KudosBody(sessionId, given)))
 
+    // Séances.
+
+    suspend fun startSession(templateId: Long?) = decode(
+        raw("POST", "/api/training/sessions", json.encodeToString(StartSessionBody.serializer(), StartSessionBody(templateId, templateId == null))),
+        StartedSession.serializer(),
+    )
+
+    suspend fun runner(sessionId: Long) = get("/api/training/sessions/$sessionId/runner", Runner.serializer())
+
+    suspend fun recordSet(body: SetBody) =
+        send("POST", "/api/training/sets", json.encodeToString(SetBody.serializer(), body))
+
+    suspend fun finishSession(sessionId: Long) =
+        send("POST", "/api/training/sessions/$sessionId", json.encodeToString(ActionBody.serializer(), ActionBody("finish")))
+
+    suspend fun discardSession(sessionId: Long) = sendEmpty("DELETE", "/api/training/sessions/$sessionId")
+
+    suspend fun setVisibility(sessionId: Long, visibility: String) = send(
+        "PATCH", "/api/training/sessions/$sessionId/visibility",
+        json.encodeToString(VisibilityBody.serializer(), VisibilityBody(visibility)),
+    )
+
+    suspend fun favoriteSession(sessionId: Long) =
+        send("POST", "/api/training/sessions/$sessionId/favorite", json.encodeToString(NameBody.serializer(), NameBody()))
+
+    suspend fun addSessionExercise(sessionId: Long, exerciseId: Long) = send(
+        "POST", "/api/training/sessions/$sessionId/exercises",
+        json.encodeToString(ExerciseIdBody.serializer(), ExerciseIdBody(exerciseId)),
+    )
+
+    suspend fun exercises() = get("/api/training/exercises", ExercisesResponse.serializer())
+
+    suspend fun compose(body: ComposeBody) = decode(
+        raw("POST", "/api/training/templates", json.encodeToString(ComposeBody.serializer(), body)),
+        ComposeResponse.serializer(),
+    )
+
+    suspend fun analyseLog(text: String) = decode(
+        raw("POST", "/api/training/import", json.encodeToString(AnalyseBody.serializer(), AnalyseBody(text = text))),
+        AnalyseResponse.serializer(),
+    )
+
+    suspend fun saveLog(date: String, lines: List<WrittenLine>) = decode(
+        raw("POST", "/api/training/import", json.encodeToString(SaveLogBody.serializer(), SaveLogBody(sessionDate = date, lines = lines))),
+        SavedLog.serializer(),
+    )
+
     suspend fun weighIn(weightKg: Double) =
         send("POST", "/api/weight", json.encodeToString(WeighInBody.serializer(), WeighInBody(weightKg)))
 
@@ -189,6 +236,12 @@ class Api(private val tokens: TokenStore) {
 
     private suspend fun send(method: String, path: String, body: String): ApiResult<Unit> =
         when (val result = raw(method, path, body)) {
+            is ApiResult.Ok -> ApiResult.Ok(Unit)
+            is ApiResult.Failed -> result
+        }
+
+    private suspend fun sendEmpty(method: String, path: String): ApiResult<Unit> =
+        when (val result = raw(method, path, null)) {
             is ApiResult.Ok -> ApiResult.Ok(Unit)
             is ApiResult.Failed -> result
         }

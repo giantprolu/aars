@@ -54,6 +54,7 @@ import fr.nutriperso.app.data.ApiResult
 import fr.nutriperso.app.data.valueOrNull
 import fr.nutriperso.app.data.MacroValues
 import fr.nutriperso.app.data.QuickFavorite
+import fr.nutriperso.app.data.QuickSession
 import fr.nutriperso.app.data.SearchHit
 import fr.nutriperso.app.ui.components.CloseButton
 import fr.nutriperso.app.ui.components.GhostButton
@@ -232,9 +233,6 @@ fun BoxScope.MealSheet(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ModeTile("Scanner", R.drawable.lucide_scan_barcode, Modifier.weight(1f), onScan)
                         ModeTile("Favoris", R.drawable.lucide_star, Modifier.weight(1f)) { mode = MealMode.Favorites }
-                        ModeTile("Photo", R.drawable.lucide_camera, Modifier.weight(1f)) {
-                            onMessage("La photo de l'assiette arrive bientôt sur Android")
-                        }
                         ModeTile("À la main", R.drawable.lucide_pencil, Modifier.weight(1f)) { mode = MealMode.Manual }
                     }
                 }
@@ -396,7 +394,14 @@ private fun FavoritesStep(favorites: List<QuickFavorite>?, onBack: () -> Unit, o
 
 /** « Une séance » : la séance prévue en tête, puis les autres façons de s'entraîner. */
 @Composable
-fun BoxScope.SessionSheet(visible: Boolean, model: AppModel, onDismiss: () -> Unit, onMessage: (String) -> Unit) {
+fun BoxScope.SessionSheet(
+    visible: Boolean,
+    model: AppModel,
+    onDismiss: () -> Unit,
+    onStart: (QuickSession?) -> Unit,
+    onImport: () -> Unit,
+    onCompose: () -> Unit,
+) {
     val training = Domains.training
     val session = model.quick?.session ?: model.today?.session
     NutriSheet(visible, "Une séance", onDismiss, gap = 12) {
@@ -404,7 +409,7 @@ fun BoxScope.SessionSheet(visible: Boolean, model: AppModel, onDismiss: () -> Un
             Modifier
                 .fillMaxWidth()
                 .tinted(training.fill)
-                .tap { onMessage("La séance en cours arrive dans la prochaine version Android") }
+                .tap { onStart(session) }
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -431,12 +436,12 @@ fun BoxScope.SessionSheet(visible: Boolean, model: AppModel, onDismiss: () -> Un
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(
-                Triple("Libre", R.drawable.lucide_zap, "La séance libre"),
-                Triple("Déjà faite", R.drawable.lucide_history, "La saisie d'une séance passée"),
-                Triple("Composer", R.drawable.lucide_list_plus, "La composition de séance"),
-            ).forEach { (label, icon, feature) ->
+                Triple("Libre", R.drawable.lucide_zap, { onStart(null) }),
+                Triple("Déjà faite", R.drawable.lucide_history, onImport),
+                Triple("Composer", R.drawable.lucide_list_plus, onCompose),
+            ).forEach { (label, icon, action) ->
                 Column(
-                    Modifier.weight(1f).tinted(training.soft, Radius.tile).tap { onMessage("$feature arrive bientôt sur Android") }.padding(12.dp),
+                    Modifier.weight(1f).tinted(training.soft, Radius.tile).tap(onClick = action).padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Icon(icon, 20.dp, training.textOnLight)

@@ -375,7 +375,7 @@ private fun MealsCard(entries: List<Entry>) {
 private fun EmptyJournal() {
     Column(Modifier.fillMaxWidth().card().padding(16.dp)) {
         Txt("Rien de noté pour l'instant", nt(15f, 600))
-        Txt("Touche + puis Repas : scanne un code-barres, cherche un nom, ou photographie l'assiette.", nt(13f, color = Neutrals.muted))
+        Txt("Touche + puis Repas : cherche un aliment, scanne un code-barres, ou refais un récent.", nt(13f, color = Neutrals.muted))
     }
 }
 
