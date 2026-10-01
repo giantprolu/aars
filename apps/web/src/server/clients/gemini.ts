@@ -101,7 +101,9 @@ async function askOnce(apiKey: string, mimeType: string, base64: string): Promis
     return { kind: 'retry', reason: error instanceof Error ? error.name : 'reseau' };
   }
 
-  if (response.status === 429) {
+  // 402 : crédits prépayés épuisés, à recharger dans AI Studio (vu le
+  // 01/10/2026). Le présenter comme une panne faisait réessayer pour rien.
+  if (response.status === 429 || response.status === 402) {
     return { kind: 'quota' };
   }
 
@@ -170,7 +172,7 @@ export async function recognizeWithGemini(
     if (result.kind === 'quota') {
       // Sur le palier gratuit, 429 signale la limite par minute ou par jour :
       // réessayer tout de suite ne ferait que la creuser.
-      console.error('[recognize] quota Gemini atteint');
+      console.error('[recognize] quota ou credits Gemini epuises');
       return { kind: 'quota_exceeded' };
     }
 
