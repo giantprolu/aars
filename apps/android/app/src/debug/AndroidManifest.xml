@@ -2,6 +2,13 @@
 <!-- En debug seulement : autorise le serveur de dev en clair (émulateur, réseau local). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+    <!--
+      Écriture de journées de test dans Health Connect, depuis l'écran Santé :
+      un émulateur n'a ni montre ni podomètre. Absente du manifeste de release,
+      donc jamais demandée aux vrais utilisateurs ni déclarée à Google Play.
+    -->
+    <uses-permission android:name="android.permission.health.WRITE_ACTIVE_CALORIES_BURNED" />
+
     <application
         android:networkSecurityConfig="@xml/network_security_config"
         tools:ignore="UnusedAttribute" />

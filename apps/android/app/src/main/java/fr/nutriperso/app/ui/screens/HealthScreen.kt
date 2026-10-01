@@ -30,6 +30,7 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import fr.nutriperso.app.AppModel
+import fr.nutriperso.app.BuildConfig
 import fr.nutriperso.app.R
 import fr.nutriperso.app.data.HealthAvailability
 import fr.nutriperso.app.data.HealthBridge
@@ -104,6 +105,16 @@ fun HealthScreen(model: AppModel, onBack: () -> Unit) {
         if (HealthSync.ACTIVE in result || HealthSync.TOTAL in result) sync()
     }
 
+    // Debug : écrire des journées de test, puis synchroniser comme d'habitude.
+    fun injectSamples() {
+        scope.launch {
+            if (model.health.writeSampleDays()) sync() else model.toast("Écriture refusée par Health Connect")
+        }
+    }
+    val writeRequest = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) { result ->
+        if (HealthSync.WRITE_ACTIVE in result) injectSamples() else model.toast("Permission d'écriture refusée")
+    }
+
     Box(Modifier.fillMaxSize().background(Neutrals.screen)) {
         ScreenColumn(withTabBar = false) {
             BackLink("Moi", onBack)
@@ -162,6 +173,24 @@ fun HealthScreen(model: AppModel, onBack: () -> Unit) {
                     Icon(R.drawable.lucide_sliders_horizontal, 17.dp, Neutrals.muted)
                     Txt("Gérer l'accès dans Health Connect", Type.bodyStrong, Modifier.weight(1f))
                     Icon(R.drawable.lucide_chevron_right, 16.dp, Neutrals.faint)
+                }
+            }
+
+            // Jamais en release : R8 retire la branche, et la permission
+            // d'écriture n'existe que dans le manifeste de debug.
+            if (BuildConfig.DEBUG && availability == HealthAvailability.Available) {
+                SectionCaps("Debug")
+                Row(
+                    Modifier.fillMaxWidth().card().tap {
+                        scope.launch {
+                            if (model.health.canWriteSamples()) injectSamples() else writeRequest.launch(setOf(HealthSync.WRITE_ACTIVE))
+                        }
+                    }.padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Icon(R.drawable.lucide_database, 17.dp, Neutrals.muted)
+                    Txt("Écrire 7 jours de test dans Health Connect", Type.bodyStrong, Modifier.weight(1f))
                 }
             }
         }

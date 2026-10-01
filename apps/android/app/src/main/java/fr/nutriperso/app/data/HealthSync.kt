@@ -6,8 +6,10 @@ import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.BasalMetabolicRateRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import androidx.health.connect.client.units.Energy
 import java.time.LocalDate
 import java.time.Period
 import java.time.ZoneId
@@ -107,6 +109,35 @@ class HealthSync(private val context: Context) {
         }
     }
 
+    /** Vrai si l'écriture de test est accordée (debug seulement, voir le manifeste de debug). */
+    suspend fun canWriteSamples(): Boolean {
+        val client = client() ?: return false
+        return runCatching { WRITE_ACTIVE in client.permissionController.getGrantedPermissions() }.getOrDefault(false)
+    }
+
+    /**
+     * Écrit [days] journées d'énergie active, d'hier en remontant, pour essayer
+     * le pont sur un émulateur. Une séance d'une heure à midi par jour, de 250 à
+     * 550 kcal. Rejouer l'écriture ajoute des enregistrements : Health Connect
+     * les somme, d'où des journées plus fortes à chaque appui.
+     */
+    suspend fun writeSampleDays(days: Int = 7): Boolean {
+        val client = client() ?: return false
+        val today = LocalDate.now(PARIS)
+        val records = (1..days).map { back ->
+            val start = today.minusDays(back.toLong()).atTime(12, 0).atZone(PARIS)
+            ActiveCaloriesBurnedRecord(
+                startTime = start.toInstant(),
+                startZoneOffset = start.offset,
+                endTime = start.plusHours(1).toInstant(),
+                endZoneOffset = start.offset,
+                energy = Energy.kilocalories(250.0 + (back * 47) % 300),
+                metadata = Metadata.manualEntry(),
+            )
+        }
+        return runCatching { client.insertRecords(records) }.isSuccess
+    }
+
     companion object {
         const val PROVIDER = "com.google.android.apps.healthdata"
         const val WINDOW_DAYS = 30
@@ -119,5 +150,8 @@ class HealthSync(private val context: Context) {
 
         /** Les trois permissions déclarées dans le manifeste, et rien d'autre. */
         val PERMISSIONS: Set<String> = setOf(ACTIVE, TOTAL, BASAL)
+
+        /** Debug seulement : déclarée dans `src/debug/AndroidManifest.xml`. */
+        val WRITE_ACTIVE = HealthPermission.getWritePermission(ActiveCaloriesBurnedRecord::class)
     }
 }
