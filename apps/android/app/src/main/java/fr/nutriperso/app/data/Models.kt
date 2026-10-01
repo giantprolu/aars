@@ -663,3 +663,14 @@ data class RecipeCreateBody(
     val notes: String?,
     val ingredients: List<IngredientBody>,
 )
+
+// Compte.
+
+@Serializable
+data class RecoverBody(val email: String, val code: String, val password: String)
+
+@Serializable
+data class PasswordBody(val password: String)
+
+@Serializable
+data class RecoveryCodeResponse(val code: String)

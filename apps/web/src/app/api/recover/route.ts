@@ -7,6 +7,7 @@ import {
   sessionCookieOptions,
 } from '@/server/auth';
 import { apiError } from '@/server/errors';
+import { isMobileClient } from '@/server/guard';
 import { recoverWithCode } from '@/server/services/account';
 
 export const runtime = 'nodejs';
@@ -45,11 +46,12 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
+  const token = await issueSessionToken(result.userId);
+  // Une app native reçoit le jeton dans le corps, comme à la connexion.
+  if (isMobileClient(request)) {
+    return Response.json({ ok: true, token });
+  }
   const store = await cookies();
-  store.set(
-    SESSION_COOKIE,
-    await issueSessionToken(result.userId),
-    sessionCookieOptions(SESSION_MAX_AGE_SECONDS),
-  );
+  store.set(SESSION_COOKIE, token, sessionCookieOptions(SESSION_MAX_AGE_SECONDS));
   return Response.json({ ok: true });
 }

@@ -57,9 +57,16 @@ class Api(private val tokens: TokenStore) {
     suspend fun register(email: String, password: String): ApiResult<Unit> =
         openSession("/api/users", Credentials(email.trim(), password))
 
-    private suspend fun openSession(path: String, body: Credentials): ApiResult<Unit> {
+    /** Code de secours : nouveau mot de passe et session ouverte dans la foulée. */
+    suspend fun recover(email: String, code: String, password: String): ApiResult<Unit> =
+        openSession("/api/recover", json.encodeToString(RecoverBody.serializer(), RecoverBody(email.trim(), code.trim(), password)))
+
+    private suspend fun openSession(path: String, body: Credentials): ApiResult<Unit> =
+        openSession(path, json.encodeToString(Credentials.serializer(), body))
+
+    private suspend fun openSession(path: String, body: String): ApiResult<Unit> {
         val result = decode(
-            raw("POST", path, json.encodeToString(Credentials.serializer(), body), opening = true),
+            raw("POST", path, body, opening = true),
             SessionResponse.serializer(),
         )
         return when (result) {
@@ -112,6 +119,21 @@ class Api(private val tokens: TokenStore) {
         get("/api/social/people?q=" + URLEncoder.encode(query, "UTF-8"), PeopleResponse.serializer())
     suspend fun relation(action: String, userId: Long) =
         send("POST", "/api/social/relations", json.encodeToString(RelationBody.serializer(), RelationBody(action, userId)))
+    suspend fun recoveryCode() = decode(raw("POST", "/api/account/recovery-code", "{}"), RecoveryCodeResponse.serializer())
+
+    /** L'export complet, en JSON brut, tel que le serveur le rend. */
+    suspend fun exportData(): ApiResult<String> = raw("GET", "/api/account/export", null)
+
+    /** Un mauvais mot de passe répond 401 : ici, il ne ferme pas la session. */
+    suspend fun deleteAccount(password: String): ApiResult<Unit> =
+        when (val result = raw("DELETE", "/api/account", json.encodeToString(PasswordBody.serializer(), PasswordBody(password)), keepSession = true)) {
+            is ApiResult.Ok -> {
+                signOut()
+                ApiResult.Ok(Unit)
+            }
+            is ApiResult.Failed -> result
+        }
+
     suspend fun me() = get("/api/me", MeResponse.serializer())
     suspend fun plan(weekStart: String) = get("/api/plan?from=$weekStart", PlanResponse.serializer())
     suspend fun basket(weekStart: String) = get("/api/basket?weekStart=$weekStart", BasketResponse.serializer())
@@ -319,6 +341,7 @@ class Api(private val tokens: TokenStore) {
         path: String,
         body: String?,
         opening: Boolean = false,
+        keepSession: Boolean = false,
     ): ApiResult<String> = withContext(Dispatchers.IO) {
         val builder = Request.Builder()
             .url(BuildConfig.API_BASE_URL + path)
@@ -333,7 +356,7 @@ class Api(private val tokens: TokenStore) {
                 if (response.isSuccessful) {
                     return@withContext ApiResult.Ok(text)
                 }
-                if (response.code == 401 && !opening) signOut()
+                if (response.code == 401 && !opening && !keepSession) signOut()
                 val error = try {
                     json.decodeFromString(ApiErrorBody.serializer(), text).error
                 } catch (e: SerializationException) {

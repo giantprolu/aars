@@ -72,7 +72,7 @@ private fun BackRow(label: String, onBack: () -> Unit, trailing: (@Composable ()
 
 /** Moi (C6) : identité, poids, records du mois, régularité, réglages. */
 @Composable
-fun MeScreen(model: AppModel, onBack: () -> Unit, onProgress: () -> Unit, onWeigh: () -> Unit) {
+fun MeScreen(model: AppModel, onBack: () -> Unit, onProgress: () -> Unit, onWeigh: () -> Unit, onAccount: () -> Unit) {
     val body = Domains.body
     val training = Domains.training
     val me = rememberLoaded(model.revision) { model.api.me() }
@@ -81,7 +81,7 @@ fun MeScreen(model: AppModel, onBack: () -> Unit, onProgress: () -> Unit, onWeig
 
     Box(Modifier.fillMaxSize().background(Neutrals.screen)) {
         ScreenColumn(withTabBar = false) {
-            BackRow("Retour", onBack) { Icon(R.drawable.lucide_settings, 20.dp, Neutrals.muted) }
+            BackRow("Retour", onBack) { Icon(R.drawable.lucide_settings, 20.dp, Neutrals.muted, Modifier.tap(onClick = onAccount)) }
             if (!LoadedGate(me) || data == null) return@ScreenColumn
 
             val identity = data.identity
@@ -193,7 +193,9 @@ fun MeScreen(model: AppModel, onBack: () -> Unit, onProgress: () -> Unit, onWeig
                     }
                 }
                 SettingDivider()
-                SettingRow(R.drawable.lucide_log_out, "Se déconnecter", onClick = model::signOut) {}
+                SettingRow(R.drawable.lucide_key_round, "Compte et données", onClick = onAccount) {
+                    Icon(R.drawable.lucide_chevron_right, 16.dp, Neutrals.faint)
+                }
             }
         }
     }

@@ -50,17 +50,23 @@ fun AuthScreen(model: AppModel) {
     var password by rememberSaveable { mutableStateOf("") }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
     var busy by rememberSaveable { mutableStateOf(false) }
+    var recovering by rememberSaveable { mutableStateOf(false) }
+    var code by rememberSaveable { mutableStateOf("") }
 
     val submit: () -> Unit = submit@{
         if (busy) return@submit
-        if (creating && password.length < MIN_PASSWORD_LENGTH) {
+        if ((creating || recovering) && password.length < MIN_PASSWORD_LENGTH) {
             error = "Un mot de passe d'au moins $MIN_PASSWORD_LENGTH caractères."
             return@submit
         }
         busy = true
         error = null
         scope.launch {
-            val result = if (creating) model.api.register(email, password) else model.api.login(email, password)
+            val result = when {
+                recovering -> model.api.recover(email, code, password)
+                creating -> model.api.register(email, password)
+                else -> model.api.login(email, password)
+            }
             busy = false
             if (result is ApiResult.Failed) error = result.message
         }
@@ -81,11 +87,19 @@ fun AuthScreen(model: AppModel) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Txt("NutriPerso", nt(14f, 600, nutrition.textOnLight))
                 Txt(
-                    if (creating) "Crée ton compte." else "Content de te revoir.",
+                    when {
+                        recovering -> "Retrouve ton compte."
+                        creating -> "Crée ton compte."
+                        else -> "Content de te revoir."
+                    },
                     nt(34f, 600, line = 1.1f, tracking = -0.035f),
                 )
                 Txt(
-                    if (creating) "Une adresse et un mot de passe. Le reste se règle juste après." else "Ton journal t'attend.",
+                    when {
+                        recovering -> "Ton adresse, ton code de secours, et un nouveau mot de passe."
+                        creating -> "Une adresse et un mot de passe. Le reste se règle juste après."
+                        else -> "Ton journal t'attend."
+                    },
                     nt(15f, color = Neutrals.muted),
                 )
             }
@@ -93,7 +107,15 @@ fun AuthScreen(model: AppModel) {
                 Labeled("Adresse") {
                     NutriField(email, { email = it.trim() }, placeholder = "toi@exemple.fr", keyboardType = KeyboardType.Email)
                 }
-                Labeled("Mot de passe", hint = if (creating) "Au moins $MIN_PASSWORD_LENGTH caractères." else null) {
+                if (recovering) {
+                    Labeled("Code de secours") {
+                        NutriField(code, { code = it.take(40) }, placeholder = "XXXX-XXXX-XXXX")
+                    }
+                }
+                Labeled(
+                    if (recovering) "Nouveau mot de passe" else "Mot de passe",
+                    hint = if (creating || recovering) "Au moins $MIN_PASSWORD_LENGTH caractères." else null,
+                ) {
                     NutriField(
                         password,
                         { password = it },
@@ -106,18 +128,26 @@ fun AuthScreen(model: AppModel) {
                 error?.let { Txt(it, nt(13f, 500, fr.nutriperso.app.ui.theme.Macros.protein.text)) }
             }
             PrimaryButton(
-                if (creating) "Créer mon compte" else "Se connecter",
+                when {
+                    recovering -> "Changer le mot de passe"
+                    creating -> "Créer mon compte"
+                    else -> "Se connecter"
+                },
                 nutrition,
                 submit,
-                enabled = email.isNotBlank() && password.isNotEmpty(),
+                enabled = email.isNotBlank() && password.isNotEmpty() && (!recovering || code.isNotBlank()),
                 busy = busy,
             )
-            GhostButton(if (creating) "J'ai déjà un compte" else "Créer un compte", {
-                creating = !creating
+            GhostButton(if (creating || recovering) "J'ai déjà un compte" else "Créer un compte", {
+                creating = !(creating || recovering)
+                recovering = false
                 error = null
             })
-            if (!creating) {
-                Txt("Mot de passe oublié : passe par l'app web, avec ton code de secours.", Type.secondary)
+            if (!creating && !recovering) {
+                GhostButton("Mot de passe oublié", {
+                    recovering = true
+                    error = null
+                })
             }
         }
     }
