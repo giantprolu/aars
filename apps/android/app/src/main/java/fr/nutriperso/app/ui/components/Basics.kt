@@ -136,7 +136,8 @@ fun Modifier.tap(enabled: Boolean = true, onClick: () -> Unit): Modifier = compo
 fun rememberSelectionClick(): () -> Unit {
     val view = LocalView.current
     return remember(view) {
-        { view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK); Unit }
+        val click: () -> Unit = { view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK) }
+        click
     }
 }
 
