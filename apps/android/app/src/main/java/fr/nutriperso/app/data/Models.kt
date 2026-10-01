@@ -605,3 +605,17 @@ data class ResolveResponse(
     val product: CachedProduct? = null,
     val partial: PartialProduct? = null,
 )
+
+// Historique.
+
+@Serializable
+data class DayTotals(val entryDate: String, val macros: MacroValues, val entryCount: Int = 0)
+
+@Serializable
+data class HistoryResponse(val days: List<DayTotals> = emptyList())
+
+@Serializable
+data class JournalDay(val totals: DayTotals, val entries: List<Entry> = emptyList())
+
+@Serializable
+data class FavoriteBody(val meal: String, val name: String? = null)

@@ -223,6 +223,18 @@ class AppModel(application: Application) : AndroidViewModel(application) {
         {},
     )
 
+    fun deleteEntry(entry: fr.nutriperso.app.data.Entry) = write(
+        { api.deleteEntry(entry.id) },
+        "${entry.foodLabel} retiré du journal",
+        {},
+    )
+
+    fun saveFavorite(meal: Meal) = write(
+        { api.saveFavorite(meal.api, null) },
+        "${meal.label} gardé en favori",
+        {},
+    )
+
     fun toast(message: String) {
         _toasts.tryEmit(message)
     }

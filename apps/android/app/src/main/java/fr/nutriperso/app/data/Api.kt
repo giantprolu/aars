@@ -102,6 +102,12 @@ class Api(private val tokens: TokenStore) {
     suspend fun socialHome() = get("/api/social/home", SocialHome.serializer())
     suspend fun feed(before: Long? = null) =
         get("/api/social/feed" + (before?.let { "?before=$it" } ?: ""), FeedResponse.serializer())
+    suspend fun history(offset: Int, limit: Int = 30) =
+        get("/api/history?offset=$offset&limit=$limit", HistoryResponse.serializer())
+    suspend fun journal(date: String) = get("/api/journal/$date", JournalDay.serializer())
+    suspend fun deleteEntry(id: Long) = sendEmpty("DELETE", "/api/entries/$id")
+    suspend fun saveFavorite(meal: String, name: String?) =
+        send("POST", "/api/favorites", json.encodeToString(FavoriteBody.serializer(), FavoriteBody(meal, name)))
     suspend fun me() = get("/api/me", MeResponse.serializer())
     suspend fun plan(weekStart: String) = get("/api/plan?from=$weekStart", PlanResponse.serializer())
     suspend fun basket(weekStart: String) = get("/api/basket?weekStart=$weekStart", BasketResponse.serializer())

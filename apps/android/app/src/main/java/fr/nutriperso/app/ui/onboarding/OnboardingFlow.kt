@@ -54,6 +54,7 @@ import fr.nutriperso.app.AppModel
 import fr.nutriperso.app.R
 import fr.nutriperso.app.data.ApiResult
 import fr.nutriperso.app.data.valueOrNull
+import fr.nutriperso.app.data.valueOrNull
 import fr.nutriperso.app.data.BodyProfile
 import fr.nutriperso.app.data.EnergyTarget
 import fr.nutriperso.app.data.Gym
@@ -124,9 +125,9 @@ private val HANDLE = Regex("^[a-z0-9_]{3,20}$")
  * téléphone.
  */
 @Composable
-fun OnboardingFlow(model: AppModel) {
+fun OnboardingFlow(model: AppModel, editGoal: Boolean = false, onClose: () -> Unit = {}) {
     val scope = rememberCoroutineScope()
-    var step by rememberSaveable { mutableStateOf(Step.Welcome) }
+    var step by rememberSaveable { mutableStateOf(if (editGoal) Step.Measures else Step.Welcome) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
 
@@ -155,6 +156,8 @@ fun OnboardingFlow(model: AppModel) {
     var perWeek by rememberSaveable { mutableStateOf(3) }
     var program by remember { mutableStateOf<List<WorkoutTemplate>>(emptyList()) }
 
+    val kicker = if (editGoal) "Mon objectif" else "Étape 1 sur 3 · Objectif"
+
     fun go(next: Step) {
         error = null
         step = next
@@ -164,7 +167,37 @@ fun OnboardingFlow(model: AppModel) {
         Step.Measures to Step.Welcome, Step.Activity to Step.Measures, Step.Target to Step.Activity,
         Step.Identity to Step.Target, Step.Sessions to Step.Identity, Step.Program to Step.Sessions,
     )
-    BackHandler(enabled = back.containsKey(step)) { back[step]?.let(::go) }
+    BackHandler(enabled = editGoal || back.containsKey(step)) {
+        if (editGoal && step == Step.Measures) onClose() else back[step]?.let(::go)
+    }
+
+    // En modification, les mesures partent du profil enregistré.
+    LaunchedEffect(editGoal) {
+        if (!editGoal) return@LaunchedEffect
+        model.api.profile().valueOrNull()?.profile?.let { saved ->
+            sex = saved.sex
+            height = saved.heightCm.toString()
+            weight = saved.weightKg.toString().replace('.', ',')
+            val parts = saved.birthDate.split('-')
+            if (parts.size == 3) birth = "${parts[2]}/${parts[1]}/${parts[0]}"
+            bodyFat = saved.bodyFatPercent?.toString()?.replace('.', ',').orEmpty()
+            activity = saved.activity
+            goal = saved.goal
+            rate = saved.ratePercentPerWeek
+        }
+    }
+
+    /** Fin de l'étape Objectif : la suite de l'onboarding, ou retour en modification. */
+    fun afterTarget() {
+        if (editGoal) {
+            model.bump()
+            model.refreshToday()
+            model.toast("Objectif enregistré")
+            onClose()
+        } else {
+            go(Step.Identity)
+        }
+    }
 
     fun number(text: String): Double? = text.replace(',', '.').trim().toDoubleOrNull()
 
@@ -211,7 +244,7 @@ fun OnboardingFlow(model: AppModel) {
             when (val saved = model.api.saveProfile(profile(null))) {
                 is ApiResult.Ok -> {
                     // Le poids saisi devient la première pesée, visible dans Moi.
-                    model.api.weighIn(number(weight) ?: 0.0)
+                    if (!editGoal) model.api.weighIn(number(weight) ?: 0.0)
                     target = saved.value.target
                     manual = null
                     go(Step.Target)
@@ -225,7 +258,7 @@ fun OnboardingFlow(model: AppModel) {
     fun confirmTarget() {
         val typed = manual
         if (typed == null) {
-            go(Step.Identity)
+            afterTarget()
             return
         }
         val kcal = typed.toIntOrNull()
@@ -238,7 +271,7 @@ fun OnboardingFlow(model: AppModel) {
             when (val saved = model.api.saveProfile(profile(kcal))) {
                 is ApiResult.Ok -> {
                     target = saved.value.target
-                    go(Step.Identity)
+                    afterTarget()
                 }
                 is ApiResult.Failed -> error = "La cible n'a pas pu être enregistrée."
             }
@@ -298,10 +331,10 @@ fun OnboardingFlow(model: AppModel) {
                     PrimaryButton("Commencer", Domains.nutrition, { go(Step.Measures) }, trailingIcon = R.drawable.lucide_arrow_right)
                 }) { WelcomeStep() }
 
-                Step.Measures -> StepScaffold(current, { go(Step.Welcome) }, footer = {
+                Step.Measures -> StepScaffold(current, { if (editGoal) onClose() else go(Step.Welcome) }, footer = {
                     PrimaryButton("Continuer", Domains.nutrition, { if (checkMeasures()) go(Step.Activity) })
                 }) {
-                    StepTitle("Étape 1 sur 3 · Objectif", Domains.nutrition, "Tes mesures", "Elles servent à estimer ta dépense du jour.")
+                    StepTitle(kicker, Domains.nutrition, "Tes mesures", "Elles servent à estimer ta dépense du jour.")
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Labeled("Sexe") {
                             Choice(listOf("Homme", "Femme"), if (sex == "male") 0 else 1, Domains.nutrition.soft) {
@@ -337,7 +370,7 @@ fun OnboardingFlow(model: AppModel) {
                 Step.Activity -> StepScaffold(current, { go(Step.Measures) }, footer = {
                     PrimaryButton("Calculer ma cible", Domains.nutrition, ::computeTarget, busy = busy)
                 }) {
-                    StepTitle("Étape 1 sur 3 · Objectif", Domains.nutrition, "Ton activité, ton but", null)
+                    StepTitle(kicker, Domains.nutrition, "Ton activité, ton but", null)
                     Labeled("Activité") { ActivityList(activity) { activity = it } }
                     Labeled("Objectif") {
                         Choice(GOALS.map { it.second }, GOALS.indexOfFirst { it.first == goal }, Domains.nutrition.soft) {
@@ -372,7 +405,7 @@ fun OnboardingFlow(model: AppModel) {
                         error = null
                     })
                 }) {
-                    StepTitle("Étape 1 sur 3 · Objectif", Domains.nutrition, "Ta cible quotidienne", null)
+                    StepTitle(kicker, Domains.nutrition, "Ta cible quotidienne", null)
                     target?.let { TargetCard(it, goal) }
                     if (manual != null) {
                         Labeled("Ma cible (kcal par jour)") {

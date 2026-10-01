@@ -61,6 +61,7 @@ import fr.nutriperso.app.R
 import fr.nutriperso.app.data.ApiResult
 import fr.nutriperso.app.data.QuickSession
 import fr.nutriperso.app.data.SearchHit
+import fr.nutriperso.app.ui.onboarding.OnboardingFlow
 import fr.nutriperso.app.ui.training.ComposeScreen
 import fr.nutriperso.app.ui.training.ImportScreen
 import fr.nutriperso.app.ui.training.WorkoutScreen
@@ -92,7 +93,7 @@ enum class Tab(val label: String, @DrawableRes val icon: Int, val active: Color)
 }
 
 /** Écrans poussés par-dessus la coquille, avec un retour. */
-enum class Pushed { Me, Progress }
+enum class Pushed { Me, Progress, History }
 
 enum class AddSheet { Meal, Session, Weigh, Scan }
 
@@ -110,6 +111,8 @@ fun MainShell(model: AppModel) {
     var fabOpen by remember { mutableStateOf(false) }
     var sheet by remember { mutableStateOf<AddSheet?>(null) }
     var scanned by remember { mutableStateOf<SearchHit?>(null) }
+    var historyDate by rememberSaveable { mutableStateOf<String?>(null) }
+    var editingGoal by rememberSaveable { mutableStateOf(false) }
     var workoutId by rememberSaveable { mutableStateOf<Long?>(null) }
     var flow by rememberSaveable { mutableStateOf<TrainingFlow?>(null) }
     val scope = rememberCoroutineScope()
@@ -167,6 +170,8 @@ fun MainShell(model: AppModel) {
                     onMe = openMe,
                     onPick = ::pick,
                     onOpenTab = { tab = it },
+                    onHistory = { stack = listOf(Pushed.History) },
+                    onEditGoal = { editingGoal = true },
                 )
                 Tab.Kitchen -> KitchenScreen(model, onMe = openMe, onPlanSlot = { slot, basket ->
                     planBasket = basket
@@ -199,6 +204,7 @@ fun MainShell(model: AppModel) {
                     onWeigh = { pick(AddSheet.Weigh) },
                 )
                 Pushed.Progress -> ProgressScreen(model, onBack = { stack = listOf(Pushed.Me) })
+                Pushed.History -> HistoryScreen(model, onBack = { stack = emptyList() }, onDay = { historyDate = it })
                 null -> Box(Modifier.fillMaxSize())
             }
         }
@@ -250,6 +256,14 @@ fun MainShell(model: AppModel) {
                 pick(AddSheet.Meal)
             },
         )
+
+        historyDate?.let { date ->
+            DayScreen(model, date, onBack = { historyDate = null })
+            BackHandler { historyDate = null }
+        }
+        if (editingGoal) {
+            OnboardingFlow(model, editGoal = true, onClose = { editingGoal = false })
+        }
 
         when (flow) {
             TrainingFlow.Compose -> ComposeScreen(model, onClose = { flow = null }, onStarted = { id ->

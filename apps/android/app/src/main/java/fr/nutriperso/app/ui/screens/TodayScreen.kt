@@ -68,6 +68,8 @@ fun TodayScreen(
     onMe: () -> Unit,
     onPick: (AddSheet) -> Unit,
     onOpenTab: (Tab) -> Unit,
+    onHistory: () -> Unit,
+    onEditGoal: () -> Unit,
 ) {
     val data = model.today
     ScreenColumn {
@@ -91,8 +93,8 @@ fun TodayScreen(
             return@ScreenColumn
         }
         if (model.welcome) WelcomeCard(data)
-        WeekStrip(data, onHistory = { model.toast("L'historique arrive dans une prochaine version") })
-        CalorieCard(data, onEditTarget = { model.toast("La modification de l'objectif arrive bientôt") })
+        WeekStrip(data, onHistory = onHistory)
+        CalorieCard(data, onEditTarget = onEditGoal)
         Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             SessionTile(data.session, Modifier.weight(1f).fillMaxHeight()) { onPick(AddSheet.Session) }
             PlannedTile(
@@ -106,7 +108,11 @@ fun TodayScreen(
             WeightTile(data.weight, Modifier.weight(1f).fillMaxHeight()) { onPick(AddSheet.Weigh) }
             ActivityTile(data.activity, Modifier.weight(1f).fillMaxHeight())
         }
-        if (data.entries.isEmpty()) EmptyJournal() else MealsCard(data.entries)
+        if (data.entries.isEmpty()) {
+            EmptyJournal()
+        } else {
+            MealJournal(data.entries, onDelete = model::deleteEntry, onFavorite = model::saveFavorite)
+        }
     }
 }
 
@@ -346,28 +352,6 @@ fun PillButton(
             Spacer(Modifier.width(6.dp))
         }
         Txt(text, nt(12.5f, 700, foreground))
-    }
-}
-
-@Composable
-private fun MealsCard(entries: List<Entry>) {
-    val byMeal = Meal.entries.mapNotNull { meal ->
-        val items = entries.filter { Meal.fromApi(it.meal) == meal }
-        if (items.isEmpty()) null else meal to items
-    }
-    Column(Modifier.fillMaxWidth().card().padding(horizontal = 14.dp, vertical = 4.dp)) {
-        byMeal.forEachIndexed { index, (meal, items) ->
-            Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Txt(meal.label, Type.bodyStrong)
-                    Txt(items.joinToString(", ") { it.foodLabel }, nt(12f, color = Neutrals.muted), maxLines = 1)
-                }
-                Spacer(Modifier.width(10.dp))
-                MacroSplit(items.sumOf { it.macros.proteinG }, items.sumOf { it.macros.carbsG }, items.sumOf { it.macros.fatG })
-                Txt(formatInt(items.sumOf { it.macros.kcal }), nt(14f, 600), Modifier.width(54.dp), align = TextAlign.End)
-            }
-            if (index < byMeal.lastIndex) Box(Modifier.fillMaxWidth().height(1.dp).background(Neutrals.divider))
-        }
     }
 }
 
