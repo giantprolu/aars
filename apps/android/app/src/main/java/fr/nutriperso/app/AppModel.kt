@@ -2,6 +2,7 @@ package fr.nutriperso.app
 
 import android.app.Application
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
@@ -67,6 +68,14 @@ class AppModel(application: Application) : AndroidViewModel(application) {
         private set
     var quick by mutableStateOf<QuickAddContext?>(null)
         private set
+
+    /** Augmente à chaque écriture réussie : les écrans s'en servent pour relire. */
+    var revision by mutableIntStateOf(0)
+        private set
+
+    fun bump() {
+        revision++
+    }
 
     /** Une écriture est en vol : les boutons des feuilles patientent. */
     var writing by mutableStateOf(false)
@@ -202,6 +211,7 @@ class AppModel(application: Application) : AndroidViewModel(application) {
             when (result) {
                 is ApiResult.Ok -> {
                     done()
+                    revision++
                     _toasts.emit(success)
                     refreshToday()
                 }

@@ -438,3 +438,17 @@ export function stepDurationSeconds(step: string): number | null {
   // « mi » pour ne pas confondre « min » avec « minutes » écrit en entier.
   return unit.startsWith('mi') ? value * 60 : value;
 }
+
+/** Ce qu'une quantité demande d'acheter, en unités si l'ingrédient s'en compte. */
+export function purchaseLabel(item: {
+  quantityG: number;
+  unitName: string | null;
+  unitGrams: number | null;
+}): string {
+  const count = shoppingUnitCount(item.quantityG, item.unitName, item.unitGrams);
+  if (count === null || item.unitName === null) {
+    return formatIngredientQuantity(item);
+  }
+  const plural = count >= 2 && !/[sxz]$/i.test(item.unitName) ? `${item.unitName}s` : item.unitName;
+  return `${count} ${plural} (${Math.round(item.quantityG).toLocaleString('fr-FR')} g)`;
+}

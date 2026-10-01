@@ -102,6 +102,8 @@ fun MainShell(model: AppModel) {
     var fabOpen by remember { mutableStateOf(false) }
     var sheet by remember { mutableStateOf<AddSheet?>(null) }
     var scanned by remember { mutableStateOf<SearchHit?>(null) }
+    var planSlot by remember { mutableStateOf<PlanSlot?>(null) }
+    var planBasket by remember { mutableStateOf<List<fr.nutriperso.app.data.BasketRow>>(emptyList()) }
     val toast = remember { ToastState() }
     val holder = rememberSaveableStateHolder()
 
@@ -110,6 +112,7 @@ fun MainShell(model: AppModel) {
     fun closeAll() {
         fabOpen = false
         sheet = null
+        planSlot = null
     }
 
     fun pick(target: AddSheet) {
@@ -118,9 +121,9 @@ fun MainShell(model: AppModel) {
         if (target != AddSheet.Scan) model.loadQuick()
     }
 
-    BackHandler(enabled = fabOpen || sheet != null || stack.isNotEmpty()) {
+    BackHandler(enabled = fabOpen || sheet != null || planSlot != null || stack.isNotEmpty()) {
         when {
-            sheet != null || fabOpen -> closeAll()
+            sheet != null || fabOpen || planSlot != null -> closeAll()
             else -> stack = stack.dropLast(1)
         }
     }
@@ -136,7 +139,10 @@ fun MainShell(model: AppModel) {
                     onPick = ::pick,
                     onOpenTab = { tab = it },
                 )
-                Tab.Kitchen -> KitchenScreen(model, onMe = openMe)
+                Tab.Kitchen -> KitchenScreen(model, onMe = openMe, onPlanSlot = { slot, basket ->
+                    planBasket = basket
+                    planSlot = slot
+                })
                 Tab.Training -> TrainingScreen(model, onMe = openMe, onStart = { pick(AddSheet.Session) })
                 Tab.Community -> CommunityScreen(model, onMe = openMe)
             }
@@ -163,12 +169,12 @@ fun MainShell(model: AppModel) {
                     onProgress = { stack = listOf(Pushed.Me, Pushed.Progress) },
                     onWeigh = { pick(AddSheet.Weigh) },
                 )
-                Pushed.Progress -> ProgressScreen(onBack = { stack = listOf(Pushed.Me) })
+                Pushed.Progress -> ProgressScreen(model, onBack = { stack = listOf(Pushed.Me) })
                 null -> Box(Modifier.fillMaxSize())
             }
         }
 
-        Scrim(visible = fabOpen || sheet == AddSheet.Meal || sheet == AddSheet.Session || sheet == AddSheet.Weigh, onDismiss = ::closeAll)
+        Scrim(visible = fabOpen || planSlot != null || sheet == AddSheet.Meal || sheet == AddSheet.Session || sheet == AddSheet.Weigh, onDismiss = ::closeAll)
 
         if (stack.isEmpty()) {
             FabArc(
@@ -190,6 +196,7 @@ fun MainShell(model: AppModel) {
             onScan = { pick(AddSheet.Scan) },
             onMessage = toast::show,
         )
+        PlanSlotSheet(planSlot, planBasket, model, onDismiss = ::closeAll)
         SessionSheet(visible = sheet == AddSheet.Session, model = model, onDismiss = ::closeAll, onMessage = toast::show)
         WeighSheet(visible = sheet == AddSheet.Weigh, model = model, onDismiss = ::closeAll)
         ScannerOverlay(

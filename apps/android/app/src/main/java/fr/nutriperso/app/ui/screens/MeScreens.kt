@@ -70,44 +70,42 @@ private fun BackRow(label: String, onBack: () -> Unit, trailing: (@Composable ()
     }
 }
 
-/** Moi (C6) : identité, poids, records, régularité, réglages. */
+/** Moi (C6) : identité, poids, records du mois, régularité, réglages. */
 @Composable
 fun MeScreen(model: AppModel, onBack: () -> Unit, onProgress: () -> Unit, onWeigh: () -> Unit) {
     val body = Domains.body
     val training = Domains.training
-    val data = model.today
-    val identity = data?.identity
-    val weight = data?.weight
+    val me = rememberLoaded(model.revision) { model.api.me() }
+    val data = me.value
     var appearance by rememberSaveable { mutableStateOf(0) }
-    var lunchReminder by rememberSaveable { mutableStateOf(true) }
-    val click = rememberSelectionClick()
 
     Box(Modifier.fillMaxSize().background(Neutrals.screen)) {
         ScreenColumn(withTabBar = false) {
             BackRow("Retour", onBack) { Icon(R.drawable.lucide_settings, 20.dp, Neutrals.muted) }
+            if (!LoadedGate(me) || data == null) return@ScreenColumn
+
+            val identity = data.identity
             Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Avatar(initialsOf(identity), size = 48.dp, background = body.fill, foreground = Color.White, fontSize = 16f)
                 Column {
-                    Txt(identity?.displayName ?: identity?.handle ?: "Moi", nt(22f, 600, line = 1.2f, tracking = -0.03f))
-                    val planned = data?.activity?.sessionsPlanned ?: 0
                     Txt(
-                        listOfNotNull(identity?.handle?.let { "@$it" }, if (planned > 0) "$planned séances par semaine" else null)
-                            .joinToString(" · "),
-                        Type.secondary,
+                        identity.displayName ?: identity.handle?.let { "@$it" } ?: "Moi",
+                        nt(22f, 600, line = 1.2f, tracking = -0.03f),
                     )
+                    Txt("${data.gym ?: "Salle non précisée"} · ${data.sessionsPerWeek} séances par semaine", Type.secondary, maxLines = 1)
                 }
             }
 
             Column(Modifier.fillMaxWidth().tinted(body.soft).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                     Column(Modifier.weight(1f)) {
-                        Txt("Poids · dernière pesée", nt(11.5f, 600, body.textOnLight))
+                        Txt("Poids · moyenne de la semaine", nt(11.5f, 600, body.textOnLight))
                         Txt(
                             valueWithUnit(
-                                weight?.let { formatKg(it.latestKg) } ?: "—",
+                                data.weekAverageKg?.let(::formatKg) ?: "—",
                                 " kg",
                                 unitSize = 13f,
-                                extra = weight?.changeKg?.let { formatSigned(it) },
+                                extra = data.weightChangeKg?.takeIf { it != 0.0 }?.let { formatSigned(it) },
                                 extraColor = body.textOnLight,
                             ),
                             nt(26f, 600, tracking = -0.03f),
@@ -122,27 +120,39 @@ fun MeScreen(model: AppModel, onBack: () -> Unit, onProgress: () -> Unit, onWeig
                         Txt("Pesée", nt(12.5f, 700, Color.White))
                     }
                 }
-                val weeks = weight?.weeks.orEmpty()
-                val known = weeks.filterNotNull()
-                if (known.size >= 2) {
-                    val min = known.min()
-                    val span = (known.max() - min).takeIf { it > 0 } ?: 1.0
-                    Bars(
-                        ratios = weeks.map { value -> if (value == null) 0.04f else (0.5 + 0.35 * (value - min) / span).toFloat() },
-                        colors = weeks.indices.map { if (it == weeks.lastIndex) body.fill else body.seg },
-                        modifier = Modifier.fillMaxWidth().height(70.dp),
-                    )
-                } else {
-                    Txt("Deux semaines de pesées, et la tendance s'affiche ici.", nt(12.5f, color = Neutrals.muted))
-                }
+                // Même règle que la page web : 45 à 90 % de la hauteur entre le
+                // plus bas et le plus haut, 60 % à plat, 6 % sans pesée.
+                val known = data.weights.filterNotNull()
+                val low = known.minOrNull() ?: 0.0
+                val high = known.maxOrNull() ?: 0.0
+                Bars(
+                    ratios = data.weights.map { value ->
+                        when {
+                            value == null -> 0.06f
+                            known.size < 2 || high == low -> 0.6f
+                            else -> (0.45 + (value - low) / (high - low) * 0.45).toFloat()
+                        }
+                    },
+                    colors = data.weights.mapIndexed { index, value ->
+                        when {
+                            value == null -> body.seg.copy(alpha = 0.4f)
+                            index == data.weights.lastIndex -> body.fill
+                            else -> body.seg
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(70.dp),
+                )
             }
 
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                listOf(Triple("Records ce mois", "3", "Squat 90 kg × 5"), Triple("Régularité", "11/12", "semaines actives")).forEach { (label, value, note) ->
+                listOf(
+                    Triple("Records ce mois", "${data.recordsThisMonth}", data.topRecord ?: "Aucun pour l'instant"),
+                    Triple("Régularité", "${data.activeWeeks}/${data.weeks}", "semaines actives"),
+                ).forEach { (label, value, note) ->
                     Column(Modifier.weight(1f).fillMaxHeight().tinted(training.soft).padding(14.dp)) {
                         Txt(label, nt(11.5f, 600, training.textOnLight))
                         Txt(value, nt(22f, 600))
-                        Txt(note, Type.small)
+                        Txt(note, Type.small, maxLines = 1)
                     }
                 }
             }
@@ -175,19 +185,12 @@ fun MeScreen(model: AppModel, onBack: () -> Unit, onProgress: () -> Unit, onWeig
                     )
                 }
                 SettingDivider()
-                SettingRow(R.drawable.lucide_bell, "Rappel du déjeuner") {
-                    Switch(lunchReminder) {
-                        click()
-                        lunchReminder = it
-                    }
-                }
-                SettingDivider()
                 SettingRow(R.drawable.lucide_activity, "Santé") {
-                    Badge("Bientôt", training.soft, training.textOnLight)
-                }
-                SettingDivider()
-                SettingRow(R.drawable.lucide_key_round, "Compte et données") {
-                    Icon(R.drawable.lucide_chevron_right, 16.dp, Neutrals.faint)
+                    when (data.health) {
+                        "active" -> Badge("Actif", training.soft, training.textOnLight)
+                        "pending" -> Badge("En attente", Neutrals.chip, Neutrals.muted)
+                        else -> Badge("Inactif", Neutrals.chip, Neutrals.muted)
+                    }
                 }
                 SettingDivider()
                 SettingRow(R.drawable.lucide_log_out, "Se déconnecter", onClick = model::signOut) {}
@@ -214,30 +217,23 @@ private fun SettingDivider() {
     Box(Modifier.fillMaxWidth().height(1.dp).background(Neutrals.divider))
 }
 
-/** Interrupteur de 38 × 22, vert Nutrition quand il est actif. */
-@Composable
-private fun Switch(on: Boolean, onChange: (Boolean) -> Unit) {
-    Box(
-        Modifier.size(38.dp, 22.dp).clip(CircleShape).background(if (on) Domains.nutrition.fill else Neutrals.track).tap { onChange(!on) }.padding(3.dp),
-        contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart,
-    ) {
-        Box(Modifier.size(16.dp).clip(CircleShape).background(Neutrals.card))
-    }
-}
+private val PERIODS = listOf(4 to "4 sem.", 12 to "12 sem.", 52 to "1 an")
 
-/** Progression (C7) : tonnage et poids, puis le 1RM estimé par exercice. Exemple, voir [Demo]. */
+/** Progression (C7) : tonnage et poids par semaine, puis le 1RM estimé par exercice. */
 @Composable
-fun ProgressScreen(onBack: () -> Unit) {
+fun ProgressScreen(model: AppModel, onBack: () -> Unit) {
     val training = Domains.training
     val body = Domains.body
     var period by rememberSaveable { mutableStateOf(1) }
+    val progress = rememberLoaded(period, model.revision) { model.api.progress(PERIODS[period].first) }
+    val data = progress.value
     Box(Modifier.fillMaxSize().background(Neutrals.screen)) {
         ScreenColumn(withTabBar = false) {
             BackRow("Moi", onBack)
             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.Bottom) {
                 Txt("Progression", Type.screenTitle, Modifier.weight(1f))
                 SegmentedPill(
-                    options = listOf("4 sem.", "12 sem.", "1 an"),
+                    options = PERIODS.map { it.second },
                     selected = period,
                     onSelect = { period = it },
                     track = Neutrals.periodTrack,
@@ -249,6 +245,8 @@ fun ProgressScreen(onBack: () -> Unit) {
                     fill = false,
                 )
             }
+            if (!LoadedGate(progress) || data == null) return@ScreenColumn
+
             Column(Modifier.fillMaxWidth().card().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Txt("Tonnage et poids", nt(13f, 600), Modifier.weight(1f))
@@ -263,56 +261,80 @@ fun ProgressScreen(onBack: () -> Unit) {
                         }
                     }
                 }
+                val maxVolume = data.weeks.maxOfOrNull { it.volumeKg }?.coerceAtLeast(1.0) ?: 1.0
                 Box(Modifier.fillMaxWidth().height(130.dp)) {
                     Bars(
-                        ratios = Demo.tonnage,
-                        colors = Demo.tonnage.indices.map { if (it == Demo.tonnage.lastIndex) training.fill else training.seg },
+                        ratios = data.weeks.map { (it.volumeKg / maxVolume).toFloat().coerceAtLeast(0.02f) },
+                        colors = data.weeks.indices.map { if (it == data.weeks.lastIndex) training.fill else training.seg },
                         modifier = Modifier.fillMaxSize(),
-                        gap = 6.dp,
+                        gap = if (data.period == 52) 2.dp else 6.dp,
                     )
-                    Canvas(Modifier.fillMaxSize()) {
-                        val points = Demo.weightCurve
-                        val step = size.width / points.size
-                        val path = Path()
-                        points.forEachIndexed { index, y ->
-                            val point = Offset(step * index + step / 2, size.height * y / 130f)
-                            if (index == 0) path.moveTo(point.x, point.y) else path.lineTo(point.x, point.y)
+                    val weighed = data.weights.mapIndexedNotNull { index, value -> value?.let { index to it } }
+                    if (weighed.size > 1) {
+                        Canvas(Modifier.fillMaxSize()) {
+                            val low = weighed.minOf { it.second }
+                            val high = weighed.maxOf { it.second }
+                            val span = (high - low).takeIf { it > 0 } ?: 1.0
+                            val column = size.width / data.weights.size.coerceAtLeast(1)
+                            val path = Path()
+                            weighed.forEachIndexed { i, (index, value) ->
+                                // Même tracé que la page web : 20 à 90 sur une hauteur de 130.
+                                val point = Offset(
+                                    index * column + column / 2,
+                                    size.height * (20f + ((high - value) / span).toFloat() * 70f) / 130f,
+                                )
+                                if (i == 0) path.moveTo(point.x, point.y) else path.lineTo(point.x, point.y)
+                            }
+                            drawPath(path, body.fill, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
                         }
-                        drawPath(path, body.fill, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
                     }
                 }
                 Box(Modifier.fillMaxWidth().height(1.dp).background(Neutrals.divider))
                 Row(Modifier.fillMaxWidth()) {
-                    listOf(Triple("31", "séances", training.fill), Triple("+9 %", "tonnage", training.fill), Triple("−1,8 kg", "poids", body.textOnLight))
-                        .forEach { (value, label, color) ->
-                            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Txt(value, nt(16f, 600, color))
-                                Txt(label, nt(11f, color = Neutrals.muted))
-                            }
+                    val volume = data.volumeChange?.let { "${if (it > 0) "+" else if (it < 0) "−" else ""}${kotlin.math.abs(it)} %" } ?: "—"
+                    val weight = data.weightChangeKg?.let { "${formatSigned(it)} kg" } ?: "—"
+                    listOf(
+                        Triple("${data.sessions}", "séances", training.fill),
+                        Triple(volume, "tonnage", training.fill),
+                        Triple(weight, "poids", body.textOnLight),
+                    ).forEach { (value, label, color) ->
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Txt(value, nt(16f, 600, color))
+                            Txt(label, nt(11f, color = Neutrals.muted))
                         }
+                    }
                 }
             }
-            Column(Modifier.fillMaxWidth().card()) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp)) {
-                    Txt("Exercice", nt(11.5f, color = Neutrals.muted), Modifier.weight(1f))
-                    Txt("1RM est.", nt(11.5f, color = Neutrals.muted), Modifier.width(64.dp), align = TextAlign.End)
-                    Txt("Écart", nt(11.5f, color = Neutrals.muted), Modifier.width(60.dp), align = TextAlign.End)
-                }
-                Demo.lifts.forEach { lift ->
-                    SettingDivider()
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Txt(lift.name, Type.bodyStrong, Modifier.weight(1f))
-                        Txt(lift.oneRm, nt(14f, 600), Modifier.width(64.dp), align = TextAlign.End)
-                        Box(Modifier.width(60.dp), contentAlignment = Alignment.CenterEnd) {
-                            if (lift.delta == null) {
-                                Badge("=", Neutrals.chip, Neutrals.muted, size = 12f)
-                            } else {
-                                Badge(lift.delta, training.soft, training.textOnLight, size = 12f)
+            if (data.exercises.isEmpty()) {
+                EmptyCard("Rien sur cette période", "Aucune série enregistrée sur cette période.")
+            } else {
+                Column(Modifier.fillMaxWidth().card()) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp)) {
+                        Txt("Exercice", nt(11.5f, color = Neutrals.muted), Modifier.weight(1f))
+                        Txt("1RM est.", nt(11.5f, color = Neutrals.muted), Modifier.width(72.dp), align = TextAlign.End)
+                        Txt("Écart", nt(11.5f, color = Neutrals.muted), Modifier.width(72.dp), align = TextAlign.End)
+                    }
+                    data.exercises.forEach { exercise ->
+                        SettingDivider()
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Txt(exercise.name, Type.bodyStrong, Modifier.weight(1f), maxLines = 1)
+                            Txt(exercise.value, nt(14f, 600), Modifier.width(72.dp), align = TextAlign.End)
+                            Box(Modifier.width(72.dp), contentAlignment = Alignment.CenterEnd) {
+                                if (exercise.progressed) {
+                                    Badge(exercise.change.orEmpty(), training.soft, training.textOnLight, size = 12f)
+                                } else {
+                                    Badge(exercise.change ?: "1 séance", Neutrals.chip, Neutrals.muted, size = 12f)
+                                }
                             }
                         }
                     }
                 }
             }
+            Txt(
+                "L'écart compare la dernière séance à la première de la période, sur le 1RM estimé quand l'exercice se charge.",
+                nt(12f, color = Neutrals.muted),
+                Modifier.padding(horizontal = 4.dp),
+            )
         }
     }
 }

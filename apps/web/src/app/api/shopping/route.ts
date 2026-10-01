@@ -2,7 +2,9 @@ import { z } from 'zod';
 import { apiError } from '@/server/errors';
 import { currentUserId } from '@/server/guard';
 import { generateList, listForWeek } from '@/server/services/shopping';
+import { AISLE_LABELS } from '@/lib/aisle';
 import { isJournalDate, startOfWeek, todayInParis } from '@/lib/date';
+import { purchaseLabel } from '@/lib/recipe';
 
 export const runtime = 'nodejs';
 
@@ -23,7 +25,23 @@ export async function GET(request: Request): Promise<Response> {
   const from = new URL(request.url).searchParams.get('from');
   const weekStart = startOfWeek(from !== null && isJournalDate(from) ? from : todayInParis());
 
-  return Response.json({ list: await listForWeek(userId, weekStart) });
+  const list = await listForWeek(userId, weekStart);
+  // Libellés de rayon et de quantité joints pour les apps natives : ces règles
+  // d'affichage restent ici plutôt que d'être recopiées en Swift et en Kotlin.
+  return Response.json({
+    weekStart,
+    list:
+      list === null
+        ? null
+        : {
+            ...list,
+            items: list.items.map((item) => ({
+              ...item,
+              aisleLabel: AISLE_LABELS[item.aisle],
+              quantityLabel: purchaseLabel(item),
+            })),
+          },
+  });
 }
 
 const generateSchema = z.object({

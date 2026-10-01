@@ -97,6 +97,16 @@ class Api(private val tokens: TokenStore) {
     suspend fun profile() = get("/api/profile", ProfileResponse.serializer())
     suspend fun preferences() = get("/api/training/preferences", PreferencesResponse.serializer())
     suspend fun templates() = get("/api/training", TemplatesResponse.serializer())
+    suspend fun trainingHome() = get("/api/training/home", TrainingHome.serializer())
+    suspend fun progress(period: Int) = get("/api/training/progress?period=$period", ProgressResponse.serializer())
+    suspend fun socialHome() = get("/api/social/home", SocialHome.serializer())
+    suspend fun feed(before: Long? = null) =
+        get("/api/social/feed" + (before?.let { "?before=$it" } ?: ""), FeedResponse.serializer())
+    suspend fun me() = get("/api/me", MeResponse.serializer())
+    suspend fun plan(weekStart: String) = get("/api/plan?from=$weekStart", PlanResponse.serializer())
+    suspend fun basket(weekStart: String) = get("/api/basket?weekStart=$weekStart", BasketResponse.serializer())
+    suspend fun shopping(weekStart: String) = get("/api/shopping?from=$weekStart", ShoppingResponse.serializer())
+    suspend fun recipes() = get("/api/recipes", RecipesResponse.serializer())
     suspend fun search(query: String) =
         get("/api/search?q=" + URLEncoder.encode(query, "UTF-8"), SearchResponse.serializer())
     suspend fun product(barcode: String) = get("/api/products/$barcode", ProductResponse.serializer())
@@ -133,6 +143,24 @@ class Api(private val tokens: TokenStore) {
     /** Note la part planifiée dans le journal, et la barre dans Cuisine. */
     suspend fun journalPlanned(planId: Long) =
         send("POST", "/api/plan/$planId", json.encodeToString(ActionBody.serializer(), ActionBody("journal")))
+
+    suspend fun planMeal(planDate: String, meal: String, recipeId: Long, servings: Double) = send(
+        "POST", "/api/plan",
+        json.encodeToString(PlanMealBody.serializer(), PlanMealBody(planDate, meal, recipeId, servings)),
+    )
+
+    suspend fun addToBasket(weekStart: String, recipeId: Long, servings: Double) = send(
+        "POST", "/api/basket",
+        json.encodeToString(BasketRecipeBody.serializer(), BasketRecipeBody(weekStart = weekStart, recipeId = recipeId, servings = servings)),
+    )
+
+    suspend fun checkItem(item: ShoppingItemRow, checked: Boolean) = send(
+        "PATCH", "/api/shopping/items/${item.id}",
+        json.encodeToString(CheckItemBody.serializer(), CheckItemBody(checked, null, item.refKind, item.refValue)),
+    )
+
+    suspend fun kudos(sessionId: Long, given: Boolean) =
+        send("PUT", "/api/social/kudos", json.encodeToString(KudosBody.serializer(), KudosBody(sessionId, given)))
 
     suspend fun weighIn(weightKg: Double) =
         send("POST", "/api/weight", json.encodeToString(WeighInBody.serializer(), WeighInBody(weightKg)))

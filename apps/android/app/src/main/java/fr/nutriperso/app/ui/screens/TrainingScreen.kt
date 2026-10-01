@@ -22,11 +22,11 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import fr.nutriperso.app.AppModel
 import fr.nutriperso.app.R
+import fr.nutriperso.app.data.SessionRow
 import fr.nutriperso.app.ui.components.Badge
 import fr.nutriperso.app.ui.components.DomainBadge
 import fr.nutriperso.app.ui.components.DomainHeader
 import fr.nutriperso.app.ui.components.Icon
-import fr.nutriperso.app.ui.components.LinkText
 import fr.nutriperso.app.ui.components.SegmentDots
 import fr.nutriperso.app.ui.components.Txt
 import fr.nutriperso.app.ui.components.card
@@ -37,88 +37,111 @@ import fr.nutriperso.app.ui.theme.Neutrals
 import fr.nutriperso.app.ui.theme.Radius
 import fr.nutriperso.app.ui.theme.Type
 import fr.nutriperso.app.ui.theme.nt
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
-/**
- * Sport (C4) : la semaine en trois tuiles, la séance du jour, le programme,
- * les dernières séances. Séance du jour et compteurs viennent de l'API quand
- * elle les fournit ; le reste est encore un exemple, voir [Demo].
- */
+/** « 8,4 t » au-delà d'une tonne, « 850 kg » en deçà (`formatTonnage`, lib/workout-progress.ts). */
+fun formatTonnage(kg: Double): Pair<String, String> =
+    if (kg >= 1000) String.format(Locale.FRANCE, "%.1f", Math.round(kg / 100) / 10.0) to " t"
+    else fr.nutriperso.app.ui.components.formatInt(kg) to " kg"
+
+private val dayFormat = DateTimeFormatter.ofPattern("EEEE d", Locale.FRENCH)
+
+private fun sessionDetail(session: SessionRow): String {
+    val day = LocalDate.parse(session.sessionDate).format(dayFormat).replaceFirstChar { it.titlecase(Locale.FRENCH) }
+    val minutes = session.durationSeconds?.let { "${Math.round(it / 60.0)} min" }
+    return listOfNotNull(day, minutes).joinToString(" · ")
+}
+
+/** Sport (C4) : la semaine en trois tuiles, la séance du jour, le programme, les dernières séances. */
 @Composable
 fun TrainingScreen(model: AppModel, onMe: () -> Unit, onStart: () -> Unit) {
     val training = Domains.training
-    val data = model.today
-    val activity = data?.activity
-    val sessionsPlanned = activity?.sessionsPlanned?.takeIf { it > 0 } ?: 3
-    val sessionsDone = activity?.sessionsDone ?: 0
+    val home = rememberLoaded(model.revision) { model.api.trainingHome() }
+    val data = home.value
 
     ScreenColumn {
         DomainHeader(
             title = "Sport",
             subtitle = AnnotatedString(data?.let { "Semaine ${it.isoWeek}" } ?: ""),
-            initials = initialsOf(data?.identity),
+            initials = initialsOf(model.today?.identity),
             onAvatar = onMe,
             badge = DomainBadge(R.drawable.lucide_dumbbell, training),
         )
+        if (!LoadedGate(home) || data == null) return@ScreenColumn
+
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatTile(
-                "Séances", "$sessionsDone", " / $sessionsPlanned", null, Modifier.weight(1f),
+                "Séances", "${data.weekSessions}", " / ${data.sessionsPerWeek}", null, Modifier.weight(1f),
                 background = training.soft, labelColor = training.textOnLight, labelWeight = 600, valueSize = 20f,
             ) {
-                SegmentDots(sessionsDone, sessionsPlanned, training.fill, training.seg, 4.dp, Modifier.padding(top = 2.dp))
+                SegmentDots(data.weekSessions, data.sessionsPerWeek, training.fill, training.seg, 4.dp, Modifier.padding(top = 2.dp))
+            }
+            val (volume, unit) = formatTonnage(data.weekVolumeKg)
+            StatTile(
+                "Volume", volume, unit, null, Modifier.weight(1f),
+                background = training.soft, labelColor = training.textOnLight, labelWeight = 600, valueSize = 20f,
+            ) {
+                data.volumeChange?.let { change ->
+                    Txt("${if (change > 0) "+" else if (change < 0) "−" else ""}${kotlin.math.abs(change)} %", nt(11f, 600, training.textOnLight))
+                }
             }
             StatTile(
-                "Volume", "8,4", " t", null, Modifier.weight(1f),
+                "Records", "${data.records.size}", null, null, Modifier.weight(1f),
                 background = training.soft, labelColor = training.textOnLight, labelWeight = 600, valueSize = 20f,
             ) {
-                Txt("+12 %", nt(11f, 600, training.textOnLight))
-            }
-            StatTile(
-                "Records", "1", null, null, Modifier.weight(1f),
-                background = training.soft, labelColor = training.textOnLight, labelWeight = 600, valueSize = 20f,
-            ) {
-                Txt("Squat", nt(11f, color = Neutrals.muted))
+                Txt(data.records.firstOrNull() ?: "cette semaine", nt(11f, color = Neutrals.muted), maxLines = 1)
             }
         }
 
-        val (demoName, exercises) = Demo.todaySession
-        val session = data?.session
+        val open = data.openSession
+        val next = data.next
         Column(
             Modifier.fillMaxWidth().tinted(training.fill, Radius.sessionCard).tap(onClick = onStart).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f)) {
-                    Txt(if (session?.kind == "open") "Séance en cours" else "Séance du jour · 50 min", nt(11.5f, 500, Color.White.copy(alpha = 0.85f)))
-                    Txt(session?.name ?: demoName, nt(20f, 600, Color.White, tracking = -0.02f))
+                    Txt(
+                        when {
+                            open != null -> "Séance en cours · ${open.setCount} séries"
+                            next != null -> "Séance du jour · ${next.exercises.size} exercices"
+                            else -> "Pas de programme"
+                        },
+                        nt(11.5f, 500, Color.White.copy(alpha = 0.85f)),
+                    )
+                    Txt(open?.name ?: next?.name ?: "Séance libre", nt(20f, 600, Color.White, tracking = -0.02f))
                 }
                 Box(Modifier.size(44.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
                     Icon(R.drawable.lucide_play, 18.dp, training.fill)
                 }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                exercises.forEach { exercise ->
-                    Row(Modifier.fillMaxWidth()) {
-                        Txt(exercise.name, nt(13f, color = Color.White), Modifier.weight(1f))
-                        Txt(exercise.detail, nt(13f, color = Color.White.copy(alpha = 0.8f)))
+            if (open == null && next != null && next.exercises.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    next.exercises.forEach { exercise ->
+                        Row(Modifier.fillMaxWidth()) {
+                            Txt(exercise.name, nt(13f, color = Color.White), Modifier.weight(1f), maxLines = 1)
+                            Txt(exercise.target, nt(13f, color = Color.White.copy(alpha = 0.8f)))
+                        }
                     }
                 }
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Txt("Programme", nt(13f, 600), Modifier.weight(1f))
-                LinkText("Modifier", training.textOnLight, { model.toast("La modification du programme arrive bientôt") })
-            }
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Demo.program.forEach { program ->
-                    Column(
-                        Modifier.width(150.dp).card(Radius.tile).padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Icon(R.drawable.lucide_star, 14.dp, if (program.favorite) Domains.kitchen.textOnLight else Neutrals.starOff)
-                        Txt(program.name, nt(14f, 600))
-                        Txt(program.detail, Type.small)
+        if (data.templates.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Txt("Programme", nt(13f, 600), Modifier.padding(horizontal = 4.dp))
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    data.templates.forEach { template ->
+                        Column(
+                            Modifier.width(150.dp).card(Radius.tile).padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(R.drawable.lucide_star, 14.dp, if (template.favorite) Domains.kitchen.textOnLight else Neutrals.starOff)
+                            Txt(template.name, nt(14f, 600), maxLines = 2)
+                            Txt("${template.exerciseCount} exercices", Type.small)
+                        }
                     }
                 }
             }
@@ -126,7 +149,10 @@ fun TrainingScreen(model: AppModel, onMe: () -> Unit, onStart: () -> Unit) {
 
         Column(Modifier.fillMaxWidth().card().padding(horizontal = 14.dp, vertical = 4.dp)) {
             Txt("Dernières séances", nt(13f, 600), Modifier.padding(top = 10.dp, bottom = 4.dp))
-            Demo.pastSessions.forEachIndexed { index, past ->
+            if (data.history.isEmpty()) {
+                Txt("Aucune séance terminée pour l'instant.", Type.secondary, Modifier.padding(bottom = 10.dp))
+            }
+            data.history.forEachIndexed { index, session ->
                 Row(
                     Modifier.fillMaxWidth().padding(vertical = 9.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -134,13 +160,14 @@ fun TrainingScreen(model: AppModel, onMe: () -> Unit, onStart: () -> Unit) {
                 ) {
                     Box(Modifier.size(8.dp).clip(CircleShape).background(training.fill))
                     Column(Modifier.weight(1f)) {
-                        Txt(past.name, Type.bodyStrong)
-                        Txt(past.detail, Type.small)
+                        Txt(session.name, Type.bodyStrong, maxLines = 1)
+                        Txt(sessionDetail(session), Type.small)
                     }
-                    if (past.record) Badge("record", Neutrals.recordBg, Neutrals.recordText)
-                    Txt(past.tonnage, nt(14f, 600))
+                    if (session.record) Badge("record", Neutrals.recordBg, Neutrals.recordText)
+                    val (volume, unit) = formatTonnage(session.volumeKg)
+                    Txt("$volume$unit", nt(14f, 600))
                 }
-                if (index < Demo.pastSessions.lastIndex) Box(Modifier.fillMaxWidth().height(1.dp).background(Neutrals.divider))
+                if (index < data.history.lastIndex) Box(Modifier.fillMaxWidth().height(1.dp).background(Neutrals.divider))
             }
         }
     }

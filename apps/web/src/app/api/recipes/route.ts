@@ -3,6 +3,7 @@ import { apiError } from '@/server/errors';
 import { currentUserId } from '@/server/guard';
 import { createRecipe, recipesFor } from '@/server/services/recipes';
 import { REJECTION_MESSAGES, recipeSchema } from '@/server/validation/recipes';
+import { macrosPerServing } from '@/lib/recipe';
 
 export const runtime = 'nodejs';
 
@@ -12,7 +13,13 @@ export async function GET(): Promise<Response> {
   if (userId === null) {
     return apiError('unauthorized');
   }
-  return Response.json({ recipes: await recipesFor(userId) });
+  // Les calories par part sont jointes pour les apps natives, qui ne
+  // recalculent pas les macros d'une recette : la règle reste ici.
+  const recipes = (await recipesFor(userId)).map((recipe) => ({
+    ...recipe,
+    kcalPerServing: Math.round(macrosPerServing(recipe).macros.kcal),
+  }));
+  return Response.json({ recipes });
 }
 
 /**

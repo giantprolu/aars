@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -15,13 +16,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -30,13 +31,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import fr.nutriperso.app.AppModel
+import fr.nutriperso.app.Meal
 import fr.nutriperso.app.R
+import fr.nutriperso.app.data.ApiResult
+import fr.nutriperso.app.data.BasketRow
+import fr.nutriperso.app.data.PlannedRow
+import fr.nutriperso.app.data.RecipeRow
+import fr.nutriperso.app.data.ShoppingItemRow
 import fr.nutriperso.app.ui.components.DomainBadge
 import fr.nutriperso.app.ui.components.DomainHeader
 import fr.nutriperso.app.ui.components.Icon
@@ -47,6 +55,7 @@ import fr.nutriperso.app.ui.components.SegmentedPill
 import fr.nutriperso.app.ui.components.Txt
 import fr.nutriperso.app.ui.components.card
 import fr.nutriperso.app.ui.components.dashedBorder
+import fr.nutriperso.app.ui.components.formatInt
 import fr.nutriperso.app.ui.components.photoStripes
 import fr.nutriperso.app.ui.components.rememberSelectionClick
 import fr.nutriperso.app.ui.components.tap
@@ -62,15 +71,33 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
+import kotlinx.coroutines.launch
 
-/** Cuisine (C3) : Plan, Recettes, Courses. Contenus d'exemple, voir [Demo]. */
+/** Deux repas par jour, sept jours : ce que le plan peut porter. */
+private const val SLOTS_PER_WEEK = 14
+
+/** Une case vide du plan, en attente d'un plat. */
+data class PlanSlot(val date: LocalDate, val meal: Meal)
+
+/** Cuisine (C3) : Plan, Recettes, Courses, sur la semaine en cours. */
 @Composable
-fun KitchenScreen(model: AppModel, onMe: () -> Unit) {
+fun KitchenScreen(model: AppModel, onMe: () -> Unit, onPlanSlot: (PlanSlot, List<BasketRow>) -> Unit) {
     val kitchen = Domains.kitchen
+    val scope = rememberCoroutineScope()
     var section by rememberSaveable { mutableStateOf(0) }
     val today = model.today?.today?.let(LocalDate::parse) ?: LocalDate.now()
     val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-    val shopping = remember { mutableStateListOf(*Demo.aisles.flatMap { it.second }.map { it.checked }.toTypedArray()) }
+    val week = monday.toString()
+
+    val plan = rememberLoaded(week, model.revision) { model.api.plan(week) }
+    val basket = rememberLoaded(week, model.revision) { model.api.basket(week) }
+    val shopping = rememberLoaded(week, model.revision) { model.api.shopping(week) }
+    // Cochés à l'instant : la case suit le doigt, le serveur suit (comme la PWA).
+    val checking = remember { mutableStateMapOf<Long, Boolean>() }
+
+    val items = shopping.value?.list?.items.orEmpty()
+    fun isChecked(item: ShoppingItemRow) = checking[item.id] ?: (item.checkedAt != null)
+    val bought = items.count(::isChecked)
 
     ScreenColumn {
         DomainHeader(
@@ -87,12 +114,46 @@ fun KitchenScreen(model: AppModel, onMe: () -> Unit) {
             track = kitchen.soft,
             textColor = kitchen.textOnLight,
             selectedTextColor = kitchen.textOnLight,
-            badges = mapOf(2 to "${shopping.count { !it }}"),
+            badges = if (shopping.value?.list == null || items.size == bought) emptyMap() else mapOf(2 to "${items.size - bought}"),
         )
         when (section) {
-            0 -> PlanSection(monday, today, shopping.count { it }, shopping.size, onChoose = { section = 1 })
-            1 -> RecipesSection()
-            else -> ShoppingSection(shopping)
+            0 -> if (LoadedGate(plan) && LoadedGate(basket, emptyList())) {
+                val planned = plan.value?.planned.orEmpty()
+                val chosen = basket.value?.basket.orEmpty()
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatTile("Plats choisis", "${chosen.size}", null, null, Modifier.weight(1f))
+                    StatTile("Repas placés", "${planned.size}", " / $SLOTS_PER_WEEK", planned.size / SLOTS_PER_WEEK.toFloat(), Modifier.weight(1f))
+                    StatTile("Courses", "$bought", " / ${items.size}", if (items.isEmpty()) 0f else bought / items.size.toFloat(), Modifier.weight(1f))
+                }
+                BasketCard(chosen, onChoose = { section = 1 })
+                PlanGrid(
+                    monday, today, planned,
+                    onEat = { row -> model.eatPlanned(row.id, row.recipeName) },
+                    onEmpty = { slot ->
+                        if (chosen.isEmpty()) {
+                            model.toast("Choisis d'abord des plats dans Recettes")
+                        } else {
+                            onPlanSlot(slot, chosen)
+                        }
+                    },
+                )
+            }
+            1 -> RecipesSection(model, week)
+            else -> if (LoadedGate(shopping)) {
+                if (shopping.value?.list == null) {
+                    EmptyCard("Pas encore de liste", "Elle se compose à partir des plats choisis pour la semaine, depuis l'app web pour l'instant.")
+                } else {
+                    ShoppingSection(items, ::isChecked) { item, checked ->
+                        checking[item.id] = checked
+                        scope.launch {
+                            if (model.api.checkItem(item, checked) is ApiResult.Failed) {
+                                checking.remove(item.id)
+                                model.toast("La case n'a pas pu être enregistrée")
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -101,42 +162,62 @@ private val shortFormat = DateTimeFormatter.ofPattern("d MMM", Locale.FRENCH)
 
 private fun shortDate(date: LocalDate): String = date.format(shortFormat)
 
+private val dayFormat = DateTimeFormatter.ofPattern("EEE d", Locale.FRENCH)
+
+private fun dayLabel(date: LocalDate): String =
+    date.format(dayFormat).replace(".", "").replaceFirstChar { it.titlecase(Locale.FRENCH) }
+
+private fun formatServings(value: Double): String =
+    if (value % 1.0 == 0.0) value.toLong().toString() else String.format(Locale.FRANCE, "%.1f", value)
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PlanSection(monday: LocalDate, today: LocalDate, bought: Int, toBuy: Int, onChoose: () -> Unit) {
+private fun BasketCard(basket: List<BasketRow>, onChoose: () -> Unit) {
     val kitchen = Domains.kitchen
-    val placed = Demo.week.sumOf { day -> listOf(day.lunch, day.dinner).count { it.label != null } }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        StatTile("Plats choisis", "${Demo.dishes.size}", null, null, Modifier.weight(1f))
-        StatTile("Repas placés", "$placed", " / 14", placed / 14f, Modifier.weight(1f))
-        StatTile("Courses", "$bought", " / $toBuy", bought / toBuy.coerceAtLeast(1).toFloat(), Modifier.weight(1f))
-    }
     Column(Modifier.fillMaxWidth().card().padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Txt("À cuisiner", nt(13f, 600), Modifier.weight(1f))
             LinkText("Choisir des plats", kitchen.textOnLight, onChoose)
         }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Demo.dishes.forEach { (name, count) ->
-                Txt(
-                    buildAnnotatedString {
-                        append("$name ")
-                        withStyle(SpanStyle(fontWeight = FontWeight.W700, color = kitchen.textOnLight)) { append(count) }
-                    },
-                    nt(12.5f),
-                    Modifier.tinted(kitchen.soft, Radius.small).padding(horizontal = 10.dp, vertical = 6.dp),
-                )
+        if (basket.isEmpty()) {
+            Txt("Aucun plat choisi pour cette semaine.", Type.secondary)
+        } else {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                basket.forEach { item ->
+                    Txt(
+                        buildAnnotatedString {
+                            append("${item.recipeName} ")
+                            withStyle(SpanStyle(fontWeight = FontWeight.W700, color = kitchen.textOnLight)) {
+                                append("${formatServings(item.plannedServings)}/${formatServings(item.servings)}")
+                            }
+                        },
+                        nt(12.5f),
+                        Modifier.tinted(kitchen.soft, Radius.small).padding(horizontal = 10.dp, vertical = 6.dp),
+                    )
+                }
             }
         }
     }
+}
+
+/** Lignes jour × midi / soir. Le passé est barré, le jour même est surligné. */
+@Composable
+private fun PlanGrid(
+    monday: LocalDate,
+    today: LocalDate,
+    planned: List<PlannedRow>,
+    onEat: (PlannedRow) -> Unit,
+    onEmpty: (PlanSlot) -> Unit,
+) {
+    val kitchen = Domains.kitchen
     Column(Modifier.fillMaxWidth().card()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
             Spacer(Modifier.width(52.dp))
             Txt("Midi", nt(11.5f, color = Neutrals.muted), Modifier.weight(1f))
             Txt("Soir", nt(11.5f, color = Neutrals.muted), Modifier.weight(1f))
         }
-        Demo.week.forEachIndexed { index, day ->
-            val date = monday.plusDays(index.toLong())
+        (0L until 7L).forEach { offset ->
+            val date = monday.plusDays(offset)
             val isToday = date == today
             Box(Modifier.fillMaxWidth().height(1.dp).background(Neutrals.divider))
             Row(
@@ -144,39 +225,41 @@ private fun PlanSection(monday: LocalDate, today: LocalDate, bought: Int, toBuy:
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Txt(
-                    dayLabel(date),
-                    if (isToday) nt(12f, 700, kitchen.textOnLight) else nt(12f, color = Neutrals.muted),
-                    Modifier.width(46.dp),
-                )
-                PlanCellView(day.lunch, Modifier.weight(1f))
-                PlanCellView(day.dinner, Modifier.weight(1f))
+                Txt(dayLabel(date), if (isToday) nt(12f, 700, kitchen.textOnLight) else nt(12f, color = Neutrals.muted), Modifier.width(46.dp))
+                listOf(Meal.Lunch, Meal.Dinner).forEach { meal ->
+                    val row = planned.firstOrNull { it.planDate == date.toString() && Meal.fromApi(it.meal) == meal }
+                    PlanCell(row, date, today, Modifier.weight(1f), onEat = onEat, onEmpty = { onEmpty(PlanSlot(date, meal)) })
+                }
             }
         }
     }
 }
 
-private val dayFormat = DateTimeFormatter.ofPattern("EEE d", Locale.FRENCH)
-
-private fun dayLabel(date: LocalDate): String =
-    date.format(dayFormat).replace(".", "").replaceFirstChar { it.titlecase(Locale.FRENCH) }
-
 @Composable
-private fun PlanCellView(cell: Demo.PlanCell, modifier: Modifier) {
+private fun PlanCell(
+    row: PlannedRow?,
+    date: LocalDate,
+    today: LocalDate,
+    modifier: Modifier,
+    onEat: (PlannedRow) -> Unit,
+    onEmpty: () -> Unit,
+) {
     val kitchen = Domains.kitchen
     val shape = RoundedCornerShape(8.dp)
     val padded = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-    when (cell.state) {
-        Demo.CellState.None -> Txt("—", nt(12f, color = Neutrals.faint), modifier)
-        Demo.CellState.Empty -> Txt("+", nt(12f, color = kitchen.textOnLight), modifier.dashedBorder(kitchen.seg, 8.dp).then(padded))
-        Demo.CellState.Planned -> Txt(cell.label.orEmpty(), nt(12f), modifier.clip(shape).background(kitchen.soft).then(padded), maxLines = 1)
-        Demo.CellState.Today -> Txt(cell.label.orEmpty(), nt(12f, 600, kitchen.textOnFill), modifier.clip(shape).background(kitchen.fill).then(padded), maxLines = 1)
-        Demo.CellState.Past -> Txt(
-            cell.label.orEmpty(),
-            nt(12f, color = Neutrals.faint).merge(androidx.compose.ui.text.TextStyle(textDecoration = TextDecoration.LineThrough)),
-            modifier.clip(shape).background(Neutrals.chip).then(padded),
-            maxLines = 1,
+    val struck = TextStyle(textDecoration = TextDecoration.LineThrough)
+    when {
+        row == null && date < today -> Txt("—", nt(12f, color = Neutrals.faint), modifier)
+        row == null -> Txt("+", nt(12f, color = kitchen.textOnLight), modifier.dashedBorder(kitchen.seg, 8.dp).tap(onClick = onEmpty).then(padded))
+        row.journaledAt != null || date < today -> Txt(
+            row.recipeName, nt(12f, color = Neutrals.faint).merge(struck),
+            modifier.clip(shape).background(Neutrals.chip).then(padded), maxLines = 1,
         )
+        date == today -> Txt(
+            "${row.recipeName} · manger", nt(12f, 600, kitchen.textOnFill),
+            modifier.clip(shape).background(kitchen.fill).tap { onEat(row) }.then(padded), maxLines = 1,
+        )
+        else -> Txt(row.recipeName, nt(12f), modifier.clip(shape).background(kitchen.soft).then(padded), maxLines = 1)
     }
 }
 
@@ -207,13 +290,13 @@ fun StatTile(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/** Les recettes de l'utilisateur ; un toucher ajoute deux parts au panier de la semaine. */
 @Composable
-private fun RecipesSection() {
+private fun RecipesSection(model: AppModel, week: String) {
     val kitchen = Domains.kitchen
+    val scope = rememberCoroutineScope()
+    val recipes = rememberLoaded(model.revision) { model.api.recipes() }
     var query by remember { mutableStateOf("") }
-    var filter by remember { mutableStateOf(0) }
-    val filters = listOf("Tout", "Rapide", "Léger", "Favoris")
     NutriField(
         query,
         { query = it },
@@ -226,26 +309,29 @@ private fun RecipesSection() {
         focusColor = kitchen.textOnLight,
         textSize = 14f,
     )
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        filters.forEachIndexed { index, label ->
-            val active = index == filter
-            Txt(
-                label,
-                nt(13f, if (active) 600 else 500, if (active) kitchen.textOnFill else kitchen.textOnLight),
-                Modifier.clip(CircleShape).background(if (active) kitchen.fill else kitchen.soft).tap { filter = index }
-                    .padding(horizontal = 12.dp, vertical = 7.dp),
-            )
-        }
+    if (!LoadedGate(recipes)) return
+    val shown = recipes.value?.recipes.orEmpty().filter { query.isBlank() || it.name.contains(query.trim(), ignoreCase = true) }
+    if (shown.isEmpty()) {
+        EmptyCard(
+            if (query.isBlank()) "Aucune recette" else "Aucun résultat",
+            if (query.isBlank()) "Tes recettes, créées depuis l'app web, apparaîtront ici." else "Essaie un autre mot.",
+        )
+        return
     }
-    val shown = Demo.recipes.filter { query.isBlank() || it.name.contains(query.trim(), ignoreCase = true) }
+    Txt("Touche une recette pour l'ajouter aux plats de la semaine.", Type.secondary, Modifier.padding(horizontal = 4.dp))
     shown.chunked(2).forEach { pair ->
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             pair.forEach { recipe ->
-                Column(Modifier.weight(1f).card(Radius.tile)) {
-                    Box(Modifier.fillMaxWidth().aspectRatio(1.3f).clip(RoundedCornerShape(topStart = Radius.tile, topEnd = Radius.tile)).photoStripes(kitchen.soft, kitchen.seg))
-                    Column(Modifier.padding(10.dp)) {
-                        Txt(recipe.name, nt(14f, 600, line = 1.25f), maxLines = 2)
-                        Txt("${recipe.kcal} kcal · ${recipe.minutes} min", Type.small)
+                RecipeCard(recipe, Modifier.weight(1f)) {
+                    scope.launch {
+                        val servings = recipe.servings.coerceAtLeast(1.0)
+                        when (val result = model.api.addToBasket(week, recipe.id, servings)) {
+                            is ApiResult.Ok -> {
+                                model.toast("${recipe.name} ajouté aux plats de la semaine")
+                                model.bump()
+                            }
+                            is ApiResult.Failed -> model.toast(result.message)
+                        }
                     }
                 }
             }
@@ -255,42 +341,49 @@ private fun RecipesSection() {
 }
 
 @Composable
-private fun ShoppingSection(checked: MutableList<Boolean>) {
+private fun RecipeCard(recipe: RecipeRow, modifier: Modifier, onClick: () -> Unit) {
+    val kitchen = Domains.kitchen
+    Column(modifier.card(Radius.tile).tap(onClick = onClick)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(1.3f).clip(RoundedCornerShape(topStart = Radius.tile, topEnd = Radius.tile)).photoStripes(kitchen.soft, kitchen.seg))
+        Column(Modifier.padding(10.dp)) {
+            Txt(recipe.name, nt(14f, 600, line = 1.25f), maxLines = 2)
+            Txt(
+                listOfNotNull(
+                    if (recipe.kcalPerServing > 0) "${formatInt(recipe.kcalPerServing)} kcal" else null,
+                    recipe.prepMinutes?.let { "$it min" },
+                ).joinToString(" · ").ifEmpty { "${formatServings(recipe.servings)} parts" },
+                Type.small,
+            )
+        }
+    }
+}
+
+/** La liste par rayon, dans l'ordre du serveur ; cocher suit le doigt. */
+@Composable
+private fun ShoppingSection(
+    items: List<ShoppingItemRow>,
+    isChecked: (ShoppingItemRow) -> Boolean,
+    onToggle: (ShoppingItemRow, Boolean) -> Unit,
+) {
     val kitchen = Domains.kitchen
     val click = rememberSelectionClick()
-    val done = checked.count { it }
+    val done = items.count(isChecked)
     Column(Modifier.fillMaxWidth().card().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth()) {
             Txt("Panier", nt(13f, 600), Modifier.weight(1f))
-            Txt("$done / ${checked.size}", nt(13f, 600, kitchen.textOnLight))
+            Txt("$done / ${items.size}", nt(13f, 600, kitchen.textOnLight))
         }
-        ProgressTrack(done / checked.size.coerceAtLeast(1).toFloat(), kitchen.soft, kitchen.fill, 7.dp)
+        ProgressTrack(done / items.size.coerceAtLeast(1).toFloat(), kitchen.soft, kitchen.fill, 7.dp)
     }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("Scanner pour cocher" to R.drawable.lucide_scan_barcode, "Un article" to R.drawable.lucide_plus).forEach { (label, icon) ->
-            Row(
-                Modifier.weight(1f).tinted(kitchen.soft, Radius.tile).padding(horizontal = 12.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(icon, 18.dp, kitchen.textOnLight)
-                Txt(label, nt(13f, 600, kitchen.textOnLight), maxLines = 1)
-            }
-        }
-    }
-    var offset = 0
-    Demo.aisles.forEach { (aisle, items) ->
-        val start = offset
-        offset += items.size
+    items.groupBy { it.aisleLabel }.forEach { (aisle, rows) ->
         Column(Modifier.fillMaxWidth().card().padding(horizontal = 14.dp, vertical = 4.dp)) {
-            Txt(aisle.uppercase(), Type.sectionCaps, Modifier.padding(top = 10.dp, bottom = 4.dp))
-            items.forEachIndexed { index, item ->
-                val position = start + index
-                val isChecked = checked[position]
+            Txt(aisle.uppercase(Locale.FRENCH), Type.sectionCaps, Modifier.padding(top = 10.dp, bottom = 4.dp))
+            rows.forEach { item ->
+                val checked = isChecked(item)
                 Row(
                     Modifier.fillMaxWidth().tap {
                         click()
-                        checked[position] = !isChecked
+                        onToggle(item, !checked)
                     }.padding(vertical = 9.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -299,19 +392,55 @@ private fun ShoppingSection(checked: MutableList<Boolean>) {
                         Modifier
                             .size(20.dp)
                             .clip(RoundedCornerShape(6.dp))
-                            .background(if (isChecked) kitchen.fill else Color.Transparent)
-                            .then(if (isChecked) Modifier else Modifier.border(1.5.dp, Neutrals.radioBorder, RoundedCornerShape(6.dp))),
+                            .background(if (checked) kitchen.fill else Color.Transparent)
+                            .then(if (checked) Modifier else Modifier.border(1.5.dp, Neutrals.radioBorder, RoundedCornerShape(6.dp))),
                         contentAlignment = Alignment.Center,
                     ) {
-                        if (isChecked) Icon(R.drawable.lucide_check, 13.dp, kitchen.textOnFill)
+                        if (checked) Icon(R.drawable.lucide_check, 13.dp, kitchen.textOnFill)
                     }
                     Txt(
-                        item.name,
-                        if (isChecked) nt(14f, color = Neutrals.faint).merge(androidx.compose.ui.text.TextStyle(textDecoration = TextDecoration.LineThrough)) else nt(14f, 500),
+                        item.label,
+                        if (checked) nt(14f, color = Neutrals.faint).merge(TextStyle(textDecoration = TextDecoration.LineThrough)) else nt(14f, 500),
                         Modifier.weight(1f),
                     )
-                    Txt(item.quantity, nt(12.5f, color = Neutrals.muted))
+                    Txt(item.quantityLabel, nt(12.5f, color = Neutrals.muted))
                 }
+            }
+        }
+    }
+}
+
+/** Placer un plat choisi sur une case vide : la feuille. */
+@Composable
+fun BoxScope.PlanSlotSheet(
+    slot: PlanSlot?,
+    basket: List<BasketRow>,
+    model: AppModel,
+    onDismiss: () -> Unit,
+) {
+    val kitchen = Domains.kitchen
+    val scope = rememberCoroutineScope()
+    val title = slot?.let { "${dayLabel(it.date)} · ${if (it.meal == Meal.Lunch) "midi" else "soir"}" } ?: ""
+    fr.nutriperso.app.ui.components.NutriSheet(slot != null, title, onDismiss, gap = 10) {
+        basket.forEach { item ->
+            Row(
+                Modifier.fillMaxWidth().tinted(kitchen.soft, Radius.tile).tap {
+                    val target = slot ?: return@tap
+                    scope.launch {
+                        when (val result = model.api.planMeal(target.date.toString(), target.meal.api, item.recipeId, 1.0)) {
+                            is ApiResult.Ok -> {
+                                model.toast("${item.recipeName} placé")
+                                model.bump()
+                                onDismiss()
+                            }
+                            is ApiResult.Failed -> model.toast(result.message)
+                        }
+                    }
+                }.padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Txt(item.recipeName, nt(14f, 600), Modifier.weight(1f))
+                Txt("${formatServings(item.plannedServings)}/${formatServings(item.servings)} parts", nt(12.5f, 600, kitchen.textOnLight))
             }
         }
     }

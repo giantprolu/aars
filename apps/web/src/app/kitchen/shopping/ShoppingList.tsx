@@ -12,7 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { AISLES, AISLE_LABELS, type Aisle } from '@/lib/aisle';
-import { formatIngredientQuantity, shoppingUnitCount } from '@/lib/recipe';
+import { purchaseLabel } from '@/lib/recipe';
 import { checkItem, generateList, removeItem } from '@/lib/client/shopping';
 import type { ShareableRecipe } from '@/lib/share-recipes';
 import { cn } from '@/lib/utils';
@@ -59,15 +59,6 @@ const ScanToCheck = dynamic(() => import('./ScanToCheck').then((module) => modul
  * un échec la rend à son état — auquel cas il est dit.
  */
 
-/** Ce qu'une quantité demande d'acheter, en unités si l'ingrédient s'en compte. */
-function purchaseLabel(item: ShoppingItem): string {
-  const count = shoppingUnitCount(item.quantityG, item.unitName, item.unitGrams);
-  if (count === null || item.unitName === null) {
-    return formatIngredientQuantity(item);
-  }
-  const plural = count >= 2 && !/[sxz]$/i.test(item.unitName) ? `${item.unitName}s` : item.unitName;
-  return `${count} ${plural} (${Math.round(item.quantityG).toLocaleString('fr-FR')} g)`;
-}
 
 export function ShoppingList({
   list,

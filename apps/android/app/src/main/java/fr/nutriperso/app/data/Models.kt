@@ -252,3 +252,207 @@ data class GenerateBody(val action: String = "generate")
 
 @Serializable
 data class ActionBody(val action: String)
+
+// Cuisine.
+
+@Serializable
+data class PlannedRow(
+    val id: Long,
+    val planDate: String,
+    val meal: String,
+    val recipeId: Long,
+    val recipeName: String,
+    val servings: Double,
+    val journaledAt: String? = null,
+)
+
+@Serializable
+data class PlanResponse(val planned: List<PlannedRow> = emptyList())
+
+@Serializable
+data class BasketRow(
+    val id: Long,
+    val recipeId: Long,
+    val recipeName: String,
+    val servings: Double,
+    val plannedServings: Double,
+)
+
+@Serializable
+data class BasketResponse(val basket: List<BasketRow> = emptyList())
+
+@Serializable
+data class ShoppingItemRow(
+    val id: Long,
+    val refKind: String,
+    val refValue: String,
+    val label: String,
+    val aisle: String,
+    val aisleLabel: String,
+    val quantityLabel: String,
+    val checkedAt: String? = null,
+)
+
+@Serializable
+data class ShoppingListRow(val id: Long, val items: List<ShoppingItemRow> = emptyList())
+
+@Serializable
+data class ShoppingResponse(val weekStart: String, val list: ShoppingListRow? = null)
+
+@Serializable
+data class RecipeRow(
+    val id: Long,
+    val name: String,
+    val servings: Double,
+    val prepMinutes: Int? = null,
+    val kcalPerServing: Double = 0.0,
+)
+
+@Serializable
+data class RecipesResponse(val recipes: List<RecipeRow> = emptyList())
+
+@Serializable
+data class PlanMealBody(val planDate: String, val meal: String, val recipeId: Long, val servings: Double)
+
+@Serializable
+data class BasketRecipeBody(
+    val source: String = "recipe",
+    val weekStart: String,
+    val recipeId: Long,
+    val servings: Double,
+)
+
+@Serializable
+data class CheckItemBody(val checked: Boolean, val barcode: String? = null, val refKind: String, val refValue: String)
+
+// Sport.
+
+@Serializable
+data class OpenSessionRow(val id: Long, val name: String, val setCount: Int)
+
+@Serializable
+data class PlannedExercise(val name: String, val target: String)
+
+@Serializable
+data class NextTemplate(val id: Long, val name: String, val exercises: List<PlannedExercise> = emptyList())
+
+@Serializable
+data class TemplateRow(val id: Long, val name: String, val kind: String, val favorite: Boolean, val exerciseCount: Int)
+
+@Serializable
+data class SessionRow(
+    val id: Long,
+    val name: String,
+    val sessionDate: String,
+    val durationSeconds: Long? = null,
+    val volumeKg: Double,
+    val record: Boolean,
+)
+
+@Serializable
+data class TrainingHome(
+    val isoWeek: Int,
+    val weekSessions: Int,
+    val sessionsPerWeek: Int,
+    val weekVolumeKg: Double,
+    val volumeChange: Int? = null,
+    val records: List<String> = emptyList(),
+    val openSession: OpenSessionRow? = null,
+    val next: NextTemplate? = null,
+    val templates: List<TemplateRow> = emptyList(),
+    val history: List<SessionRow> = emptyList(),
+)
+
+@Serializable
+data class WeekVolume(val weekStart: String, val volumeKg: Double, val sessions: Int)
+
+@Serializable
+data class ExerciseProgressRow(
+    val id: Long,
+    val name: String,
+    val value: String,
+    val change: String? = null,
+    val progressed: Boolean,
+)
+
+@Serializable
+data class ProgressResponse(
+    val period: Int,
+    val weeks: List<WeekVolume> = emptyList(),
+    val weights: List<Double?> = emptyList(),
+    val sessions: Int,
+    val volumeChange: Int? = null,
+    val weightChangeKg: Double? = null,
+    val exercises: List<ExerciseProgressRow> = emptyList(),
+)
+
+// Communauté.
+
+@Serializable
+data class FollowedPerson(val id: Long, val handle: String, val displayName: String? = null, val recent: Boolean)
+
+@Serializable
+data class BoardRow(
+    val id: Long,
+    val handle: String,
+    val displayName: String? = null,
+    val sessions: Int,
+    val mine: Boolean,
+)
+
+@Serializable
+data class SocialHome(
+    val identity: Identity,
+    val following: List<FollowedPerson> = emptyList(),
+    val pendingRequests: Int = 0,
+    val board: List<BoardRow> = emptyList(),
+)
+
+@Serializable
+data class PublicPerson(val id: Long, val handle: String, val displayName: String? = null)
+
+@Serializable
+data class SharedSet(val weightKg: Double? = null, val reps: Int? = null, val seconds: Int? = null)
+
+@Serializable
+data class SharedExercise(val name: String, val sets: List<SharedSet> = emptyList())
+
+@Serializable
+data class FeedSession(
+    val id: Long,
+    val author: PublicPerson,
+    val name: String,
+    val sessionDate: String,
+    val startedAt: String,
+    val durationSeconds: Long? = null,
+    val volumeKg: Double,
+    val setCount: Int,
+    val exercises: List<SharedExercise> = emptyList(),
+    val kudos: Int,
+    val kudoedByMe: Boolean,
+    val mine: Boolean,
+)
+
+@Serializable
+data class FeedResponse(val sessions: List<FeedSession> = emptyList(), val next: Long? = null)
+
+@Serializable
+data class KudosBody(val sessionId: Long, val given: Boolean)
+
+// Moi.
+
+@Serializable
+data class MeResponse(
+    val identity: Identity,
+    val gym: String? = null,
+    val sessionsPerWeek: Int,
+    val weekAverageKg: Double? = null,
+    val weightChangeKg: Double? = null,
+    val weights: List<Double?> = emptyList(),
+    val lastWeighIn: WeighIn? = null,
+    val recordsThisMonth: Int,
+    val topRecord: String? = null,
+    val activeWeeks: Int,
+    val weeks: Int,
+    val health: String,
+)

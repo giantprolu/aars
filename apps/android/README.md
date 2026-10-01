@@ -38,19 +38,21 @@ prise en charge du jeton (`apps/web/src/server/guard.ts`) et la route
 
 ## État
 
-Branché sur l'API :
+Tout ce qui s'affiche vient de la base, par l'API : aucun contenu d'exemple.
+Quand une page web lit la base directement, une route JSON lui correspond
+(`/api/today`, `/api/training/home`, `/api/training/progress`,
+`/api/social/home`, `/api/me`) : la PWA disparaîtra, l'API reste.
+
+Branché :
 - connexion, inscription, déconnexion (jeton chiffré par le Keystore) ;
-- onboarding O0 à O4 : profil et cible (`PUT /api/profile`), première pesée,
-  identifiant, préférences et génération du programme ;
-- Aujourd'hui : semaine, jauge, macros, tuiles séance, plat prévu (« Manger »),
-  poids, activité, repas notés ;
-- bouton + : feuille Repas (recherche, récents, favoris, saisie à la main,
-  code-barres saisi au clavier), Pesée, Séance (affichage) ;
-- Moi : identité et poids réels.
+- onboarding O0 à O4 ;
+- Aujourd'hui, bouton + (Repas, Pesée), Moi, Progression ;
+- Cuisine : plan de la semaine (placer un plat, « manger »), plats choisis,
+  recettes (ajout aux plats de la semaine), courses cochables ;
+- Sport : semaine, séance du jour, programme, dernières séances ;
+- Communauté : suivis, classement, fil, bravos.
 
-Contenus d'exemple (`ui/screens/Demo.kt`), à brancher : Cuisine, Sport hors
-séance du jour, Communauté, Progression, records de Moi.
-
-Pas encore faits : séance en cours plein écran, historique, scanner caméra,
-photo de l'assiette, Santé (Health Connect), notifications FCM, cache hors
-ligne, mode sombre.
+Pas encore faits : séance en cours plein écran, historique, recherche de
+personnes, création de recettes et génération de la liste de courses (web
+pour l'instant), scanner caméra, photo de l'assiette, Santé, notifications,
+cache hors ligne, mode sombre.
