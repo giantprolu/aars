@@ -33,6 +33,12 @@ class MainActivity : ComponentActivity() {
         )
         setContent { NutriApp(model) }
     }
+
+    override fun onResume() {
+        super.onResume()
+        // Les journées Santé se rattrapent à chaque retour dans l'app.
+        model.syncHealth()
+    }
 }
 
 @Composable

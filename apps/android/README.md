@@ -44,15 +44,21 @@ Quand une page web lit la base directement, une route JSON lui correspond
 `/api/social/home`, `/api/me`) : la PWA disparaîtra, l'API reste.
 
 Branché :
-- connexion, inscription, déconnexion (jeton chiffré par le Keystore) ;
+- connexion, inscription, récupération, déconnexion (jeton chiffré par le Keystore) ;
 - onboarding O0 à O4 ;
-- Aujourd'hui, bouton + (Repas, Pesée), Moi, Progression ;
-- Cuisine : plan de la semaine (placer un plat, « manger »), plats choisis,
-  recettes (ajout aux plats de la semaine), courses cochables ;
-- Sport : semaine, séance du jour, programme, dernières séances ;
-- Communauté : suivis, classement, fil, bravos.
+- Aujourd'hui, bouton + (Repas, Séance, Pesée), scanner caméra, Moi, Progression ;
+- historique et détail d'un jour ;
+- Cuisine : plan, recettes (création comprise), courses générées, cochables au scanner ;
+- Sport : semaine, séance en cours plein écran, séance libre, composer ;
+- Communauté : suivis, recherche, demandes, classement, fil, bravos ;
+- Compte et données : objectif, code de secours, export, suppression ;
+- Santé : Health Connect, lu au premier plan à chaque ouverture (30 jours),
+  poussé sur `POST /api/activity` avec le jeton de session (écran Moi › Santé).
 
-Pas encore faits : séance en cours plein écran, historique, recherche de
-personnes, création de recettes et génération de la liste de courses (web
-pour l'instant), scanner caméra, photo de l'assiette, Santé, notifications,
-cache hors ligne, mode sombre.
+Pas encore faits, sans bloquer la publication : photo de l'assiette,
+notifications (FCM), cache hors ligne, mode sombre (seul le clair est dessiné).
+
+## Publication
+
+Voir `PLAY_STORE.md` : signature, bundle, fiche, Sécurité des données,
+déclaration Health Connect. Visuels de la fiche dans `store/`.

@@ -16,6 +16,7 @@ import fr.nutriperso.app.data.RecentFood
 import fr.nutriperso.app.data.QuickFavorite
 import fr.nutriperso.app.data.SearchHit
 import fr.nutriperso.app.data.TodayResponse
+import fr.nutriperso.app.data.HealthSync
 import fr.nutriperso.app.data.TokenStore
 import fr.nutriperso.app.ui.components.formatKg
 import java.time.LocalTime
@@ -48,6 +49,8 @@ enum class Meal(val api: String, val label: String, val short: String, val inPhr
     }
 }
 
+private const val HEALTH_SYNC_INTERVAL_MS = 60 * 60 * 1000L
+
 /** Où en est l'app une fois la session ouverte. */
 enum class Gate { Checking, Onboarding, Ready }
 
@@ -59,6 +62,11 @@ enum class Gate { Checking, Onboarding, Ready }
  */
 class AppModel(application: Application) : AndroidViewModel(application) {
     val api = Api(TokenStore(application))
+    val health = HealthSync(application)
+
+    /** Instant de la dernière synchronisation Santé réussie, en mémoire seulement. */
+    private var healthSyncedAt = 0L
+    private var healthSyncing = false
 
     var gate by mutableStateOf(Gate.Checking)
         private set
@@ -114,6 +122,7 @@ class AppModel(application: Application) : AndroidViewModel(application) {
                     } else {
                         gate = Gate.Ready
                         refreshToday()
+                        syncHealth()
                     }
                 }
                 is ApiResult.Failed -> {
@@ -234,6 +243,44 @@ class AppModel(application: Application) : AndroidViewModel(application) {
         "${meal.label} gardé en favori",
         {},
     )
+
+    /**
+     * Relit Health Connect et pousse les trente derniers jours.
+     *
+     * Appelée à chaque retour au premier plan, au plus une fois par heure, et
+     * à la demande depuis l'écran Santé ([force]). Silencieuse sans permission :
+     * c'est l'écran Santé qui invite à la donner. Rend le nombre de journées
+     * envoyées, ou `null` en cas d'échec.
+     */
+    suspend fun syncHealthNow(force: Boolean = false): Int? {
+        if (gate != Gate.Ready || healthSyncing) return null
+        val now = System.currentTimeMillis()
+        if (!force && now - healthSyncedAt < HEALTH_SYNC_INTERVAL_MS) return null
+        if (!health.canRead()) return null
+        healthSyncing = true
+        try {
+            val days = runCatching { health.readDays() }.getOrNull() ?: return null
+            if (days.isEmpty()) {
+                healthSyncedAt = now
+                return 0
+            }
+            return when (api.postActivity(days)) {
+                is ApiResult.Ok -> {
+                    healthSyncedAt = now
+                    revision++
+                    refreshToday()
+                    days.size
+                }
+                is ApiResult.Failed -> null
+            }
+        } finally {
+            healthSyncing = false
+        }
+    }
+
+    fun syncHealth() {
+        viewModelScope.launch { syncHealthNow() }
+    }
 
     fun toast(message: String) {
         _toasts.tryEmit(message)

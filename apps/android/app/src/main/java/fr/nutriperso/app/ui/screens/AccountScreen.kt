@@ -53,7 +53,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** La politique de confidentialité, publiée par l'app web. */
-val PRIVACY_URL: String = BuildConfig.API_BASE_URL + "/confidentialite"
+val PRIVACY_URL: String = BuildConfig.API_BASE_URL + "/legal/privacy"
 
 /**
  * Compte et données : objectif, code de secours, export, politique de

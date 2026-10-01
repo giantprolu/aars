@@ -17,6 +17,23 @@ val localProperties = Properties().apply {
 val apiUrl: String = localProperties.getProperty("nutriperso.apiUrl")
     ?: "https://nutri-rosy-one.vercel.app"
 
+// Signature de publication : jamais dans le dépôt. `keystore.properties` (non
+// versionné, à côté de `local.properties`) ou les variables d'environnement
+// de la CI. Sans elles, `bundleRelease` produit un bundle non signé, refusé
+// par la Play Console, ce qui vaut mieux qu'une clé de debug par erreur.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use(::load)
+}
+fun signingValue(key: String, env: String): String? =
+    keystoreProperties.getProperty(key) ?: System.getenv(env)
+val releaseStoreFile = signingValue("storeFile", "NUTRI_UPLOAD_STORE_FILE")
+
+// Chaque envoi à la Play Console exige un versionCode plus grand que le
+// précédent : la CI le passe par `-Pnutriperso.versionCode=…`.
+val appVersionCode = (findProperty("nutriperso.versionCode") as String?)?.toIntOrNull() ?: 1
+val appVersionName = (findProperty("nutriperso.versionName") as String?) ?: "1.0.0"
+
 android {
     namespace = "fr.nutriperso.app"
     compileSdk = 37
@@ -25,14 +42,27 @@ android {
         applicationId = "fr.nutriperso.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
         buildConfigField("String", "API_BASE_URL", "\"${apiUrl.trimEnd('/')}\"")
+    }
+
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("upload") {
+                storeFile = rootProject.file(releaseStoreFile)
+                storePassword = signingValue("storePassword", "NUTRI_UPLOAD_STORE_PASSWORD")
+                keyAlias = signingValue("keyAlias", "NUTRI_UPLOAD_KEY_ALIAS")
+                keyPassword = signingValue("keyPassword", "NUTRI_UPLOAD_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.findByName("upload")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -73,6 +103,7 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.mlkit)
     implementation(libs.mlkit.barcode)
+    implementation(libs.androidx.health.connect)
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
 }

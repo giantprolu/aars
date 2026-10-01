@@ -1,0 +1,157 @@
+# Publication sur Google Play
+
+Ce qui est prêt dans le dépôt, et ce qui reste à faire dans la Play Console.
+Les réponses ci-dessous décrivent ce que le code fait réellement : si une
+donnée ou un sous-traitant change, mettre à jour ce fichier **et**
+`apps/web/src/app/legal/privacy/page.tsx` dans le même commit.
+
+## Prêt dans le dépôt
+
+| Exigence | Où |
+|---|---|
+| `targetSdk` 36, `compileSdk` 37, bord à bord | `app/build.gradle.kts`, `MainActivity` |
+| Bundle signé par la clé d'envoi, hors dépôt | `signingConfigs.upload`, `keystore.properties` |
+| `versionCode` croissant | `-Pnutriperso.versionCode=N` |
+| Minification et réduction des ressources | `isMinifyEnabled`, `isShrinkResources` |
+| Aucune sauvegarde des données de l'app | `allowBackup=false`, `data_extraction_rules.xml` |
+| HTTP en clair interdit en release | config réseau en debug seulement |
+| Suppression du compte dans l'app | Moi › Compte et données |
+| Suppression du compte sans l'app | `https://nutri-rosy-one.vercel.app/legal/account-deletion` |
+| Politique de confidentialité publique | `https://nutri-rosy-one.vercel.app/legal/privacy` |
+| Health Connect : permissions, écran d'explication | `AndroidManifest.xml`, `HealthRationaleActivity` |
+| Icône 512 et bannière 1024 × 500 | `store/` |
+
+## Construire le bundle
+
+1. Une fois, créer la clé d'envoi (à garder hors du dépôt, avec une copie de
+   sauvegarde : la perdre oblige à une procédure de réinitialisation auprès de
+   Google) :
+
+   ```
+   keytool -genkeypair -v -keystore nutriperso-upload.jks -alias upload \
+     -keyalg RSA -keysize 4096 -validity 10000
+   ```
+
+2. `apps/android/keystore.properties` (ignoré par git) :
+
+   ```
+   storeFile=../nutriperso-upload.jks
+   storePassword=…
+   keyAlias=upload
+   keyPassword=…
+   ```
+
+   En CI : `NUTRI_UPLOAD_STORE_FILE`, `NUTRI_UPLOAD_STORE_PASSWORD`,
+   `NUTRI_UPLOAD_KEY_ALIAS`, `NUTRI_UPLOAD_KEY_PASSWORD`.
+
+3. Android Studio › *Build* › *Generate Signed App Bundle*, ou :
+
+   ```
+   ./gradlew :app:bundleRelease -Pnutriperso.versionCode=1 -Pnutriperso.versionName=1.0.0
+   ```
+
+   Le bundle sort dans `app/build/outputs/bundle/release/app-release.aab`.
+
+4. Avant d'envoyer : installer la release sur un vrai téléphone
+   (`./gradlew :app:installRelease`) et dérouler connexion, + Repas, scanner,
+   séance, Santé. La minification ne pardonne pas une classe sérialisée oubliée.
+
+## Play Console, dans l'ordre
+
+1. **Créer l'app** : nom « NutriPerso », langue par défaut français, App,
+   Gratuite. Activer la signature d'apps par Google Play (proposée par défaut).
+2. **Compte personnel récent** : Google exige un test fermé avec au moins
+   12 testeurs pendant 14 jours avant d'ouvrir la production. Prévoir cette
+   attente : piste *Test fermé*, liste de testeurs par adresses Gmail.
+3. **Contenu de l'app** (menu *Règles et programmes*) : voir les sections
+   ci-dessous.
+4. **Fiche principale** : textes ci-dessous, `store/icon-512.png`,
+   `store/feature-graphic-1024x500.png`, et au moins deux captures de
+   téléphone (1080 × 1920 conseillé) prises sur l'émulateur : Aujourd'hui,
+   Cuisine, Sport, Communauté.
+
+## Fiche
+
+**Titre** (30 car.) : `NutriPerso`
+
+**Description courte** (80 car.) :
+`Journal alimentaire, cible calorique, séances de sport et liste de courses.`
+
+**Description complète** :
+
+```
+NutriPerso tient ton journal alimentaire et calcule ta cible calorique à partir de ton profil, de ton objectif et de ta dépense réelle.
+
+• Aujourd'hui : calories et macros du jour, repas dépliables, pesée en un geste.
+• Ajouter un repas : recherche dans la table CIQUAL et Open Food Facts, scanner de code-barres, repas récents et favoris.
+• Cuisine : plan de la semaine midi et soir, recettes dont les parts suivent ta cible, liste de courses générée et cochable au scanner.
+• Sport : programme de la semaine, séance en cours plein écran, records et progression.
+• Communauté : suis tes amis, partage tes séances, classement de la semaine.
+• Santé : avec ton accord, l'app lit ta dépense active dans Health Connect pour ajuster ta cible.
+
+Tes données restent les tiennes : export à tout moment, suppression du compte depuis l'app.
+```
+
+**Catégorie** : Santé et remise en forme. **Adresse de contact** : obligatoire,
+la même que `LEGAL_CONTACT_EMAIL` côté serveur.
+
+## Contenu de l'app
+
+- **Politique de confidentialité** : `https://nutri-rosy-one.vercel.app/legal/privacy`
+- **Accès à l'app** : la connexion est requise. Fournir un compte de test
+  (adresse et mot de passe) avec un profil déjà rempli, sinon l'examen échoue.
+- **Annonces** : non.
+- **Classification du contenu** : questionnaire IARC, aucune réponse « oui »
+  attendue (pas de violence, pas d'achats). La Communauté permet aux
+  utilisateurs d'interagir : répondre oui à « partage de contenu entre
+  utilisateurs ».
+- **Public cible** : 16 ans et plus (aligné sur la politique). Pas destinée
+  aux enfants.
+- **Applications de santé** (déclaration obligatoire depuis 2025) : cocher
+  « Nutrition et alimentation » et « Activité physique et remise en forme ».
+  Pas d'appareil médical.
+- **Suppression des données** : URL `https://nutri-rosy-one.vercel.app/legal/account-deletion`,
+  suppression depuis l'app : oui.
+- **Health Connect** : formulaire de déclaration des types de données, voir
+  ci-dessous. Sans validation de Google, les permissions ne sont pas
+  accordées en production.
+- **Pays** : France (et autres pays francophones au choix).
+
+### Sécurité des données
+
+Collecte : oui. Chiffrement en transit : oui. Suppression à la demande : oui.
+Aucune donnée partagée avec un tiers au sens de Google (les sous-traitants
+agissant pour notre compte ne comptent pas comme un partage).
+
+| Catégorie Google | Type | Collectée | Obligatoire | Finalité |
+|---|---|---|---|---|
+| Infos personnelles | Adresse e-mail | Oui | Oui | Gestion du compte |
+| Infos personnelles | Nom (pseudonyme, nom affiché) | Oui | Non | Fonctionnalités de l'app (Communauté) |
+| Infos personnelles | Autres (date de naissance, sexe) | Oui | Oui | Fonctionnalités de l'app (cible calorique) |
+| Santé et remise en forme | Informations sur la santé (poids, taille, masse grasse, repas) | Oui | Oui | Fonctionnalités de l'app |
+| Santé et remise en forme | Informations sur la remise en forme (séances, énergie active) | Oui | Non | Fonctionnalités de l'app |
+| Activité dans l'app | Autre contenu généré (recettes, listes de courses) | Oui | Non | Fonctionnalités de l'app |
+
+Photos : l'app Android n'envoie pas encore de photo d'assiette (le scanner
+lit le code-barres sur le téléphone, sans rien envoyer). Le jour où
+`/api/recognize` y sera branché, ajouter « Photos, traitées de façon
+éphémère, facultatives ».
+
+Non collectés : position, contacts, identifiants publicitaires, données
+financières, historique de navigation, fichiers audio, journaux de plantage
+(aucun SDK d'analyse ni de crash n'est embarqué).
+
+### Health Connect
+
+Formulaire *Health Connect* de la Play Console :
+
+| Permission | Justification à saisir |
+|---|---|
+| `READ_ACTIVE_CALORIES_BURNED` | Ajuster la cible calorique quotidienne à l'énergie active réellement dépensée, au lieu d'un niveau d'activité déclaré. Seul un total par jour est envoyé à notre serveur. |
+| `READ_TOTAL_CALORIES_BURNED` | Même usage, pour les sources qui n'écrivent que la dépense totale : l'énergie active en est déduite en retirant le métabolisme de base. |
+| `READ_BASAL_METABOLIC_RATE` | Retirer le métabolisme de base de la dépense totale, pour obtenir l'énergie active quand la source ne la fournit pas. |
+
+Ni écriture, ni lecture en arrière-plan, ni lecture de l'historique au-delà
+de 30 jours. L'écran d'explication (`HealthRationaleActivity`) répond aux
+deux intentions exigées (`ACTION_SHOW_PERMISSIONS_RATIONALE`,
+`VIEW_PERMISSION_USAGE`).

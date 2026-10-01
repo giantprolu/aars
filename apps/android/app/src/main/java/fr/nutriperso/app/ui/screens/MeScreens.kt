@@ -72,7 +72,14 @@ private fun BackRow(label: String, onBack: () -> Unit, trailing: (@Composable ()
 
 /** Moi (C6) : identité, poids, records du mois, régularité, réglages. */
 @Composable
-fun MeScreen(model: AppModel, onBack: () -> Unit, onProgress: () -> Unit, onWeigh: () -> Unit, onAccount: () -> Unit) {
+fun MeScreen(
+    model: AppModel,
+    onBack: () -> Unit,
+    onProgress: () -> Unit,
+    onWeigh: () -> Unit,
+    onAccount: () -> Unit,
+    onHealth: () -> Unit,
+) {
     val body = Domains.body
     val training = Domains.training
     val me = rememberLoaded(model.revision) { model.api.me() }
@@ -185,11 +192,14 @@ fun MeScreen(model: AppModel, onBack: () -> Unit, onProgress: () -> Unit, onWeig
                     )
                 }
                 SettingDivider()
-                SettingRow(R.drawable.lucide_activity, "Santé") {
-                    when (data.health) {
-                        "active" -> Badge("Actif", training.soft, training.textOnLight)
-                        "pending" -> Badge("En attente", Neutrals.chip, Neutrals.muted)
-                        else -> Badge("Inactif", Neutrals.chip, Neutrals.muted)
+                SettingRow(R.drawable.lucide_activity, "Santé", onClick = onHealth) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        when (data.health) {
+                            "active" -> Badge("Actif", training.soft, training.textOnLight)
+                            "pending" -> Badge("En attente", Neutrals.chip, Neutrals.muted)
+                            else -> Badge("Inactif", Neutrals.chip, Neutrals.muted)
+                        }
+                        Icon(R.drawable.lucide_chevron_right, 16.dp, Neutrals.faint)
                     }
                 }
                 SettingDivider()

@@ -282,6 +282,10 @@ class Api(private val tokens: TokenStore) {
         SavedLog.serializer(),
     )
 
+    /** Les journées lues dans Health Connect, en un seul envoi. */
+    suspend fun postActivity(days: List<ActivityDay>) =
+        send("POST", "/api/activity", json.encodeToString(ActivityBatch.serializer(), ActivityBatch(days)))
+
     suspend fun weighIn(weightKg: Double) =
         send("POST", "/api/weight", json.encodeToString(WeighInBody.serializer(), WeighInBody(weightKg)))
 

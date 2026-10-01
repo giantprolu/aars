@@ -458,7 +458,27 @@ data class MeResponse(
     val activeWeeks: Int,
     val weeks: Int,
     val health: String,
+    val healthBridge: HealthBridge? = null,
 )
+
+/** État du pont Santé, mêmes seuils que le calcul de la cible (`bridgeStatus`). */
+@Serializable
+data class HealthBridge(
+    val lastDay: String? = null,
+    val lastKcal: Double? = null,
+    val dayCount: Int = 0,
+    val typicalKcal: Double = 0.0,
+    val peakKcal: Double = 0.0,
+    val requiredDays: Int = 3,
+)
+
+// Santé.
+
+@Serializable
+data class ActivityDay(val day: String, val activeKcal: Double)
+
+@Serializable
+data class ActivityBatch(val days: List<ActivityDay>, val source: String = "health")
 
 // Séance en cours.
 

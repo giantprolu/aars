@@ -293,3 +293,33 @@ un domaine d'envoi, et poser `RESEND_API_KEY` (sensible) et `MAIL_FROM`
 
 Les tâches planifiées sont déclarées dans `vercel.json` (12 h et 13 h UTC,
 seule celle qui tombe à 14 h à Paris envoie).
+
+## B-13 — App Android non compilable dans l'environnement cloud — **ouvert le 01/10/2026**
+
+**Constat.** Le conteneur de développement n'atteint pas `dl.google.com`
+(refus du proxy) : ni SDK Android, ni dépôt Maven de Google, donc ni AGP ni
+AndroidX. `./gradlew assembleDebug` ne peut pas tourner ici.
+
+**Ce qui a été vérifié.** Côté serveur, tout : `npm run build`, `lint`,
+`typecheck`, et `POST /api/activity` interrogé sur un serveur local (jeton de
+session accepté, jeton invalide en 401, jour futur en 400, indice du raccourci
+iOS conservé). Côté Android, le code Health Connect suit l'API de
+`connect-client` 1.1.0 mais n'a pas été compilé.
+
+**À faire côté humain.** Ouvrir `apps/android` dans Android Studio, *Sync*,
+*Run* sur un téléphone avec Health Connect, puis Moi › Santé › Autoriser.
+Remonter ici toute erreur de compilation.
+
+## B-14 — Publication Play Store : étapes hors dépôt — **ouvert le 01/10/2026**
+
+Le code est prêt (voir `apps/android/PLAY_STORE.md`). Restent, côté humain :
+
+- poser `LEGAL_CONTACT_EMAIL` dans Vercel (affichée par `/legal/privacy` et
+  `/legal/account-deletion`, exigée par Google) et redéployer, pour que la
+  production ait aussi la nouvelle `/api/activity` ;
+- créer la clé d'envoi et `apps/android/keystore.properties` ;
+- compte développeur Google Play, test fermé de 14 jours à 12 testeurs si le
+  compte est personnel et récent ;
+- formulaires Sécurité des données, Health Connect, applications de santé,
+  compte de test pour l'examen ;
+- captures d'écran de la fiche.
