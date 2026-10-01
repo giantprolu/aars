@@ -405,6 +405,9 @@ data class SocialHome(
     val identity: Identity,
     val following: List<FollowedPerson> = emptyList(),
     val pendingRequests: Int = 0,
+    val requests: List<PublicPerson> = emptyList(),
+    val followers: List<PublicPerson> = emptyList(),
+    val requested: List<PublicPerson> = emptyList(),
     val board: List<BoardRow> = emptyList(),
 )
 
@@ -619,3 +622,12 @@ data class JournalDay(val totals: DayTotals, val entries: List<Entry> = emptyLis
 
 @Serializable
 data class FavoriteBody(val meal: String, val name: String? = null)
+
+@Serializable
+data class FoundPerson(val id: Long, val handle: String, val displayName: String? = null, val state: String = "none")
+
+@Serializable
+data class PeopleResponse(val people: List<FoundPerson> = emptyList())
+
+@Serializable
+data class RelationBody(val action: String, val userId: Long)

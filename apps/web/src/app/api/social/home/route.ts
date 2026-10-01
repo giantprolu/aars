@@ -50,6 +50,9 @@ export async function GET(): Promise<Response> {
       recent: recent.has(person.id),
     })),
     pendingRequests: relations.requests.length,
+    requests: relations.requests,
+    followers: relations.followers,
+    requested: relations.following.filter((person) => person.state === 'requested'),
     board: board.map((row) => ({
       id: row.person.id,
       handle: row.person.handle,

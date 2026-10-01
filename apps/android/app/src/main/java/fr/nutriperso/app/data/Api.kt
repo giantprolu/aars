@@ -108,6 +108,10 @@ class Api(private val tokens: TokenStore) {
     suspend fun deleteEntry(id: Long) = sendEmpty("DELETE", "/api/entries/$id")
     suspend fun saveFavorite(meal: String, name: String?) =
         send("POST", "/api/favorites", json.encodeToString(FavoriteBody.serializer(), FavoriteBody(meal, name)))
+    suspend fun people(query: String) =
+        get("/api/social/people?q=" + URLEncoder.encode(query, "UTF-8"), PeopleResponse.serializer())
+    suspend fun relation(action: String, userId: Long) =
+        send("POST", "/api/social/relations", json.encodeToString(RelationBody.serializer(), RelationBody(action, userId)))
     suspend fun me() = get("/api/me", MeResponse.serializer())
     suspend fun plan(weekStart: String) = get("/api/plan?from=$weekStart", PlanResponse.serializer())
     suspend fun basket(weekStart: String) = get("/api/basket?weekStart=$weekStart", BasketResponse.serializer())

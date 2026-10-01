@@ -93,7 +93,7 @@ enum class Tab(val label: String, @DrawableRes val icon: Int, val active: Color)
 }
 
 /** Écrans poussés par-dessus la coquille, avec un retour. */
-enum class Pushed { Me, Progress, History }
+enum class Pushed { Me, Progress, History, People }
 
 enum class AddSheet { Meal, Session, Weigh, Scan }
 
@@ -178,7 +178,7 @@ fun MainShell(model: AppModel) {
                     planSlot = slot
                 })
                 Tab.Training -> TrainingScreen(model, onMe = openMe, onStart = { pick(AddSheet.Session) })
-                Tab.Community -> CommunityScreen(model, onMe = openMe)
+                Tab.Community -> CommunityScreen(model, onMe = openMe, onPeople = { stack = listOf(Pushed.People) })
             }
         }
 
@@ -204,6 +204,7 @@ fun MainShell(model: AppModel) {
                     onWeigh = { pick(AddSheet.Weigh) },
                 )
                 Pushed.Progress -> ProgressScreen(model, onBack = { stack = listOf(Pushed.Me) })
+                Pushed.People -> PeopleScreen(model, onBack = { stack = emptyList() })
                 Pushed.History -> HistoryScreen(model, onBack = { stack = emptyList() }, onDay = { historyDate = it })
                 null -> Box(Modifier.fillMaxSize())
             }

@@ -16,7 +16,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,7 +85,7 @@ private fun feedWhen(session: FeedSession): String {
 
 /** Communauté (C5) : suivis, classement de la semaine, fil des séances partagées. */
 @Composable
-fun CommunityScreen(model: AppModel, onMe: () -> Unit) {
+fun CommunityScreen(model: AppModel, onMe: () -> Unit, onPeople: () -> Unit) {
     val community = Domains.community
     val scope = rememberCoroutineScope()
     val home = rememberLoaded(model.revision) { model.api.socialHome() }
@@ -112,19 +115,29 @@ fun CommunityScreen(model: AppModel, onMe: () -> Unit) {
         )
         if (!LoadedGate(home) || data == null) return@ScreenColumn
 
+        if (data.pendingRequests > 0) {
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(community.soft).tap(onClick = onPeople)
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Txt(
+                    "${data.pendingRequests} demande${if (data.pendingRequests > 1) "s" else ""} à suivre",
+                    nt(14f, 600, community.textOnLight),
+                    Modifier.weight(1f),
+                )
+                Icon(R.drawable.lucide_chevron_right, 16.dp, community.textOnLight)
+            }
+        }
         if (data.identity.handle == null) {
-            EmptyCard(
-                "Présente-toi",
-                "Choisis un identifiant pour qu'on puisse te trouver et que tu puisses suivre d'autres personnes. " +
-                    "Tes séances restent privées tant que tu ne les partages pas.",
-            )
+            IdentityCard(model)
         } else {
             Row(
                 Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Column(
-                    Modifier.width(54.dp).tap { model.toast("La recherche de personnes arrive bientôt sur Android") },
+                    Modifier.width(54.dp).tap(onClick = onPeople),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -250,5 +263,42 @@ private fun FeedCard(session: FeedSession, given: Boolean, count: Int, onKudos: 
                 Txt("$count", nt(13f, 700, color))
             }
         }
+    }
+}
+
+/** Se présenter : l'identifiant et le nom affiché, comme l'étape 2 de l'onboarding. */
+@Composable
+private fun IdentityCard(model: AppModel) {
+    val community = Domains.community
+    val scope = rememberCoroutineScope()
+    var handle by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth().card().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Txt("Présente-toi", nt(15f, 600))
+        Txt(
+            "Choisis un identifiant pour qu'on puisse te trouver et que tu puisses suivre d'autres personnes. " +
+                "Tes séances restent privées tant que tu ne les partages pas.",
+            Type.secondary,
+        )
+        fr.nutriperso.app.ui.components.NutriField(handle, { handle = it.take(21) }, prefix = "@", placeholder = "identifiant", focusColor = community.textOnLight)
+        fr.nutriperso.app.ui.components.NutriField(name, { name = it.take(40) }, placeholder = "Nom affiché, facultatif", focusColor = community.textOnLight)
+        error?.let { Txt(it, nt(13f, 500, Macros.protein.text)) }
+        fr.nutriperso.app.ui.components.PrimaryButton("Continuer", community, {
+            val normalized = handle.trim().lowercase(Locale.ROOT)
+            if (!Regex("^[a-z0-9_]{3,20}$").matches(normalized)) {
+                error = "Un identifiant de 3 à 20 caractères : lettres, chiffres et _."
+            } else {
+                busy = true
+                scope.launch {
+                    when (val result = model.api.saveIdentity(normalized, name.trim().ifBlank { null })) {
+                        is ApiResult.Ok -> model.bump()
+                        is ApiResult.Failed -> error = if (result.status == 409) "Cet identifiant est déjà pris." else result.message
+                    }
+                    busy = false
+                }
+            }
+        }, height = 48.dp, busy = busy, textSize = 15f)
     }
 }
