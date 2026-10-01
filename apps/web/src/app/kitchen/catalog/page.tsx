@@ -2,7 +2,7 @@ import { NavHeader, PageTitle } from '@/components/ScreenHeader';
 import { requireUserId } from '@/server/guard';
 import { basketFor, installedFor } from '@/server/services/basket';
 import { profileFor } from '@/server/services/profile';
-import { catalogFor } from '@/lib/meal-catalog';
+import { catalogFor } from '@/server/services/catalog';
 import { cookingYield } from '@/lib/recipe';
 import type { Goal } from '@/lib/energy';
 import { formatWeekRange, isJournalDate, startOfWeek, todayInParis } from '@/lib/date';
@@ -67,7 +67,7 @@ export default async function CatalogPage({
 
   const chosenRecipeIds = new Set(basket.map((item) => item.recipeId));
 
-  const meals: CatalogCard[] = catalogFor(goal).map((meal) => {
+  const meals: CatalogCard[] = (await catalogFor(goal)).map((meal) => {
     const recipeId = installed.get(meal.slug);
     return {
       slug: meal.slug,

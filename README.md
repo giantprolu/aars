@@ -37,6 +37,24 @@ npm run db:migrate
 
 `SESSION_SECRET` se génère avec `openssl rand -base64 32`.
 
+**Catalogue de plats.** Les plats proposés à l'écran de choix vivent en base
+(`catalog_meals`), pas dans le code. Ils entrent par un fichier JSON, et
+l'import se rejoue sans doublon. Il faut migrer, puis importer, **avant** de
+déployer : sans données, l'écran de choix est vide.
+
+```bash
+npm run seed:catalog -w @nutri/web -- chemin/vers/plats.json
+npm run verify:catalog -w @nutri/web -- --write   # recale les estimations sur CIQUAL
+```
+
+Les 72 plats d'origine étaient dans le code jusqu'au commit `4dbb734`
+(`apps/web/src/lib/catalog/`). Pour remplir une base neuve, le plus simple est
+de copier la table `catalog_meals` d'une base existante (une branche Neon la
+recopie d'office). À défaut, extraire ces fichiers avec
+`git show 4dbb734:apps/web/src/lib/catalog/lose.ts` (idem `maintain`, `gain`),
+les convertir en `{ "lose": […], "maintain": […], "gain": […] }`, puis
+lancer l'import.
+
 **2. Importer la table CIQUAL.** Le fichier n'est pas versionné : il vient du
 site de l'ANSES et son téléchargement demande une intervention humaine.
 
@@ -79,6 +97,8 @@ demandent `-w @nutri/web` (par exemple `npm run verify -w @nutri/web`).
 | `npm run db:generate` | Génère une migration depuis le schéma |
 | `npm run db:migrate` | Applique les migrations |
 | `npm run import:ciqual` | Importe la table CIQUAL |
+| `npm run seed:catalog` | Importe des plats du catalogue depuis un JSON |
+| `npm run verify:catalog` | Vérifie le catalogue contre CIQUAL |
 
 ## Ce qui structure le code
 

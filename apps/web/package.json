@@ -18,6 +18,7 @@
     "usage:report": "tsx scripts/usage-report.ts",
     "verify:off": "tsx scripts/verify-off.ts",
     "verify:catalog": "tsx --conditions=react-server scripts/verify-catalog.ts",
+    "seed:catalog": "tsx --conditions=react-server scripts/seed-catalog.ts",
     "images:exercises": "tsx scripts/fetch-exercise-images.ts"
   },
   "dependencies": {

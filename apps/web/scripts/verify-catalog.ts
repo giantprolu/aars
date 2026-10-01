@@ -13,12 +13,11 @@
  *   - des estimations par part qui ont dérivé de ce que CIQUAL dit aujourd'hui.
  *
  *   npm run verify:catalog            vérifie et rend compte
- *   npm run verify:catalog -- --write réécrit les estimations dans les fichiers
+ *   npm run verify:catalog -- --write réécrit les estimations en base
  *
  * Le code de sortie vaut 1 si un terme ne résout pas : c'est la seule
  * anomalie qui rend un plat faux plutôt qu'imprécis.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
 import { config } from 'dotenv';
 
 config({ path: '.env.local' });
@@ -27,19 +26,15 @@ config({ path: '.env' });
 // Importés après le chargement des variables : la connexion se crée au premier
 // appel et exige DATABASE_URL, que `.env.local` vient tout juste de poser.
 const { searchReferenceFoods } = await import('../src/server/db/queries/search');
-const { MEAL_CATALOG } = await import('../src/lib/meal-catalog');
+const { allCatalogMealsWithGoal } = await import('../src/server/db/queries/catalog');
+const { db, schema } = await import('../src/server/db/client');
+const { eq } = await import('drizzle-orm');
 const { scaleMacros, sumMacros } = await import('../src/lib/nutrition');
 import type { Macros } from '../src/lib/types';
 import type { CatalogMeal } from '../src/lib/meal-catalog';
 
 /** Écart relatif toléré entre l'estimation écrite et le calcul du jour. */
 const TOLERANCE = 0.05;
-
-const CATALOG_FILES: Record<string, string> = {
-  lose: 'src/lib/catalog/lose.ts',
-  maintain: 'src/lib/catalog/maintain.ts',
-  gain: 'src/lib/catalog/gain.ts',
-};
 
 const write = process.argv.includes('--write');
 
@@ -93,41 +88,30 @@ function drifted(written: number, computed: number): boolean {
   return Math.abs(written - computed) / computed > TOLERANCE;
 }
 
-/**
- * Réécrit l'estimation d'un plat dans son fichier.
- *
- * L'ancrage se fait sur le `slug` et non sur la position : c'est le seul
- * identifiant stable du plat, et une réécriture à l'aveugle sur la n-ième
- * occurrence de `estimate` déplacerait les valeurs d'un plat à l'autre au
- * premier ajout.
- */
-function rewrite(source: string, report: MealReport): string {
-  const anchor = `slug: '${report.meal.slug}',`;
-  const start = source.indexOf(anchor);
-  if (start === -1) {
-    throw new Error(`Plat introuvable dans le fichier : ${report.meal.slug}`);
-  }
-
-  const pattern = /estimate: \{ kcal: \d+, proteinG: \d+ \},/;
-  const tail = source.slice(start);
-  const match = pattern.exec(tail);
-  if (match === null) {
-    throw new Error(`Estimation introuvable pour ${report.meal.slug}`);
-  }
-
-  const replacement = `estimate: { kcal: ${report.kcal}, proteinG: ${report.proteinG} },`;
-  return (
-    source.slice(0, start) +
-    tail.slice(0, match.index) +
-    replacement +
-    tail.slice(match.index + match[0].length)
-  );
+/** Réécrit l'estimation d'un plat en base, à partir du calcul du jour. */
+async function rewrite(report: MealReport): Promise<void> {
+  await db()
+    .update(schema.catalogMeals)
+    .set({ estimateKcal: report.kcal, estimateProteinG: report.proteinG })
+    .where(eq(schema.catalogMeals.slug, report.meal.slug));
 }
 
 let missingTerms = 0;
 let drifts = 0;
 
-for (const [goal, meals] of Object.entries(MEAL_CATALOG)) {
+const catalog = await allCatalogMealsWithGoal();
+
+// Un objectif sans plat est l'état d'une base migrée mais jamais remplie :
+// l'écran de choix serait vide, et c'est une anomalie, pas un succès.
+const goals = ['lose', 'maintain', 'gain'] as const;
+const emptyGoals = goals.filter((goal) => !catalog.some((meal) => meal.goal === goal));
+if (emptyGoals.length > 0) {
+  console.error(`Aucun plat pour : ${emptyGoals.join(', ')}. Lancer npm run seed:catalog.`);
+  process.exit(1);
+}
+
+for (const goal of goals) {
+  const meals = catalog.filter((meal) => meal.goal === goal);
   console.log(`\n=== ${goal} — ${meals.length} plats ===`);
 
   const reports: MealReport[] = [];
@@ -159,16 +143,13 @@ for (const [goal, meals] of Object.entries(MEAL_CATALOG)) {
   }
 
   if (write) {
-    const path = CATALOG_FILES[goal];
-    if (path === undefined) {
-      throw new Error(`Aucun fichier connu pour l'objectif ${goal}`);
+    // Un plat dont un terme ne résout plus aurait un total amputé : on garde
+    // son estimation écrite plutôt que d'en publier une fausse.
+    const sound = reports.filter((report) => report.missing.length === 0);
+    for (const report of sound) {
+      await rewrite(report);
     }
-    let source = readFileSync(path, 'utf8');
-    for (const report of reports) {
-      source = rewrite(source, report);
-    }
-    writeFileSync(path, source, 'utf8');
-    console.log(`  → ${path} réécrit.`);
+    console.log(`  → ${sound.length} estimations réécrites en base.`);
   }
 }
 

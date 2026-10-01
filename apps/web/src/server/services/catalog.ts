@@ -1,6 +1,8 @@
 import 'server-only';
-import { findCatalogMeal, type CatalogMeal } from '@/lib/meal-catalog';
+import type { CatalogMeal } from '@/lib/meal-catalog';
 import type { RecipeIngredientInput } from '@/lib/recipe';
+import type { Goal } from '@/lib/energy';
+import { catalogMealsBySlugs, catalogMealsFor } from '../db/queries/catalog';
 import { insertRecipe } from '../db/queries/recipes';
 import { installedCatalogSlugs, insertBasketItem } from '../db/queries/basket';
 import { searchReferenceFoods } from '../db/queries/search';
@@ -15,6 +17,11 @@ import { syncListToBasket } from './shopping';
  * doivent pouvoir se rejouer sans rien dédoubler — un doigt qui appuie deux
  * fois sur « Ajouter » est la règle, pas l'exception.
  */
+
+/** Les plats d'un objectif, dans leur ordre d'affichage. */
+export function catalogFor(goal: Goal): Promise<CatalogMeal[]> {
+  return catalogMealsFor(goal);
+}
 
 /** Au-delà, ce n'est plus un choix de semaine mais un import du catalogue. */
 export const MAX_CHOSEN_MEALS = 40;
@@ -132,9 +139,13 @@ export async function chooseCatalogMeals(
   // Les `slug` sont dédoublonnés avant tout : un même plat demandé deux fois
   // n'occupe qu'une ligne de panier, et le compte rendu doit dire trois plats
   // quand il y en a trois, pas quatre parce que le doigt a glissé.
-  const meals = [...new Set(slugs)]
-    .map((slug) => findCatalogMeal(slug))
-    .filter((meal): meal is CatalogMeal => meal !== null);
+  // Une seule lecture pour tout le lot ; l'ordre de la demande est rétabli
+  // ensuite, et un `slug` inconnu disparaît simplement, comme avant.
+  const requested = [...new Set(slugs)];
+  const bySlug = new Map((await catalogMealsBySlugs(requested)).map((meal) => [meal.slug, meal]));
+  const meals = requested
+    .map((slug) => bySlug.get(slug))
+    .filter((meal): meal is CatalogMeal => meal !== undefined);
   if (meals.length === 0) {
     return report;
   }

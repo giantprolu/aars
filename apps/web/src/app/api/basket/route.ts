@@ -18,7 +18,7 @@ export const runtime = 'nodejs';
  * carnet, on envoie un identifiant de recette, qui existe déjà.
  *
  * Les deux portes plutôt qu'une, parce qu'un `slug` et un identifiant ne
- * désignent pas le même objet : le premier nomme un plat du code, le second
+ * désignent pas le même objet : le premier nomme un plat du catalogue, le second
  * une ligne qui appartient à quelqu'un. Les confondre dans un seul champ
  * demanderait de deviner lequel on a reçu.
  */

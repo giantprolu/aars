@@ -16,6 +16,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { USAGE_EVENTS } from '../../lib/usage';
+import type { CatalogIngredient } from '../../lib/meal-catalog';
 
 /**
  * Schéma Drizzle. `snake_case` en base, `camelCase` en TypeScript
@@ -434,6 +435,48 @@ export const recipeIngredients = pgTable(
 
 export type RecipeIngredientRow = typeof recipeIngredients.$inferSelect;
 export type NewRecipeIngredientRow = typeof recipeIngredients.$inferInsert;
+
+/**
+ * Le catalogue de plats, commun à tous les comptes.
+ *
+ * Il vivait dans le code ; il vit ici pour qu'ajouter un plat ou lui donner
+ * une photo ne demande plus de déploiement. Ce n'est pas une donnée
+ * personnelle : aucune clé d'utilisateur, comme CIQUAL.
+ *
+ * Le `slug` est la clé, et c'est lui que `recipes.catalog_slug` retient, sans
+ * clé étrangère : un plat retiré laisse les recettes déjà recopiées intactes.
+ *
+ * Les ingrédients sont en jsonb plutôt qu'en table : ils n'existent pas hors
+ * de leur plat, ne sont jamais interrogés seuls, et se lisent toujours en
+ * bloc. Ils sont décrits par un terme de recherche CIQUAL, jamais par un code
+ * (voir `meal-catalog.ts`).
+ */
+export const catalogMeals = pgTable(
+  'catalog_meals',
+  {
+    slug: text('slug').primaryKey(),
+    goal: text('goal').notNull(),
+    /** Rang d'affichage dans l'objectif. */
+    position: integer('position').notNull(),
+    name: text('name').notNull(),
+    slot: text('slot').notNull(),
+    servings: integer('servings').notNull(),
+    prepMinutes: integer('prep_minutes').notNull(),
+    steps: text('steps').array().notNull().default(sql`'{}'::text[]`),
+    ingredients: jsonb('ingredients').$type<CatalogIngredient[]>().notNull(),
+    /** Ordre de grandeur d'une part, recalculé par `npm run verify:catalog`. */
+    estimateKcal: integer('estimate_kcal').notNull(),
+    estimateProteinG: integer('estimate_protein_g').notNull(),
+  },
+  (table) => [
+    index('catalog_meals_goal_position_idx').on(table.goal, table.position),
+    check('catalog_meals_goal_check', sql`${table.goal} in ('lose', 'maintain', 'gain')`),
+    check(
+      'catalog_meals_slot_check',
+      sql`${table.slot} in ('breakfast', 'lunch', 'dinner', 'snack')`,
+    ),
+  ],
+);
 
 /**
  * Le panier de la semaine : les plats retenus, sans jour ni repas.

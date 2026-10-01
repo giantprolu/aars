@@ -7,7 +7,11 @@
  * pour savoir quoi acheter samedi. Le catalogue lui en propose une trentaine
  * par objectif, et c'est son choix qui engendre la liste de courses.
  *
- * Trois décisions structurent ce module.
+ * Les plats eux-mêmes vivent en base, dans `catalog_meals` : en ajouter un ou
+ * lui donner une photo ne demande pas de déploiement (`npm run seed:catalog`).
+ * Ce module n'en garde que la forme et les intitulés d'écran.
+ *
+ * Trois décisions structurent le catalogue.
  *
  * **Un plat choisi devient une recette de l'utilisateur**, recopiée dans sa
  * table, et non une référence vers une fiche partagée. Tout ce qui existe déjà
@@ -22,22 +26,19 @@
  * codes de l'ANSES changent de millésime en millésime, et une liste figée
  * finirait par installer des recettes pointant vers rien.
  *
- * **Les macros affichées dans le catalogue sont un ordre de grandeur**, écrit
- * ici et non calculé à l'affichage. Résoudre quatre cents termes de recherche
+ * **Les macros affichées dans le catalogue sont un ordre de grandeur**, rangé
+ * avec le plat et non calculé à l'affichage. Résoudre quatre cents termes de recherche
  * pour dessiner une liste de choix coûterait une seconde par ouverture d'écran,
  * pour une précision dont le choix n'a pas besoin : on lit ce chiffre pour
  * distinguer un dîner léger d'un dîner riche, pas pour compter sa journée. Les
  * vraies macros arrivent avec la recette installée, calculées depuis CIQUAL
  * comme partout ailleurs. `npm run verify:catalog` recalcule ces estimations
- * depuis la base et signale tout écart, pour qu'elles ne dérivent pas en
+ * depuis CIQUAL et signale tout écart, pour qu'elles ne dérivent pas en
  * silence.
  */
 
 import type { Goal } from './energy';
 import type { Meal } from './meal';
-import { CATALOG_LOSE } from './catalog/lose';
-import { CATALOG_MAINTAIN } from './catalog/maintain';
-import { CATALOG_GAIN } from './catalog/gain';
 
 export interface CatalogIngredient {
   /** Désignation affichée dans la recette, courte et lisible. */
@@ -80,13 +81,6 @@ export interface CatalogMeal {
   estimate: CatalogEstimate;
 }
 
-/** Les plats du catalogue, par objectif de `profiles.goal`. */
-export const MEAL_CATALOG: Record<Goal, readonly CatalogMeal[]> = {
-  lose: CATALOG_LOSE,
-  maintain: CATALOG_MAINTAIN,
-  gain: CATALOG_GAIN,
-};
-
 /**
  * Intitulés d'objectif employés par l'écran de choix.
  *
@@ -105,35 +99,3 @@ export const CATALOG_GOAL_NOTES: Record<Goal, string> = {
   maintain: 'Équilibrés, autour de 500 à 700 kcal la part.',
   gain: 'Denses, autour de 800 à 1000 kcal la part.',
 };
-
-export function catalogFor(goal: Goal): readonly CatalogMeal[] {
-  return MEAL_CATALOG[goal];
-}
-
-/**
- * Le plat qui porte ce `slug`, cherché dans les trois objectifs.
- *
- * La recherche ne se limite pas à l'objectif courant, et c'est délibéré : rien
- * n'interdit de choisir un dîner de maintien quand on est en perte, et un
- * identifiant refusé parce qu'il vient du mauvais onglet serait incompréhensible.
- */
-export function findCatalogMeal(slug: string): CatalogMeal | null {
-  for (const meals of Object.values(MEAL_CATALOG)) {
-    const found = meals.find((meal) => meal.slug === slug);
-    if (found !== undefined) {
-      return found;
-    }
-  }
-  return null;
-}
-
-/** Tous les plats du catalogue, tous objectifs confondus, sans doublon de slug. */
-export function allCatalogMeals(): CatalogMeal[] {
-  const bySlug = new Map<string, CatalogMeal>();
-  for (const meals of Object.values(MEAL_CATALOG)) {
-    for (const meal of meals) {
-      bySlug.set(meal.slug, meal);
-    }
-  }
-  return [...bySlug.values()];
-}
