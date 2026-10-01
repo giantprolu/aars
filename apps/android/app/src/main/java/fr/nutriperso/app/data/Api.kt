@@ -69,7 +69,12 @@ class Api(private val tokens: TokenStore) {
                 if (token == null) {
                     // Serveur pas encore à jour : il a posé un cookie au lieu de
                     // rendre le jeton.
-                    ApiResult.Failed(500, "internal", "Le serveur n'a pas rendu de jeton de session.")
+                    ApiResult.Failed(
+                        500,
+                        "outdated_server",
+                        "Le serveur ${BuildConfig.API_BASE_URL} n'est pas à jour pour l'app (pas de jeton). " +
+                            "Le compte est peut-être créé : connecte-toi une fois le serveur à jour.",
+                    )
                 } else {
                     tokens.write(token)
                     _signedIn.value = true
