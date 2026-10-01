@@ -18,6 +18,9 @@ a désormais son compte, son journal et son objectif calorique.
 
 Conséquence à ne pas perdre de vue : les données stockées ne sont plus celles
 d'une seule personne. Poids, âge et repas de tiers sont des données de santé.
+Toute donnée stockée ou tout sous-traitant ajouté doit apparaître dans le même
+commit dans `apps/web/src/app/legal/privacy/page.tsx` et dans
+`apps/android/PLAY_STORE.md` (Sécurité des données, Health Connect).
 
 ## Stack imposée
 - Next.js 15 (App Router) + TypeScript strict
