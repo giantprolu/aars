@@ -62,6 +62,13 @@ final class AppModel {
     let api = Api()
     let toasts = ToastCenter()
     let health = HealthSync()
+    let reminders = LunchReminder()
+
+    /// Faux tant que l'accès à Santé n'a pas été demandé : Aujourd'hui propose de le relier.
+    private(set) var healthLinked: Bool?
+
+    /// Un rappel touché : la coquille ouvre la feuille Repas, puis remet à faux.
+    var pendingMealSheet = false
 
     /// Instant de la dernière synchronisation Santé réussie, en mémoire seulement.
     @ObservationIgnored private var healthSyncedAt: Date?
@@ -94,6 +101,8 @@ final class AppModel {
             today = nil
             quick = nil
             welcome = false
+            // Plus de session, plus de rappel : ils reviendront à la connexion.
+            await reminders.pause()
         }
     }
 
@@ -131,6 +140,7 @@ final class AppModel {
         case .success(let value):
             today = value
             todayError = nil
+            await reminders.plan(after: value)
         case .failure(let failure):
             todayError = failure.message
         }
@@ -240,7 +250,26 @@ final class AppModel {
     }
 
     func syncHealth() {
-        Task { _ = await syncHealthNow() }
+        Task {
+            healthLinked = await health.wasAsked()
+            _ = await syncHealthNow()
+        }
+    }
+
+    /**
+     Relie Santé en un geste, sans raccourci ni jeton comme sur la PWA : la
+     demande d'accès du système, puis la première synchronisation. HealthKit
+     tait un refus de lecture : il se voit à trente jours vides.
+     */
+    func linkHealth() async {
+        _ = await health.requestAccess()
+        healthLinked = await health.wasAsked()
+        guard healthLinked == true else { return }
+        switch await syncHealthNow(force: true) {
+        case nil: toast("La synchronisation a échoué. Réessaie dans un instant.")
+        case 0: toast("Aucune dépense trouvée dans Santé sur 30 jours")
+        case let count?: toast("Santé reliée · \(count) journée\(count > 1 ? "s" : "") synchronisée\(count > 1 ? "s" : "")")
+        }
     }
 
     func toast(_ message: String) {

@@ -350,3 +350,25 @@ struct CheckLine: View {
         }
     }
 }
+
+/// Interrupteur de la maquette : 38 × 22, vert Nutrition quand il est actif.
+struct NutriSwitch: View {
+    let isOn: Bool
+    let action: () -> Void
+
+    var body: some View {
+        ZStack(alignment: isOn ? .trailing : .leading) {
+            Capsule().fill(isOn ? Domains.nutrition.fill : Neutrals.stepTrack)
+            Circle().fill(Neutrals.card).frame(width: 16, height: 16).padding(3)
+        }
+        .frame(width: 38, height: 22)
+        .animation(.easeOut(duration: 0.2), value: isOn)
+        .tap {
+            Haptics.selection()
+            action()
+        }
+        .accessibilityElement()
+        .accessibilityAddTraits(.isButton)
+        .accessibilityValue(isOn ? "activé" : "désactivé")
+    }
+}

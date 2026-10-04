@@ -361,7 +361,9 @@ Android y sont écrits sur le modèle du code existant, sans compilation.
 
 **Ce qui n'est pas compilé.** Depuis `4e1c5c9` : les chemins d'icônes
 corrigés, et la modération de la Communauté (`ModerationSheet.kt`, menu « … »
-du fil et de Personnes, section Bloqués, `Api.report`).
+du fil et de Personnes, section Bloqués, `Api.report`), le rappel du déjeuner
+(`LunchReminder.kt`, `ReminderReceiver.kt`, manifeste, interrupteur dans Moi)
+et « Relier Santé » sur la tuile Activité d'Aujourd'hui.
 
 **À faire côté humain.** Ouvrir `apps/android` dans Android Studio, *Sync*,
 *Run*, et remonter ici toute erreur. Ou installer Android Studio sur le Mac,

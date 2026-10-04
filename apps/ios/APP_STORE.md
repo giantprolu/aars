@@ -121,6 +121,6 @@ et plantages, identifiants publicitaires.
      séance privée, supprimer un compte).
    - Coordonnées publiées : l'URL d'assistance et `LEGAL_CONTACT_EMAIL`.
    Avant l'envoi, prévoir quelqu'un pour lire les alertes chaque jour.
-3. **Notifications** : le rappel du déjeuner est en Web Push (VAPID). Sur
-   iOS natif, il faudrait APNs : rien n'est branché, la fiche ne doit pas en
-   promettre.
+3. ~~**Notifications**~~ : réglé. Le rappel du déjeuner est une notification
+   locale (14 h à Paris, sautée si un déjeuner ou un dîner est noté), activée
+   dans Moi. Ni APNs ni jeton d'appareil.

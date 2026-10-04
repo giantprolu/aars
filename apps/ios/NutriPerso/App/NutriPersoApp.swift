@@ -1,8 +1,19 @@
 import SwiftUI
+import UserNotifications
 
 @main
 struct NutriPersoApp: App {
-    @State private var model = AppModel()
+    @State private var model: AppModel
+    /// Gardé ici : le centre de notifications ne retient son délégué que faiblement.
+    private let router: NotificationRouter
+
+    init() {
+        let model = AppModel()
+        _model = State(initialValue: model)
+        router = NotificationRouter { model.pendingMealSheet = true }
+        // Posé avant la fin du lancement, pour un toucher qui ouvre l'app à froid.
+        UNUserNotificationCenter.current().delegate = router
+    }
 
     var body: some Scene {
         WindowGroup {

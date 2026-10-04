@@ -16,7 +16,9 @@ import fr.nutriperso.app.data.RecentFood
 import fr.nutriperso.app.data.QuickFavorite
 import fr.nutriperso.app.data.SearchHit
 import fr.nutriperso.app.data.TodayResponse
+import fr.nutriperso.app.data.HealthAvailability
 import fr.nutriperso.app.data.HealthSync
+import fr.nutriperso.app.data.LunchReminder
 import fr.nutriperso.app.data.TokenStore
 import fr.nutriperso.app.ui.components.formatKg
 import java.time.LocalTime
@@ -89,6 +91,17 @@ class AppModel(application: Application) : AndroidViewModel(application) {
     var writing by mutableStateOf(false)
         private set
 
+    /** Health Connect présent mais pas encore autorisé : Aujourd'hui propose de le relier. */
+    var healthLinkable by mutableStateOf(false)
+        private set
+
+    /** Un rappel du déjeuner touché : la coquille ouvre la feuille Repas, puis remet à faux. */
+    var pendingMealSheet by mutableStateOf(false)
+
+    fun openMealFromReminder() {
+        pendingMealSheet = true
+    }
+
     /** Vrai juste après l'onboarding : Aujourd'hui montre la carte d'arrivée. */
     var welcome by mutableStateOf(false)
         private set
@@ -109,6 +122,8 @@ class AppModel(application: Application) : AndroidViewModel(application) {
         today = null
         quick = null
         welcome = false
+        // Plus de session, plus de rappel : il revient à la connexion.
+        LunchReminder.cancel(getApplication())
     }
 
     /** Sans profil corporel, le compte vient d'être créé : direction l'onboarding. */
@@ -123,6 +138,7 @@ class AppModel(application: Application) : AndroidViewModel(application) {
                         gate = Gate.Ready
                         refreshToday()
                         syncHealth()
+                        LunchReminder.schedule(getApplication())
                     }
                 }
                 is ApiResult.Failed -> {
@@ -148,6 +164,11 @@ class AppModel(application: Application) : AndroidViewModel(application) {
                 is ApiResult.Ok -> {
                     today = result.value
                     todayError = null
+                    LunchReminder.noteToday(
+                        getApplication(),
+                        result.value.today,
+                        result.value.entries.any { it.meal == "lunch" || it.meal == "dinner" },
+                    )
                 }
                 is ApiResult.Failed -> todayError = result.message
             }
@@ -280,7 +301,29 @@ class AppModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun syncHealth() {
-        viewModelScope.launch { syncHealthNow() }
+        viewModelScope.launch {
+            healthLinkable = health.availability() == HealthAvailability.Available && !health.canRead()
+            syncHealthNow()
+        }
+    }
+
+    /**
+     * Après la demande d'accès ouverte depuis Aujourd'hui : relie Santé en un
+     * geste, sans raccourci ni jeton comme sur la PWA, et synchronise aussitôt.
+     */
+    fun healthAccessAnswered() {
+        viewModelScope.launch {
+            healthLinkable = health.availability() == HealthAvailability.Available && !health.canRead()
+            if (healthLinkable) return@launch
+            val sent = syncHealthNow(force = true)
+            _toasts.emit(
+                when (sent) {
+                    null -> "La synchronisation a échoué. Réessaie dans un instant."
+                    0 -> "Aucune dépense trouvée dans Health Connect sur 30 jours"
+                    else -> "Santé reliée · $sent journée${if (sent > 1) "s" else ""} synchronisée${if (sent > 1) "s" else ""}"
+                },
+            )
+        }
     }
 
     fun toast(message: String) {

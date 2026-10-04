@@ -159,6 +159,15 @@ fun MainShell(model: AppModel) {
         }
     }
 
+    // Un rappel du déjeuner touché : droit à la feuille Repas.
+    LaunchedEffect(model.pendingMealSheet) {
+        if (model.pendingMealSheet) {
+            model.pendingMealSheet = false
+            stack = emptyList()
+            pick(AddSheet.Meal)
+        }
+    }
+
     BackHandler(enabled = fabOpen || sheet != null || planSlot != null || moderation != null || stack.isNotEmpty()) {
         when {
             sheet != null || fabOpen || planSlot != null || moderation != null -> closeAll()

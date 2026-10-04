@@ -74,10 +74,9 @@ struct HealthScreen: View {
     private func allow() {
         syncing = true
         Task {
-            let shown = await model.health.requestAccess()
+            await model.linkHealth()
             asked = await model.health.wasAsked()
             syncing = false
-            if shown { sync() }
         }
     }
 

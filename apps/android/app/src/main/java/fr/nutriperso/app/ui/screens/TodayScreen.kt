@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,11 +29,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.health.connect.client.PermissionController
 import fr.nutriperso.app.AppModel
 import fr.nutriperso.app.Meal
 import fr.nutriperso.app.R
 import fr.nutriperso.app.data.ActivitySummary
 import fr.nutriperso.app.data.Entry
+import fr.nutriperso.app.data.HealthSync
 import fr.nutriperso.app.data.PlannedMeal
 import fr.nutriperso.app.data.QuickSession
 import fr.nutriperso.app.data.TodayResponse
@@ -71,6 +74,10 @@ fun TodayScreen(
     onHistory: () -> Unit,
     onEditGoal: () -> Unit,
 ) {
+    // Relier Santé en un geste : la demande d'accès de Health Connect, puis la synchronisation.
+    val healthAccess = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) {
+        model.healthAccessAnswered()
+    }
     val data = model.today
     ScreenColumn {
         DomainHeader(
@@ -106,7 +113,9 @@ fun TodayScreen(
         }
         Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             WeightTile(data.weight, Modifier.weight(1f).fillMaxHeight()) { onPick(AddSheet.Weigh) }
-            ActivityTile(data.activity, Modifier.weight(1f).fillMaxHeight())
+            ActivityTile(data.activity, Modifier.weight(1f).fillMaxHeight(), model.healthLinkable) {
+                healthAccess.launch(HealthSync.PERMISSIONS)
+            }
         }
         if (data.entries.isEmpty()) {
             EmptyJournal()
@@ -315,15 +324,21 @@ private fun WeightTile(weight: WeightSummary?, modifier: Modifier, onWeigh: () -
 }
 
 @Composable
-private fun ActivityTile(activity: ActivitySummary, modifier: Modifier) {
+private fun ActivityTile(activity: ActivitySummary, modifier: Modifier, linkable: Boolean, onLink: () -> Unit) {
     val body = Domains.body
     val training = Domains.training
     Column(modifier.tinted(body.soft).padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         TileHeader("Activité (Santé)", R.drawable.lucide_flame, body.textOnLight)
-        Txt(
-            valueWithUnit(activity.activeKcal?.let { formatInt(it) } ?: "—", " kcal"),
-            nt(20f, 600, tracking = -0.02f),
-        )
+        if (linkable) {
+            // Santé pas encore reliée : un toucher, la demande d'accès du système.
+            Txt("Ta dépense réelle ajuste la cible.", nt(11.5f, color = Neutrals.muted))
+            PillButton("Relier Santé", body.fill, body.textOnFill, icon = R.drawable.lucide_heart, onClick = onLink)
+        } else {
+            Txt(
+                valueWithUnit(activity.activeKcal?.let { formatInt(it) } ?: "—", " kcal"),
+                nt(20f, 600, tracking = -0.02f),
+            )
+        }
         if (activity.sessionsPlanned > 0) {
             SegmentDots(activity.sessionsDone, activity.sessionsPlanned, training.fill, training.seg, 5.dp)
             Txt("${activity.sessionsDone} séance${if (activity.sessionsDone > 1) "s" else ""} sur ${activity.sessionsPlanned}", nt(11.5f, color = Neutrals.muted))

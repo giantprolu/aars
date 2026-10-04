@@ -153,6 +153,13 @@ struct MainShell: View {
         }
         .animation(.easeInOut(duration: 0.25), value: editingGoal)
         .animation(.easeOut(duration: 0.32), value: stack)
+        // Un rappel du déjeuner touché : droit à la feuille Repas.
+        .onChange(of: model.pendingMealSheet, initial: true) { _, pending in
+            guard pending else { return }
+            model.pendingMealSheet = false
+            stack = []
+            pick(.meal)
+        }
         .animation(Motion.sheet(Motion.sheetIn), value: flow)
         .animation(Motion.sheet(Motion.sheetIn), value: kitchenFlow)
         .animation(Motion.sheet(Motion.sheetIn), value: workoutId)

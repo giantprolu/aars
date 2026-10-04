@@ -28,6 +28,11 @@ struct MeScreen: View {
     @State private var me = Loaded<MeResponse>()
     @State private var reload = 0
     @State private var appearance = 0
+    @State private var reminderOn = false
+    /// Faux si les notifications ont été refusées dans Réglages.
+    @State private var notificationsAllowed = true
+    @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ScreenColumn(withTabBar: false) {
@@ -55,6 +60,10 @@ struct MeScreen: View {
             }
         }
         .task(id: "\(model.revision)-\(reload)") { me.take(await model.api.me()) }
+        .task(id: scenePhase) {
+            reminderOn = model.reminders.enabled
+            notificationsAllowed = await model.reminders.allowed()
+        }
     }
 
     private func identity(_ data: MeResponse) -> some View {
@@ -112,6 +121,23 @@ struct MeScreen: View {
         .tinted(body.soft)
     }
 
+    /// À 14 heures, si ni déjeuner ni dîner n'est noté.
+    private func toggleReminder() {
+        Task {
+            if reminderOn {
+                await model.reminders.disable()
+                reminderOn = false
+                model.toast("Rappel du déjeuner coupé")
+            } else if await model.reminders.enable(today: model.today) {
+                reminderOn = true
+                notificationsAllowed = true
+                model.toast("Rappel à 14 h si rien n’est noté")
+            } else {
+                model.toast("Notifications refusées : autorise-les dans Réglages")
+            }
+        }
+    }
+
     private func trainingTile(_ label: String, _ value: String, _ note: String) -> some View {
         let training = Domains.training
         return VStack(alignment: .leading, spacing: 0) {
@@ -142,6 +168,21 @@ struct MeScreen: View {
                     itemHorizontalPadding: 9,
                     fill: false
                 )
+            }
+            Hairline()
+            SettingRow(icon: .bell, label: "Rappel du déjeuner") {
+                HStack(spacing: 8) {
+                    // Activé mais refusé dans Réglages : rien ne sonnera, on le dit.
+                    if reminderOn && !notificationsAllowed {
+                        Badge(text: "Refusé", background: Neutrals.chip, foreground: Neutrals.muted)
+                            .tap {
+                                if let settings = URL(string: UIApplication.openSettingsURLString) { openURL(settings) }
+                            }
+                            .accessibilityHint("Autoriser les notifications dans Réglages")
+                    }
+                    NutriSwitch(isOn: reminderOn, action: toggleReminder)
+                        .accessibilityLabel("Rappel du déjeuner")
+                }
             }
             Hairline()
             SettingRow(icon: .activity, label: "Santé", action: onHealth) {

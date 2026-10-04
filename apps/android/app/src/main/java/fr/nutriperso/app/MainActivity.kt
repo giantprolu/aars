@@ -1,5 +1,6 @@
 package fr.nutriperso.app
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -15,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import fr.nutriperso.app.data.LunchReminder
 import fr.nutriperso.app.ui.auth.AuthScreen
 import fr.nutriperso.app.ui.onboarding.OnboardingFlow
 import fr.nutriperso.app.ui.screens.MainShell
@@ -32,6 +34,20 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
         )
         setContent { NutriApp(model) }
+        openFromReminder(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        openFromReminder(intent)
+    }
+
+    /** Un rappel du déjeuner touché ouvre la feuille Repas. */
+    private fun openFromReminder(intent: Intent?) {
+        if (intent?.getStringExtra(LunchReminder.EXTRA_OPEN) == LunchReminder.OPEN_MEAL) {
+            intent.removeExtra(LunchReminder.EXTRA_OPEN)
+            model.openMealFromReminder()
+        }
     }
 
     override fun onResume() {

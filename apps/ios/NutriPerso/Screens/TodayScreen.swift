@@ -29,7 +29,12 @@ struct TodayScreen: View {
                 .fixedSize(horizontal: false, vertical: true)
                 HStack(alignment: .top, spacing: 10) {
                     WeightTile(weight: data.weight) { onPick(.weigh) }
-                    ActivityTile(activity: data.activity)
+                    ActivityTile(
+                        activity: data.activity,
+                        linkable: model.health.isAvailable && model.healthLinked == false
+                    ) {
+                        Task { await model.linkHealth() }
+                    }
                 }
                 .fixedSize(horizontal: false, vertical: true)
                 if data.entries.isEmpty {
@@ -270,14 +275,22 @@ private struct WeightTile: View {
 
 private struct ActivityTile: View {
     let activity: ActivitySummary
+    /// Santé pas encore reliée : la tuile le propose, en un toucher.
+    let linkable: Bool
+    let onLink: () -> Void
 
     var body: some View {
         let body = Domains.body
         let training = Domains.training
         VStack(alignment: .leading, spacing: 6) {
             TileHeader(label: "Activité (Santé)", icon: .flame, color: body.textOnLight)
-            Text(valueWithUnit(activity.activeKcal.map { formatInt($0) } ?? "—", " kcal"))
-                .textStyle(nt(20, 600, tracking: -0.02))
+            if linkable {
+                Text("Ta dépense réelle ajuste la cible.").textStyle(nt(11.5, 400, Neutrals.muted))
+                PillButton(text: "Relier Santé", background: body.fill, foreground: body.textOnFill, icon: .heart, action: onLink)
+            } else {
+                Text(valueWithUnit(activity.activeKcal.map { formatInt($0) } ?? "—", " kcal"))
+                    .textStyle(nt(20, 600, tracking: -0.02))
+            }
             if activity.sessionsPlanned > 0 {
                 SegmentDots(done: activity.sessionsDone, total: activity.sessionsPlanned, on: training.fill, off: training.seg, height: 5)
                 Text("\(activity.sessionsDone) séance\(activity.sessionsDone > 1 ? "s" : "") sur \(activity.sessionsPlanned)")

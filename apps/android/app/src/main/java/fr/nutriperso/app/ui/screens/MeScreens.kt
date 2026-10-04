@@ -1,5 +1,12 @@
 package fr.nutriperso.app.ui.screens
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -21,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -32,10 +40,14 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import fr.nutriperso.app.AppModel
 import fr.nutriperso.app.R
+import fr.nutriperso.app.data.LunchReminder
 import fr.nutriperso.app.ui.components.Avatar
 import fr.nutriperso.app.ui.components.Badge
 import fr.nutriperso.app.ui.components.Bars
@@ -85,6 +97,41 @@ fun MeScreen(
     val me = rememberLoaded(model.revision) { model.api.me() }
     val data = me.value
     var appearance by rememberSaveable { mutableStateOf(0) }
+    val context = LocalContext.current
+    var reminderOn by remember { mutableStateOf(LunchReminder.isEnabled(context)) }
+    var notificationsAllowed by remember { mutableStateOf(LunchReminder.canNotify(context)) }
+
+    // Revenir des réglages du téléphone peut avoir coupé les notifications.
+    LifecycleResumeEffect(Unit) {
+        notificationsAllowed = LunchReminder.canNotify(context)
+        onPauseOrDispose { }
+    }
+
+    fun turnOn() {
+        LunchReminder.enable(context)
+        reminderOn = true
+        notificationsAllowed = LunchReminder.canNotify(context)
+        model.toast("Rappel à 14 h si rien n’est noté")
+    }
+
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) turnOn() else model.toast("Notifications refusées : autorise-les dans les réglages")
+    }
+
+    /** À 14 heures, si ni déjeuner ni dîner n'est noté. */
+    fun toggleReminder() {
+        when {
+            reminderOn -> {
+                LunchReminder.disable(context)
+                reminderOn = false
+                model.toast("Rappel du déjeuner coupé")
+            }
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED ->
+                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            else -> turnOn()
+        }
+    }
 
     Box(Modifier.fillMaxSize().background(Neutrals.screen)) {
         ScreenColumn(withTabBar = false) {
@@ -190,6 +237,26 @@ fun MeScreen(
                         itemHorizontalPadding = 9.dp,
                         fill = false,
                     )
+                }
+                SettingDivider()
+                SettingRow(R.drawable.lucide_bell, "Rappel du déjeuner") {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Activé mais coupé dans les réglages : rien ne sonnera, on le dit.
+                        if (reminderOn && !notificationsAllowed) {
+                            Badge(
+                                "Refusé",
+                                Neutrals.chip,
+                                Neutrals.muted,
+                                Modifier.tap {
+                                    context.startActivity(
+                                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+                                    )
+                                },
+                            )
+                        }
+                        NutriSwitch(reminderOn, ::toggleReminder)
+                    }
                 }
                 SettingDivider()
                 SettingRow(R.drawable.lucide_activity, "Santé", onClick = onHealth) {
@@ -348,5 +415,25 @@ fun ProgressScreen(model: AppModel, onBack: () -> Unit) {
                 Modifier.padding(horizontal = 4.dp),
             )
         }
+    }
+}
+
+/** Interrupteur de la maquette : 38 × 22, vert Nutrition quand il est actif. */
+@Composable
+private fun NutriSwitch(checked: Boolean, onToggle: () -> Unit) {
+    val click = rememberSelectionClick()
+    Box(
+        Modifier
+            .size(38.dp, 22.dp)
+            .clip(CircleShape)
+            .background(if (checked) Domains.nutrition.fill else Neutrals.stepTrack)
+            .tap {
+                click()
+                onToggle()
+            }
+            .padding(3.dp),
+        contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
+    ) {
+        Box(Modifier.size(16.dp).clip(CircleShape).background(Neutrals.card))
     }
 }
