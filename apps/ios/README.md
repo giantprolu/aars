@@ -102,4 +102,8 @@ dans l'app Santé (Parcourir › Activité › Énergie en activité). Sur un
 iPhone, l'équipe de signature doit accepter la capacité HealthKit : Xcode le
 signale à la signature si ce n'est pas le cas.
 
-Reste : la publication App Store.
+## Publication
+
+Voir `APP_STORE.md` : signature, envoi, fiche, examen, étiquettes de
+confidentialité, et trois points à trancher avant le premier envoi
+(abonnement, signalement dans la Communauté, notifications).
