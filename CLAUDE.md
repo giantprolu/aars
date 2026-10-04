@@ -44,6 +44,8 @@ commit dans `apps/web/src/app/legal/privacy/page.tsx` et dans
 Pour `apps/android`, le point 1 devient : le projet se synchronise et
 `assembleDebug` passe dans Android Studio (aucun SDK Android n'est installé
 hors d'Android Studio sur ce poste).
+Pour `apps/ios`, le point 1 devient : `xcodebuild … build` vers un simulateur
+passe sans erreur ni avertissement (commande dans `apps/ios/README.md`).
 
 Ne jamais passer à la story suivante si le build échoue.
 Le travail se committe sur `bmad/dev`. Reporter ensuite `main` dessus est

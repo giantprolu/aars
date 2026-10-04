@@ -1,0 +1,12 @@
+// Réglages partagés de l'app iOS.
+//
+// L'adresse de l'API se règle dans Config/Local.xcconfig (non versionné),
+// par exemple `NUTRI_API_URL = http:/$()/localhost:3000` pour le serveur de dev
+// vu depuis le simulateur. Par défaut : la production. Le `$()` empêche
+// xcconfig de lire `//` comme un commentaire.
+NUTRI_API_URL = https:/$()/nutri-rosy-one.vercel.app
+
+// L'équipe de signature aussi : `DEVELOPMENT_TEAM = XXXXXXXXXX`. Le simulateur
+// n'en a pas besoin.
+
+#include? "Local.xcconfig"

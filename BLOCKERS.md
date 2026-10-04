@@ -174,7 +174,7 @@ pas de cookie de session. Une automatisation le déclenche chaque soir.
 raccourci, le programmer. Trois journées envoyées suffisent à basculer la
 cible sur la dépense mesurée.
 
-## B-11 — `npm run build` échoue au prérendu de `/unlock` — **circonscrit le 18/09/2026**
+## B-11 — `npm run build` échoue au prérendu de `/unlock` — **levé le 04/10/2026** (sur le Mac)
 
 **Constat.** `next build` compile et vérifie les types sans erreur, puis casse
 à la génération des pages statiques :
@@ -238,6 +238,9 @@ sur l'arbre de la story 15-1 puis une fois sur `15adb41` intact remis par
 `git stash`. La compilation et la vérification des types passent à chaque
 fois. Les stories de l'épic 15 s'en tiennent donc à la règle ci-dessus : build
 jusqu'à la vérification des types, `npm run lint`, et Vercel fait foi.
+
+**Levé sur le Mac le 04/10/2026.** Le dépôt est maintenant travaillé sur un Mac,
+hors OneDrive : `npm run build` passe en local, prérendu des 68 pages compris.
 
 
 ---

@@ -1,0 +1,8 @@
+# Xcode
+xcuserdata/
+*.xcuserstate
+build/
+DerivedData/
+
+# Réglages du poste (serveur visé, équipe de signature)
+Config/Local.xcconfig

@@ -1,6 +1,77 @@
 # NutriPerso iOS
 
-Application native SwiftUI. Le projet Xcode n'existe pas encore.
+Application native SwiftUI. Elle ne partage aucun code avec `apps/web` : elle
+consomme l'API HTTP servie par l'app Next.js (`packages/api-contract`).
 
-Elle ne partage aucun code avec `apps/web` : elle consomme l'API HTTP servie
-par l'app Next.js, décrite dans `packages/api-contract`.
+C'est un portage de l'app Android (`apps/android`), écran par écran, avec les
+mêmes noms de modèles, la même surface d'API et la même interface. La
+maquette (`Annexe/mobile`) le demande : une seule UI, identique sur iOS et
+Android, faite de composants maison. Aucun composant système visible
+(`List`, `NavigationStack`, `TabView`, `.sheet`…) ; seuls les services restent
+natifs : trousseau, haptique, et plus tard caméra, Santé et notifications.
+
+## Ouvrir et lancer
+
+1. Xcode › *Open* › `apps/ios/NutriPerso.xcodeproj`.
+2. Choisir un simulateur iPhone, puis *Run*.
+
+Aucune dépendance externe. Le projet utilise des dossiers synchronisés : un
+fichier ajouté sous `NutriPerso/` entre dans la cible sans toucher au projet.
+
+En ligne de commande, si `xcode-select -p` pointe encore sur les Command Line
+Tools, préfixer par `DEVELOPER_DIR` (ou faire une fois
+`sudo xcode-select -s /Applications/Xcode.app`) :
+
+```
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+  xcodebuild -project apps/ios/NutriPerso.xcodeproj -scheme NutriPerso \
+  -destination 'platform=iOS Simulator,name=iPhone 17' build
+```
+
+## Serveur visé
+
+Par défaut, la production (`https://nutri-rosy-one.vercel.app`). Pour le
+serveur de dev, dans `Config/Local.xcconfig` (non versionné) :
+
+```
+NUTRI_API_URL = http:/$()/localhost:3000
+```
+
+Le simulateur voit le poste sous `localhost`. Le HTTP en clair n'est permis
+que vers le réseau local (`NSAllowsLocalNetworking`).
+
+Pour un iPhone réel, poser aussi l'équipe de signature dans ce fichier :
+`DEVELOPMENT_TEAM = XXXXXXXXXX`.
+
+## Organisation
+
+- `App/` : point d'entrée, `AppModel` (session, journal du jour, écritures
+  suivies d'une relecture : le serveur reste la seule source de vérité).
+- `Data/` : client d'API (`Authorization: Bearer`, `X-Client: mobile`),
+  modèles, jeton dans le trousseau.
+- `Theme/` : tokens de la refonte B v4 palette 2, Instrument Sans (police
+  variable embarquée, OFL, `licenses/`), chiffres tabulaires.
+- `Components/` : carte, pilules, champ, anneau, barres, feuille du bas,
+  toasts. Icônes Lucide en SVG dans `Resources/Assets.xcassets/Lucide`.
+- `Screens/` : un fichier par écran ou famille d'écrans, comme sur Android.
+
+Deux écarts entre Codable et kotlinx.serialization sont comblés dans
+`Data/Coding.swift` : `@Default` pour un champ que le serveur peut omettre,
+`@Nullable` pour écrire `null` plutôt qu'omettre la clé (les schémas Zod en
+`.nullable()` refusent une clé absente).
+
+## État
+
+Branché :
+- connexion, inscription, récupération par code de secours, déconnexion au
+  premier 401 (jeton dans le trousseau, oublié à la réinstallation) ;
+- coquille : quatre onglets, bouton + en arc, toasts ;
+- Aujourd'hui complet : semaine, jauge, macros, tuiles, journal (retirer un
+  aliment, garder un repas en favori), tirer pour relire ;
+- feuilles Repas (recherche, récents, favoris, saisie à la main) et Pesée.
+
+Pas encore portés depuis Android : onboarding (un compte neuf est renvoyé
+vers le web ou Android pour remplir son profil), scanner, séance (en cours,
+libre, composer, déjà faite), Cuisine, Sport, Communauté, Moi, Progression,
+historique, compte et données, Santé (HealthKit). Puis la publication App
+Store.
