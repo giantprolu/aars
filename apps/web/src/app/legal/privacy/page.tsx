@@ -29,7 +29,7 @@ export default function PrivacyPage() {
         <li>Profil corporel : sexe, date de naissance, taille, poids, taux de masse grasse s&apos;il est saisi, niveau d&apos;activité et objectif, pour calculer ta cible calorique.</li>
         <li>Journal : repas, aliments, quantités, plats planifiés, recettes, liste de courses, pesées.</li>
         <li>Sport : programmes, séances, séries, charges et répétitions.</li>
-        <li>Activité physique : l&apos;énergie active dépensée par jour (kilocalories), lue avec ton accord dans Health Connect sur Android ou envoyée par un raccourci iOS.</li>
+        <li>Activité physique : l&apos;énergie active dépensée par jour (kilocalories), lue avec ton accord dans Health Connect sur Android ou dans Santé sur iPhone, ou envoyée par un raccourci iOS.</li>
         <li>Communauté : pseudonyme, nom affiché, abonnements, et les séances que tu choisis de partager.</li>
         <li>Notifications : l&apos;adresse d&apos;abonnement du navigateur si tu actives le rappel du déjeuner.</li>
         <li>Mesure d&apos;usage : pour chaque jour, combien de fois tu as ouvert l&apos;accueil, ajouté un repas (et par quel moyen : recherche, scan, favori…), enregistré ton profil, synchronisé ta dépense ou atteint une limite de la version gratuite. Rien sur ce que tu manges. Ces compteurs servent seulement à savoir ce qui est utilisé et ce qui ne l&apos;est pas, restent dans notre base (aucun outil d&apos;analyse externe), et sont effacés au bout de treize mois.</li>
@@ -47,6 +47,17 @@ export default function PrivacyPage() {
         Connect respecte la politique d&apos;utilisation des données de Health Connect, y compris
         ses exigences d&apos;usage limité. Tu peux retirer l&apos;accès à tout moment dans les
         réglages de Health Connect.
+      </p>
+
+      <h2>Santé d&apos;Apple</h2>
+      <p>
+        Sur iPhone, l&apos;application demande la lecture d&apos;un seul type de données de Santé
+        (HealthKit) : l&apos;énergie active. Elle n&apos;en tire qu&apos;un total par jour, sur les
+        trente derniers jours au plus, qu&apos;elle envoie à notre serveur pour ajuster ta cible
+        calorique à ta dépense réelle. Elle n&apos;écrit rien dans Santé, ne lit rien en
+        arrière-plan, et ces données ne servent à aucune autre fin : ni publicité, ni revente, ni
+        partage avec des tiers. Tu peux retirer l&apos;accès à tout moment dans Réglages › Santé ›
+        Accès aux données et appareils.
       </p>
 
       <h2>Photos et appareil photo</h2>

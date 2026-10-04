@@ -83,7 +83,11 @@ Branché :
   à choisir ; Personnes (chercher, suivre, demandes, abonnés) ;
 - Moi, Progression (tonnage, poids, 1RM estimé), Historique et détail d'un
   jour, Compte et données (objectif, code de secours, export vers Fichiers,
-  politique de confidentialité, déconnexion, suppression du compte).
+  politique de confidentialité, déconnexion, suppression du compte) ;
+- Santé : HealthKit lu au premier plan, à chaque retour dans l'app (au plus
+  une fois par heure) et à la demande depuis Moi › Santé. Un seul type lu,
+  l'énergie active, un total par jour sur trente jours, poussé sur
+  `POST /api/activity`. Rien n'est écrit dans Santé.
 
 Les écrans poussés (Moi, Historique, Personnes…) s'empilent et se ferment
 aussi d'un glissé depuis le bord gauche.
@@ -92,5 +96,10 @@ Le simulateur n'a pas de caméra : le scanner y affiche « Caméra
 indisponible », la saisie à la main reste possible. La lecture se vérifie sur
 un iPhone.
 
-Pas encore porté depuis Android : Santé (HealthKit), puis la publication
-App Store.
+HealthKit ne dit pas si la lecture a été accordée : un refus ressemble à
+trente jours vides. Sur le simulateur, des journées se saisissent à la main
+dans l'app Santé (Parcourir › Activité › Énergie en activité). Sur un
+iPhone, l'équipe de signature doit accepter la capacité HealthKit : Xcode le
+signale à la signature si ce n'est pas le cas.
+
+Reste : la publication App Store.

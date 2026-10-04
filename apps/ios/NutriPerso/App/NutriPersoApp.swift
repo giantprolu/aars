@@ -14,6 +14,7 @@ struct NutriPersoApp: App {
 /// Connexion, onboarding ou l'app, selon la session et le profil.
 struct RootView: View {
     let model: AppModel
+    @Environment(\.scenePhase) private var scenePhase
 
     private enum Screen {
         case auth, onboarding, app, checking
@@ -40,5 +41,9 @@ struct RootView: View {
         }
         .animation(.easeInOut(duration: 0.3), value: screen)
         .task(id: model.api.signedIn) { await model.sessionChanged() }
+        // Les journées Santé se rattrapent à chaque retour dans l'app.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { model.syncHealth() }
+        }
     }
 }

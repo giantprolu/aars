@@ -61,6 +61,11 @@ enum Gate {
 final class AppModel {
     let api = Api()
     let toasts = ToastCenter()
+    let health = HealthSync()
+
+    /// Instant de la dernière synchronisation Santé réussie, en mémoire seulement.
+    @ObservationIgnored private var healthSyncedAt: Date?
+    @ObservationIgnored private var healthSyncing = false
 
     private(set) var gate = Gate.checking
     private(set) var today: TodayResponse?
@@ -102,6 +107,7 @@ final class AppModel {
             } else {
                 gate = .ready
                 await refreshToday()
+                syncHealth()
             }
         case .failure(let failure):
             // Hors ligne : on ouvre quand même l'app, l'écran dira l'erreur.
@@ -201,6 +207,40 @@ final class AppModel {
 
     func saveFavorite(_ meal: Meal) {
         write({ await $0.saveFavorite(meal: meal.rawValue, name: nil) }, "\(meal.label) gardé en favori", {})
+    }
+
+    /**
+     Relit Santé et pousse les trente derniers jours.
+
+     Appelée à chaque retour au premier plan, au plus une fois par heure, et à
+     la demande depuis l'écran Santé (`force`). Silencieuse tant que l'accès
+     n'a pas été demandé : c'est l'écran Santé qui invite à le donner. Rend le
+     nombre de journées envoyées, ou `nil` en cas d'échec.
+     */
+    func syncHealthNow(force: Bool = false) async -> Int? {
+        guard gate == .ready, !healthSyncing else { return nil }
+        if !force, let last = healthSyncedAt, Date().timeIntervalSince(last) < 3600 { return nil }
+        guard await health.wasAsked() else { return nil }
+        healthSyncing = true
+        defer { healthSyncing = false }
+        guard let days = await health.readDays() else { return nil }
+        if days.isEmpty {
+            healthSyncedAt = Date()
+            return 0
+        }
+        switch await api.postActivity(days) {
+        case .success:
+            healthSyncedAt = Date()
+            revision += 1
+            await refreshToday()
+            return days.count
+        case .failure:
+            return nil
+        }
+    }
+
+    func syncHealth() {
+        Task { _ = await syncHealthNow() }
     }
 
     func toast(_ message: String) {

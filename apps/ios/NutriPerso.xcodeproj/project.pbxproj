@@ -10,6 +10,7 @@
 		B0A1C2D3E4F5060708090001 /* NutriPerso.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NutriPerso.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B0A1C2D3E4F5060708090011 /* NutriPerso.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = NutriPerso.xcconfig; sourceTree = "<group>"; };
 		B0A1C2D3E4F5060708090012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B0A1C2D3E4F5060708090013 /* NutriPerso.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NutriPerso.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -53,6 +54,7 @@
 			children = (
 				B0A1C2D3E4F5060708090011 /* NutriPerso.xcconfig */,
 				B0A1C2D3E4F5060708090012 /* Info.plist */,
+				B0A1C2D3E4F5060708090013 /* NutriPerso.entitlements */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -197,6 +199,7 @@
 			baseConfigurationReference = B0A1C2D3E4F5060708090011 /* NutriPerso.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/NutriPerso.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
@@ -229,6 +232,7 @@
 			baseConfigurationReference = B0A1C2D3E4F5060708090011 /* NutriPerso.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/NutriPerso.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;

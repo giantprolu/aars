@@ -37,7 +37,7 @@ enum AddSheet {
 
 /// Écrans poussés par-dessus la coquille, avec un retour.
 enum Pushed: Hashable {
-    case me, progress, account, history, people
+    case me, progress, account, health, history, people
     case day(String)
 }
 
@@ -193,10 +193,12 @@ struct MainShell: View {
                 onProgress: { stack.append(.progress) },
                 onWeigh: { pick(.weigh) },
                 onAccount: { stack.append(.account) },
-                onHealth: comingSoon
+                onHealth: { stack.append(.health) }
             )
         case .progress:
             ProgressScreen(model: model, onBack: back)
+        case .health:
+            HealthScreen(model: model, onBack: back)
         case .account:
             AccountScreen(model: model, onBack: back) { editingGoal = true }
         case .history:
