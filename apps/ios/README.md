@@ -77,12 +77,17 @@ Branché :
   visibilité, favori, ajout d'exercice), Composer, Déjà faite ;
 - Cuisine : plan de la semaine (placer un plat, manger), plats choisis,
   recettes (photo, ajout au panier, création), courses par rayon cochables,
-  un article, scanner pour cocher en rayon.
+  un article, scanner pour cocher en rayon ;
+- Sport : semaine, séance du jour, programme, dernières séances ;
+- Communauté : suivis, classement de la semaine, fil et bravos, identifiant
+  à choisir ; Personnes (chercher, suivre, demandes, abonnés).
+
+Les écrans poussés (Personnes, puis Moi…) se ferment aussi d'un glissé
+depuis le bord gauche.
 
 Le simulateur n'a pas de caméra : le scanner y affiche « Caméra
 indisponible », la saisie à la main reste possible. La lecture se vérifie sur
 un iPhone.
 
-Pas encore portés depuis Android : onglets Sport et Communauté,
-Moi, Progression, historique, compte et données, Santé (HealthKit). Puis la
+Pas encore portés depuis Android : Moi, Progression, historique, compte et données, Santé (HealthKit). Puis la
 publication App Store.

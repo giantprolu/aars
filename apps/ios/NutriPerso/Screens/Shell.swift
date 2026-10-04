@@ -35,6 +35,11 @@ enum AddSheet {
     case meal, session, weigh, scan
 }
 
+/// Écrans poussés par-dessus la coquille, avec un retour.
+enum Pushed {
+    case people
+}
+
 /// Les écrans plein écran de Cuisine.
 enum KitchenFlow: Equatable {
     case scanCheck(week: String)
@@ -58,6 +63,7 @@ struct MainShell: View {
     @State private var fabOpen = false
     @State private var sheet: AddSheet?
     @State private var editingGoal = false
+    @State private var stack: [Pushed] = []
     /// Un aliment trouvé au scanner, que la feuille Repas reprend.
     @State private var scanned: SearchHit?
     @State private var workoutId: Int?
@@ -73,8 +79,16 @@ struct MainShell: View {
             Neutrals.screen.ignoresSafeArea()
             screen
             NutriTabBar(current: tab) { tab = $0 }
+            if let route = stack.last {
+                pushed(route)
+                    .background(Neutrals.screen.ignoresSafeArea())
+                    .gesture(backSwipe)
+                    .transition(.move(edge: .trailing))
+            }
             Scrim(visible: fabOpen || planSlot != nil || (sheet != nil && sheet != .scan), onDismiss: closeAll)
-            FabArc(open: fabOpen, onToggle: toggle, onLongPress: { pick(.scan) }, onPick: pick)
+            if stack.isEmpty {
+                FabArc(open: fabOpen, onToggle: toggle, onLongPress: { pick(.scan) }, onPick: pick)
+            }
             MealSheet(visible: sheet == .meal, model: model, preset: scanned, onDismiss: {
                 closeAll()
                 scanned = nil
@@ -134,6 +148,7 @@ struct MainShell: View {
             ToastHost(toasts: model.toasts)
         }
         .animation(.easeInOut(duration: 0.25), value: editingGoal)
+        .animation(.easeOut(duration: 0.32), value: stack)
         .animation(Motion.sheet(Motion.sheetIn), value: flow)
         .animation(Motion.sheet(Motion.sheetIn), value: kitchenFlow)
         .animation(Motion.sheet(Motion.sheetIn), value: workoutId)
@@ -159,9 +174,27 @@ struct MainShell: View {
                 onAddItem: { kitchenFlow = .addItem(week: $0) },
                 onNewRecipe: { kitchenFlow = .newRecipe }
             )
-        case .training, .community:
-            ComingSoonScreen(tab: tab)
+        case .training:
+            TrainingScreen(model: model, onMe: comingSoon) { pick(.session) }
+        case .community:
+            CommunityScreen(model: model, onMe: comingSoon) { stack = [.people] }
         }
+    }
+
+    @ViewBuilder
+    private func pushed(_ route: Pushed) -> some View {
+        switch route {
+        case .people:
+            PeopleScreen(model: model) { stack = [] }
+        }
+    }
+
+    /// Un glissé depuis le bord gauche revient en arrière, comme partout sur iOS.
+    private var backSwipe: some Gesture {
+        DragGesture(minimumDistance: 20)
+            .onEnded { drag in
+                if drag.startLocation.x < 32, drag.translation.width > 80 { stack.removeLast() }
+            }
     }
 
     private func toggle() {
@@ -209,18 +242,6 @@ struct MainShell: View {
 
     private func comingSoon() {
         model.toast("Bientôt sur iOS.")
-    }
-}
-
-/// Un onglet pas encore porté depuis Android.
-private struct ComingSoonScreen: View {
-    let tab: Tab
-
-    var body: some View {
-        ScreenColumn {
-            Text(tab.label).textStyle(TextStyles.screenTitle).padding(.horizontal, 4)
-            EmptyCard(title: "Bientôt sur iOS", text: "Cet onglet arrive dans un prochain lot. Il est déjà sur Android et sur le web.")
-        }
     }
 }
 
