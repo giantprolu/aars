@@ -80,14 +80,17 @@ Branché :
   un article, scanner pour cocher en rayon ;
 - Sport : semaine, séance du jour, programme, dernières séances ;
 - Communauté : suivis, classement de la semaine, fil et bravos, identifiant
-  à choisir ; Personnes (chercher, suivre, demandes, abonnés).
+  à choisir ; Personnes (chercher, suivre, demandes, abonnés) ;
+- Moi, Progression (tonnage, poids, 1RM estimé), Historique et détail d'un
+  jour, Compte et données (objectif, code de secours, export vers Fichiers,
+  politique de confidentialité, déconnexion, suppression du compte).
 
-Les écrans poussés (Personnes, puis Moi…) se ferment aussi d'un glissé
-depuis le bord gauche.
+Les écrans poussés (Moi, Historique, Personnes…) s'empilent et se ferment
+aussi d'un glissé depuis le bord gauche.
 
 Le simulateur n'a pas de caméra : le scanner y affiche « Caméra
 indisponible », la saisie à la main reste possible. La lecture se vérifie sur
 un iPhone.
 
-Pas encore portés depuis Android : Moi, Progression, historique, compte et données, Santé (HealthKit). Puis la
-publication App Store.
+Pas encore porté depuis Android : Santé (HealthKit), puis la publication
+App Store.

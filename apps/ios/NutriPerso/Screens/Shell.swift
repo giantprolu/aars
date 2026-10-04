@@ -36,8 +36,9 @@ enum AddSheet {
 }
 
 /// Écrans poussés par-dessus la coquille, avec un retour.
-enum Pushed {
-    case people
+enum Pushed: Hashable {
+    case me, progress, account, history, people
+    case day(String)
 }
 
 /// Les écrans plein écran de Cuisine.
@@ -79,7 +80,8 @@ struct MainShell: View {
             Neutrals.screen.ignoresSafeArea()
             screen
             NutriTabBar(current: tab) { tab = $0 }
-            if let route = stack.last {
+            // Chaque écran glisse par-dessus le précédent, qui garde son état.
+            ForEach(stack, id: \.self) { route in
                 pushed(route)
                     .background(Neutrals.screen.ignoresSafeArea())
                     .gesture(backSwipe)
@@ -158,11 +160,11 @@ struct MainShell: View {
     private var screen: some View {
         switch tab {
         case .today:
-            TodayScreen(model: model, onMe: comingSoon, onPick: pick, onOpenTab: { tab = $0 }, onHistory: comingSoon, onEditGoal: { editingGoal = true })
+            TodayScreen(model: model, onMe: openMe, onPick: pick, onOpenTab: { tab = $0 }, onHistory: { stack = [.history] }, onEditGoal: { editingGoal = true })
         case .kitchen:
             KitchenScreen(
                 model: model,
-                onMe: comingSoon,
+                onMe: openMe,
                 onPlanSlot: { slot, basket in
                     planBasket = basket
                     planSlot = slot
@@ -175,25 +177,50 @@ struct MainShell: View {
                 onNewRecipe: { kitchenFlow = .newRecipe }
             )
         case .training:
-            TrainingScreen(model: model, onMe: comingSoon) { pick(.session) }
+            TrainingScreen(model: model, onMe: openMe) { pick(.session) }
         case .community:
-            CommunityScreen(model: model, onMe: comingSoon) { stack = [.people] }
+            CommunityScreen(model: model, onMe: openMe) { stack = [.people] }
         }
     }
 
     @ViewBuilder
     private func pushed(_ route: Pushed) -> some View {
         switch route {
+        case .me:
+            MeScreen(
+                model: model,
+                onBack: back,
+                onProgress: { stack.append(.progress) },
+                onWeigh: { pick(.weigh) },
+                onAccount: { stack.append(.account) },
+                onHealth: comingSoon
+            )
+        case .progress:
+            ProgressScreen(model: model, onBack: back)
+        case .account:
+            AccountScreen(model: model, onBack: back) { editingGoal = true }
+        case .history:
+            HistoryScreen(model: model, onBack: back) { stack.append(.day($0)) }
+        case .day(let date):
+            DayScreen(model: model, date: date, onBack: back)
         case .people:
-            PeopleScreen(model: model) { stack = [] }
+            PeopleScreen(model: model, onBack: back)
         }
+    }
+
+    private func openMe() {
+        stack = [.me]
+    }
+
+    private func back() {
+        if !stack.isEmpty { stack.removeLast() }
     }
 
     /// Un glissé depuis le bord gauche revient en arrière, comme partout sur iOS.
     private var backSwipe: some Gesture {
         DragGesture(minimumDistance: 20)
             .onEnded { drag in
-                if drag.startLocation.x < 32, drag.translation.width > 80 { stack.removeLast() }
+                if drag.startLocation.x < 32, drag.translation.width > 80 { back() }
             }
     }
 

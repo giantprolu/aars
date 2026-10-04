@@ -218,7 +218,11 @@ struct SegmentedPill: View {
         let isSelected = index == selected
         let style = isSelected ? textStyle.weight(selectedWeight ?? textStyle.weight) : textStyle
         return HStack(spacing: 6) {
-            Text(label).textStyle(style, color: isSelected ? selectedTextColor : textColor).lineLimit(1)
+            Text(label)
+                .textStyle(style, color: isSelected ? selectedTextColor : textColor)
+                .lineLimit(1)
+                // Sans remplissage, chaque option garde son libellé entier.
+                .fixedSize(horizontal: !fill, vertical: false)
             if let badge = badges[index] {
                 Text(badge)
                     .textStyle(nt(11, 600, badgeColors.textOnFill))
