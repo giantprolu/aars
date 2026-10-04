@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Le gabarit des écrans du Sport poussés par-dessus la coquille.
-private struct FlowScaffold<Content: View, Footer: View>: View {
+/// Aussi le gabarit des écrans plein écran de Cuisine.
+struct FlowScaffold<Content: View, Footer: View>: View {
     let title: String
     let onClose: () -> Void
     @ViewBuilder let content: Content

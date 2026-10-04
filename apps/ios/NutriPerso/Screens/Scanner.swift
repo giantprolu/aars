@@ -4,7 +4,7 @@ import SwiftUI
 private let softLight = Color(argb: 0xFFCFC8BF)
 
 /// Un code-barres de 8, 12 ou 13 chiffres.
-private func isBarcode(_ value: String) -> Bool {
+func isBarcode(_ value: String) -> Bool {
     value.wholeMatch(of: /\d{8}|\d{12}|\d{13}/) != nil
 }
 
@@ -14,7 +14,7 @@ private struct Completion {
     let partial: PartialProduct?
 }
 
-private enum CameraAccess {
+enum CameraAccess {
     case unknown, granted, denied, unavailable
 
     static func request() async -> CameraAccess {
@@ -164,7 +164,7 @@ struct ScannerOverlay: View {
 
 /// La session de capture. `startRunning` bloque : elle démarre et s'arrête
 /// sur sa propre file, que la session tolère (documentation d'AVFoundation).
-private final class CaptureSession: @unchecked Sendable {
+final class CaptureSession: @unchecked Sendable {
     let session = AVCaptureSession()
     private let queue = DispatchQueue(label: "fr.nutriperso.camera")
 
@@ -178,7 +178,7 @@ private final class CaptureSession: @unchecked Sendable {
 }
 
 /// L'aperçu caméra plein écran ; aucun code ne remonte tant que `paused` est vrai.
-private struct CameraPreview: UIViewRepresentable {
+struct CameraPreview: UIViewRepresentable {
     let paused: Bool
     let onBarcode: (String) -> Void
 

@@ -50,3 +50,19 @@ struct FlowLayout: Layout {
         return rows
     }
 }
+
+/// Un contenu à sa hauteur naturelle, qui ne défile qu'au-delà de `maxHeight`.
+struct CappedScroll<Content: View>: View {
+    let maxHeight: CGFloat
+    @ViewBuilder let content: Content
+
+    @State private var height: CGFloat = 0
+
+    var body: some View {
+        ScrollView {
+            content.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .frame(height: min(height, maxHeight))
+    }
+}

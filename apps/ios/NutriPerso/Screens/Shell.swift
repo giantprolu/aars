@@ -35,6 +35,13 @@ enum AddSheet {
     case meal, session, weigh, scan
 }
 
+/// Les écrans plein écran de Cuisine.
+enum KitchenFlow: Equatable {
+    case scanCheck(week: String)
+    case addItem(week: String)
+    case newRecipe
+}
+
 /// Les écrans plein écran du Sport.
 enum TrainingFlow {
     case compose, `import`
@@ -55,13 +62,18 @@ struct MainShell: View {
     @State private var scanned: SearchHit?
     @State private var workoutId: Int?
     @State private var flow: TrainingFlow?
+    @State private var kitchenFlow: KitchenFlow?
+    @State private var planSlot: PlanSlot?
+    @State private var planBasket: [BasketRow] = []
+    /// La liste vue au moment d'ouvrir « Scanner pour cocher ».
+    @State private var shoppingItems: [ShoppingItemRow] = []
 
     var body: some View {
         ZStack(alignment: .bottom) {
             Neutrals.screen.ignoresSafeArea()
             screen
             NutriTabBar(current: tab) { tab = $0 }
-            Scrim(visible: fabOpen || (sheet != nil && sheet != .scan), onDismiss: closeAll)
+            Scrim(visible: fabOpen || planSlot != nil || (sheet != nil && sheet != .scan), onDismiss: closeAll)
             FabArc(open: fabOpen, onToggle: toggle, onLongPress: { pick(.scan) }, onPick: pick)
             MealSheet(visible: sheet == .meal, model: model, preset: scanned, onDismiss: {
                 closeAll()
@@ -76,6 +88,7 @@ struct MainShell: View {
                 onCompose: { open(.compose) }
             )
             WeighSheet(visible: sheet == .weigh, model: model, onDismiss: closeAll)
+            PlanSlotSheet(slot: planSlot, basket: planBasket, model: model, onDismiss: closeAll)
             ScannerOverlay(visible: sheet == .scan, model: model, onDismiss: closeAll) { hit in
                 scanned = hit
                 pick(.meal)
@@ -83,6 +96,19 @@ struct MainShell: View {
             if editingGoal {
                 OnboardingFlow(model: model, editGoal: true) { editingGoal = false }
                     .transition(.opacity)
+            }
+            switch kitchenFlow {
+            case .scanCheck(let week):
+                ScanCheckScreen(model: model, weekStart: week, items: shoppingItems) { kitchenFlow = nil }
+                    .transition(.move(edge: .bottom))
+            case .addItem(let week):
+                AddItemScreen(model: model, weekStart: week) { kitchenFlow = nil }
+                    .transition(.move(edge: .bottom))
+            case .newRecipe:
+                RecipeEditorScreen(model: model) { kitchenFlow = nil }
+                    .transition(.move(edge: .bottom))
+            case nil:
+                EmptyView()
             }
             switch flow {
             case .compose:
@@ -109,6 +135,7 @@ struct MainShell: View {
         }
         .animation(.easeInOut(duration: 0.25), value: editingGoal)
         .animation(Motion.sheet(Motion.sheetIn), value: flow)
+        .animation(Motion.sheet(Motion.sheetIn), value: kitchenFlow)
         .animation(Motion.sheet(Motion.sheetIn), value: workoutId)
     }
 
@@ -117,7 +144,22 @@ struct MainShell: View {
         switch tab {
         case .today:
             TodayScreen(model: model, onMe: comingSoon, onPick: pick, onOpenTab: { tab = $0 }, onHistory: comingSoon, onEditGoal: { editingGoal = true })
-        case .kitchen, .training, .community:
+        case .kitchen:
+            KitchenScreen(
+                model: model,
+                onMe: comingSoon,
+                onPlanSlot: { slot, basket in
+                    planBasket = basket
+                    planSlot = slot
+                },
+                onScanCheck: { week, items in
+                    shoppingItems = items
+                    kitchenFlow = .scanCheck(week: week)
+                },
+                onAddItem: { kitchenFlow = .addItem(week: $0) },
+                onNewRecipe: { kitchenFlow = .newRecipe }
+            )
+        case .training, .community:
             ComingSoonScreen(tab: tab)
         }
     }
@@ -133,6 +175,7 @@ struct MainShell: View {
     private func closeAll() {
         fabOpen = false
         sheet = nil
+        planSlot = nil
     }
 
     private func pick(_ target: AddSheet) {

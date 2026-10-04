@@ -205,7 +205,7 @@ private struct SearchResults: View {
     let onPick: (SearchHit) -> Void
 
     var body: some View {
-        ScrollView {
+        CappedScroll(maxHeight: 320) {
             VStack(spacing: 0) {
                 if let error {
                     message(error)
@@ -229,8 +229,6 @@ private struct SearchResults: View {
                 }
             }
         }
-        .frame(maxHeight: 320)
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func message(_ text: String) -> some View {
@@ -335,7 +333,7 @@ private struct FavoritesStep: View {
     let onPick: (QuickFavorite) -> Void
 
     var body: some View {
-        ScrollView {
+        CappedScroll(maxHeight: 320) {
             VStack(spacing: 0) {
                 if let favorites, !favorites.isEmpty {
                     ForEach(favorites) { favorite in
@@ -356,8 +354,6 @@ private struct FavoritesStep: View {
                 }
             }
         }
-        .frame(maxHeight: 320)
-        .fixedSize(horizontal: false, vertical: true)
         GhostButton(text: "Retour", action: onBack)
     }
 }

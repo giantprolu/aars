@@ -74,12 +74,15 @@ Branché :
 - scanner (AVFoundation, EAN-8/13 et UPC-E lus sur l'appareil), saisie du
   code à la main, produit inconnu ou incomplet complété et mis au cache ;
 - feuille Séance, séance en cours plein écran (séries, repos, records, fin,
-  visibilité, favori, ajout d'exercice), Composer, Déjà faite.
+  visibilité, favori, ajout d'exercice), Composer, Déjà faite ;
+- Cuisine : plan de la semaine (placer un plat, manger), plats choisis,
+  recettes (photo, ajout au panier, création), courses par rayon cochables,
+  un article, scanner pour cocher en rayon.
 
 Le simulateur n'a pas de caméra : le scanner y affiche « Caméra
 indisponible », la saisie à la main reste possible. La lecture se vérifie sur
 un iPhone.
 
-Pas encore portés depuis Android : onglets Cuisine, Sport et Communauté,
+Pas encore portés depuis Android : onglets Sport et Communauté,
 Moi, Progression, historique, compte et données, Santé (HealthKit). Puis la
 publication App Store.

@@ -100,3 +100,82 @@ func formatDayInitial(_ iso: String) -> String {
     let initial = Array("LMMJVSD")[index]
     return "\(initial) \(isoCalendar.component(.day, from: date))"
 }
+
+/// Le jour `AAAA-MM-JJ` d'une date, lu sans fuseau.
+func isoDay(_ date: Date) -> String {
+    let parts = isoCalendar.dateComponents([.year, .month, .day], from: date)
+    return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+}
+
+/// Aujourd'hui au calendrier du téléphone, en `AAAA-MM-JJ`.
+func localToday() -> String {
+    let parts = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+    return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+}
+
+/// Le jour décalé de `days` (négatif pour reculer).
+func addDays(_ iso: String, _ days: Int) -> String {
+    guard let date = parseDay(iso), let moved = isoCalendar.date(byAdding: .day, value: days, to: date) else { return iso }
+    return isoDay(moved)
+}
+
+/// Le lundi de la semaine du jour.
+func mondayOf(_ iso: String) -> String {
+    guard let date = parseDay(iso) else { return iso }
+    return addDays(iso, -((isoCalendar.component(.weekday, from: date) + 5) % 7))
+}
+
+/// « 29 sept. ».
+func shortDate(_ iso: String) -> String {
+    guard let date = parseDay(iso) else { return iso }
+    return date.formatted(Date.VerbatimFormatStyle(
+        format: "\(day: .defaultDigits) \(month: .abbreviated)", locale: french, timeZone: .gmt, calendar: isoCalendar
+    ))
+}
+
+/// « Lun 29 ».
+func dayLabel(_ iso: String) -> String {
+    guard let date = parseDay(iso) else { return iso }
+    let text = date.formatted(Date.VerbatimFormatStyle(
+        format: "\(weekday: .abbreviated) \(day: .defaultDigits)", locale: french, timeZone: .gmt, calendar: isoCalendar
+    )).replacingOccurrences(of: ".", with: "")
+    return text.prefix(1).uppercased(with: french) + text.dropFirst()
+}
+
+// MARK: Lectures d'écran.
+
+/// Une lecture d'écran : la dernière valeur reçue et l'erreur éventuelle. La
+/// valeur précédente reste affichée pendant une relecture.
+struct Loaded<T> {
+    var value: T?
+    var error: String?
+
+    mutating func take(_ result: ApiResult<T>) {
+        switch result {
+        case .success(let fresh):
+            value = fresh
+            error = nil
+        case .failure(let failure):
+            error = failure.message
+        }
+    }
+}
+
+/// Erreur en bandeau, ou squelettes tant que rien n'est arrivé, puis le contenu.
+struct LoadedGate<T, Content: View>: View {
+    let loaded: Loaded<T>
+    var skeletons: [CGFloat] = [80, 160, 120]
+    var onRetry: (() -> Void)?
+    @ViewBuilder let content: (T) -> Content
+
+    var body: some View {
+        if let error = loaded.error {
+            ErrorBanner(message: error, onRetry: onRetry)
+        }
+        if let value = loaded.value {
+            content(value)
+        } else {
+            Skeletons(heights: skeletons)
+        }
+    }
+}
