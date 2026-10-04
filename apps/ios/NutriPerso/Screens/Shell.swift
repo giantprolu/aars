@@ -35,6 +35,11 @@ enum AddSheet {
     case meal, session, weigh, scan
 }
 
+/// Les écrans plein écran du Sport.
+enum TrainingFlow {
+    case compose, `import`
+}
+
 /**
  La coquille : quatre onglets, le + central qui ouvre son arc, les feuilles
  d'ajout, les toasts.
@@ -46,23 +51,65 @@ struct MainShell: View {
     @State private var fabOpen = false
     @State private var sheet: AddSheet?
     @State private var editingGoal = false
+    /// Un aliment trouvé au scanner, que la feuille Repas reprend.
+    @State private var scanned: SearchHit?
+    @State private var workoutId: Int?
+    @State private var flow: TrainingFlow?
 
     var body: some View {
         ZStack(alignment: .bottom) {
             Neutrals.screen.ignoresSafeArea()
             screen
             NutriTabBar(current: tab) { tab = $0 }
-            Scrim(visible: fabOpen || sheet == .meal || sheet == .weigh, onDismiss: closeAll)
+            Scrim(visible: fabOpen || (sheet != nil && sheet != .scan), onDismiss: closeAll)
             FabArc(open: fabOpen, onToggle: toggle, onLongPress: { pick(.scan) }, onPick: pick)
-            MealSheet(visible: sheet == .meal, model: model, preset: nil, onDismiss: closeAll) { pick(.scan) }
+            MealSheet(visible: sheet == .meal, model: model, preset: scanned, onDismiss: {
+                closeAll()
+                scanned = nil
+            }, onScan: { pick(.scan) })
+            SessionSheet(
+                visible: sheet == .session,
+                model: model,
+                onDismiss: closeAll,
+                onStart: startSession,
+                onImport: { open(.import) },
+                onCompose: { open(.compose) }
+            )
             WeighSheet(visible: sheet == .weigh, model: model, onDismiss: closeAll)
+            ScannerOverlay(visible: sheet == .scan, model: model, onDismiss: closeAll) { hit in
+                scanned = hit
+                pick(.meal)
+            }
             if editingGoal {
                 OnboardingFlow(model: model, editGoal: true) { editingGoal = false }
                     .transition(.opacity)
             }
+            switch flow {
+            case .compose:
+                ComposeScreen(model: model, onClose: { flow = nil }) { id in
+                    flow = nil
+                    workoutId = id
+                }
+                .transition(.move(edge: .bottom))
+            case .import:
+                ImportScreen(model: model) { flow = nil }
+                    .transition(.move(edge: .bottom))
+            case nil:
+                EmptyView()
+            }
+            if let workoutId {
+                WorkoutScreen(model: model, sessionId: workoutId) {
+                    self.workoutId = nil
+                    model.bump()
+                    Task { await model.refreshToday() }
+                }
+                .transition(.move(edge: .bottom))
+            }
             ToastHost(toasts: model.toasts)
         }
         .animation(.easeInOut(duration: 0.25), value: editingGoal)
+        .animation(Motion.sheet(Motion.sheetIn), value: flow)
+        .animation(Motion.sheet(Motion.sheetIn), value: workoutId)
     }
 
     @ViewBuilder
@@ -90,14 +137,30 @@ struct MainShell: View {
 
     private func pick(_ target: AddSheet) {
         fabOpen = false
-        switch target {
-        case .meal, .weigh:
-            sheet = target
-            model.loadQuick()
-        case .session, .scan:
-            // Séance en cours et scanner : portés dans les prochains lots.
-            sheet = nil
-            comingSoon()
+        sheet = target
+        if target != .scan { model.loadQuick() }
+    }
+
+    private func open(_ target: TrainingFlow) {
+        closeAll()
+        flow = target
+    }
+
+    /// Reprend la séance ouverte, lance la suivante du programme, ou une libre.
+    private func startSession(_ session: QuickSession?) {
+        closeAll()
+        if session?.kind == "open", let id = session?.sessionId {
+            workoutId = id
+            return
+        }
+        Task {
+            switch await model.api.startSession(templateId: session?.templateId) {
+            case .success(let started):
+                model.bump()
+                workoutId = started.id
+            case .failure(let failure):
+                model.toast(failure.message)
+            }
         }
     }
 

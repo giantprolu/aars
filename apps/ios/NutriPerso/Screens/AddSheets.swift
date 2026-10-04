@@ -437,3 +437,63 @@ private struct StepButton: View {
 private func formatGrams(_ value: Double) -> String {
     String(Int((value + 0.5).rounded(.down)))
 }
+
+/// « Une séance » : la séance prévue en tête, puis les autres façons de s'entraîner.
+struct SessionSheet: View {
+    let visible: Bool
+    let model: AppModel
+    let onDismiss: () -> Void
+    let onStart: (QuickSession?) -> Void
+    let onImport: () -> Void
+    let onCompose: () -> Void
+
+    var body: some View {
+        let training = Domains.training
+        let session = model.quick?.session ?? model.today?.session
+        NutriSheet(visible: visible, title: "Une séance", onDismiss: onDismiss, gap: 12) {
+            HStack(spacing: 14) {
+                LucideIcon(.play, 16, training.fill)
+                    .frame(width: 40, height: 40)
+                    .background(.white, in: Circle())
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(title(session)).textStyle(nt(15, 600, .white))
+                    Text(detail(session)).textStyle(nt(12.5, 400, .white.opacity(0.8)))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .tinted(training.fill)
+            .tap { onStart(session) }
+            HStack(spacing: 8) {
+                tile("Libre", .zap) { onStart(nil) }
+                tile("Déjà faite", .history, action: onImport)
+                tile("Composer", .listPlus, action: onCompose)
+            }
+        }
+    }
+
+    private func title(_ session: QuickSession?) -> String {
+        guard let session else { return "Séance libre" }
+        return session.kind == "open" ? "Reprendre \(session.name)" : "Commencer \(session.name)"
+    }
+
+    private func detail(_ session: QuickSession?) -> String {
+        guard let session else { return "Aucun programme pour l'instant" }
+        return session.kind == "open"
+            ? "En cours · \(session.setCount ?? 0) séries notées"
+            : "Prévue aujourd'hui · \(session.exerciseCount ?? 0) exercices"
+    }
+
+    private func tile(_ label: String, _ icon: Lucide, action: @escaping () -> Void) -> some View {
+        let training = Domains.training
+        return VStack(alignment: .leading, spacing: 6) {
+            LucideIcon(icon, 20, training.textOnLight)
+            Text(label).textStyle(nt(12.5, 600, training.textOnLight)).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .tinted(training.soft, radius: Radius.tile)
+        .tap(action)
+    }
+}

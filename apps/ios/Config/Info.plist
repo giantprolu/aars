@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>La caméra lit le code-barres d'un produit. Aucune image n'est enregistrée ni envoyée.</string>
 	<key>NutriAPIBaseURL</key>
 	<string>$(NUTRI_API_URL)</string>
 	<key>UIAppFonts</key>
