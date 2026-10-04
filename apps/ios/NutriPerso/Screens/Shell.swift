@@ -45,6 +45,7 @@ struct MainShell: View {
     @State private var tab = Tab.today
     @State private var fabOpen = false
     @State private var sheet: AddSheet?
+    @State private var editingGoal = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -55,15 +56,20 @@ struct MainShell: View {
             FabArc(open: fabOpen, onToggle: toggle, onLongPress: { pick(.scan) }, onPick: pick)
             MealSheet(visible: sheet == .meal, model: model, preset: nil, onDismiss: closeAll) { pick(.scan) }
             WeighSheet(visible: sheet == .weigh, model: model, onDismiss: closeAll)
+            if editingGoal {
+                OnboardingFlow(model: model, editGoal: true) { editingGoal = false }
+                    .transition(.opacity)
+            }
             ToastHost(toasts: model.toasts)
         }
+        .animation(.easeInOut(duration: 0.25), value: editingGoal)
     }
 
     @ViewBuilder
     private var screen: some View {
         switch tab {
         case .today:
-            TodayScreen(model: model, onMe: comingSoon, onPick: pick, onOpenTab: { tab = $0 }, onHistory: comingSoon, onEditGoal: comingSoon)
+            TodayScreen(model: model, onMe: comingSoon, onPick: pick, onOpenTab: { tab = $0 }, onHistory: comingSoon, onEditGoal: { editingGoal = true })
         case .kitchen, .training, .community:
             ComingSoonScreen(tab: tab)
         }

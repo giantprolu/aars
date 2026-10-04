@@ -265,10 +265,7 @@ private struct QuantityStep: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .tinted(Domains.nutrition.soft, radius: Radius.tile)
-        .onChange(of: quantity) { _, value in
-            let digits = String(value.filter(\.isNumber).prefix(4))
-            if digits != value { quantity = digits }
-        }
+        .filtered($quantity, onlyDigits(4))
         PrimaryButton(text: "Ajouter \(meal.inPhrase)", colors: Domains.nutrition, height: 52, busy: busy, textSize: 15.5, weight: 700, action: onAdd)
         GhostButton(text: "Retour", action: onBack)
     }
@@ -308,8 +305,11 @@ private struct ManualStep: View {
             weight: 700,
             action: submit
         )
-        .onChange(of: label) { _, value in if value.count > 200 { label = String(value.prefix(200)) } }
-        .onChange(of: kcal) { _, value in if value.count > 5 { kcal = String(value.prefix(5)) } }
+        .filtered($label, maxLength(200))
+        .filtered($kcal, maxLength(5))
+        .filtered($protein, maxLength(5))
+        .filtered($carbs, maxLength(5))
+        .filtered($fat, maxLength(5))
         GhostButton(text: "Retour", action: onBack)
     }
 

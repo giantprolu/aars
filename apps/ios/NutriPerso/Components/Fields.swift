@@ -24,6 +24,9 @@ struct NutriField: View {
     var prefix: String?
     /// Une unité après la saisie : « g ».
     var suffix: String?
+    /// Une icône au bout du champ : la coche d'un identifiant valide.
+    var trailingIcon: Lucide?
+    var trailingTint: Color = Domains.training.fill
     var height: CGFloat = 50
     var background: Color = Neutrals.card
     var border: Color? = Neutrals.fieldBorder
@@ -57,6 +60,9 @@ struct NutriField: View {
             }
             if let suffix {
                 Text(suffix).textStyle(nt(14, 500, Neutrals.muted)).padding(.leading, 4)
+            }
+            if let trailingIcon {
+                LucideIcon(trailingIcon, 18, trailingTint).padding(.leading, 4)
             }
         }
         .padding(.horizontal, 14)
@@ -108,4 +114,24 @@ struct Labeled<Content: View>: View {
             if let hint { Text(hint).textStyle(nt(12.5, 400, Neutrals.muted)) }
         }
     }
+}
+
+extension View {
+    /// Réécrit la saisie au fil de la frappe : chiffres seuls, longueur maximale.
+    func filtered(_ text: Binding<String>, _ transform: @escaping (String) -> String) -> some View {
+        onChange(of: text.wrappedValue) { _, value in
+            let cleaned = transform(value)
+            if cleaned != value { text.wrappedValue = cleaned }
+        }
+    }
+}
+
+/// Les chiffres seuls, au plus `limit`.
+func onlyDigits(_ limit: Int) -> (String) -> String {
+    { String($0.filter(\.isNumber).prefix(limit)) }
+}
+
+/// Au plus `limit` caractères.
+func maxLength(_ limit: Int) -> (String) -> String {
+    { String($0.prefix(limit)) }
 }

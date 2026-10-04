@@ -68,10 +68,11 @@ Branché :
 - coquille : quatre onglets, bouton + en arc, toasts ;
 - Aujourd'hui complet : semaine, jauge, macros, tuiles, journal (retirer un
   aliment, garder un repas en favori), tirer pour relire ;
-- feuilles Repas (recherche, récents, favoris, saisie à la main) et Pesée.
+- feuilles Repas (recherche, récents, favoris, saisie à la main) et Pesée ;
+- onboarding O0 à O4 (objectif, profil Communauté, séances), et la
+  modification de l'objectif depuis « cible · modifier ».
 
-Pas encore portés depuis Android : onboarding (un compte neuf est renvoyé
-vers le web ou Android pour remplir son profil), scanner, séance (en cours,
-libre, composer, déjà faite), Cuisine, Sport, Communauté, Moi, Progression,
+Pas encore portés depuis Android : scanner, séance (en cours, libre,
+composer, déjà faite), Cuisine, Sport, Communauté, Moi, Progression,
 historique, compte et données, Santé (HealthKit). Puis la publication App
 Store.

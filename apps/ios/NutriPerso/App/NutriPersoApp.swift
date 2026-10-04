@@ -33,7 +33,7 @@ struct RootView: View {
             Neutrals.screen.ignoresSafeArea()
             switch screen {
             case .auth: AuthScreen(model: model).transition(.opacity)
-            case .onboarding: OnboardingPending(model: model).transition(.opacity)
+            case .onboarding: OnboardingFlow(model: model).transition(.opacity)
             case .app: MainShell(model: model).transition(.opacity)
             case .checking: Color.clear
             }

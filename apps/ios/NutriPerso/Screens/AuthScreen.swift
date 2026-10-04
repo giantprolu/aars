@@ -34,9 +34,7 @@ struct AuthScreen: View {
                     if recovering {
                         Labeled(label: "Code de secours") {
                             NutriField(text: $code, placeholder: "XXXX-XXXX-XXXX")
-                                .onChange(of: code) { _, value in
-                                    if value.count > 40 { code = String(value.prefix(40)) }
-                                }
+                                .filtered($code, maxLength(40))
                         }
                     }
                     Labeled(
@@ -118,25 +116,5 @@ struct AuthScreen: View {
             busy = false
             if case .failure(let failure) = result { error = failure.message }
         }
-    }
-}
-
-/// En attendant le portage de l'onboarding : le compte n'a pas encore de profil.
-struct OnboardingPending: View {
-    let model: AppModel
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            Text("Presque prêt.").textStyle(TextStyles.onboardingTitle)
-            Text("Ton profil n'est pas encore rempli. L'étape arrive sur iOS ; en attendant, termine-la depuis l'app web ou Android, puis reviens ici.")
-                .textStyle(nt(15, 400, Neutrals.muted))
-            PrimaryButton(text: "J'ai terminé", colors: Domains.nutrition) {
-                Task { await model.checkProfile() }
-            }
-            GhostButton(text: "Se déconnecter", action: model.signOut)
-        }
-        .padding(.horizontal, Space.onboardingH)
-        .padding(.top, 80)
-        .frame(maxHeight: .infinity, alignment: .top)
     }
 }
