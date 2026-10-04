@@ -16,6 +16,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { USAGE_EVENTS } from '../../lib/usage';
+import { REPORT_REASONS } from '../../lib/social';
 import type { CatalogIngredient } from '../../lib/meal-catalog';
 
 /**
@@ -106,6 +107,35 @@ export const follows = pgTable(
 );
 
 export type FollowRow = typeof follows.$inferSelect;
+
+/**
+ * Les blocages (règle 1.2 de l'App Store, contenu généré par les
+ * utilisateurs).
+ *
+ * Bloquer coupe tout entre deux comptes, dans les deux sens : les relations
+ * et les bravos échangés sont supprimés, aucune demande ne peut se recréer,
+ * et chacun disparaît de la recherche et du fil de l'autre. Seul celui qui
+ * bloque peut lever le blocage, et l'autre n'en est averti d'aucune façon.
+ */
+export const userBlocks = pgTable(
+  'user_blocks',
+  {
+    blockerId: bigint('blocker_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    blockedId: bigint('blocked_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.blockerId, table.blockedId] }),
+    // Le blocage se cherche dans les deux sens : la clé sert « qui j'ai
+    // bloqué », l'index « qui m'a bloqué ».
+    index('user_blocks_blocked_idx').on(table.blockedId),
+    check('user_blocks_not_self_check', sql`${table.blockerId} <> ${table.blockedId}`),
+  ],
+);
 
 /**
  * Dépense d'activité mesurée, une ligne par jour et par source.
@@ -1060,6 +1090,49 @@ export const sessionKudos = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [primaryKey({ columns: [table.sessionId, table.userId] })],
+);
+
+/**
+ * Les signalements d'une personne ou d'une de ses séances, à l'équipe qui
+ * modère (`npm run moderation`).
+ *
+ * Un même signalement n'est compté qu'une fois : le rejouer ne le duplique
+ * pas. La séance est oubliée si elle est supprimée, le signalement reste sur
+ * la personne ; il part avec l'un ou l'autre compte.
+ *
+ * L'unicité laisse les `null` distincts, exprès : une séance supprimée passe
+ * à `null`, et ne doit pas buter sur un signalement de la personne seule. Ces
+ * derniers sont dédoublonnés à l'écriture (`insertReport`).
+ */
+export const socialReports = pgTable(
+  'social_reports',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    reporterId: bigint('reporter_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    reportedUserId: bigint('reported_user_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    sessionId: bigint('session_id', { mode: 'number' }).references(() => workoutSessions.id, {
+      onDelete: 'set null',
+    }),
+    /** `ReportReason`, voir `@/lib/social`. */
+    reason: text('reason').notNull(),
+    note: text('note'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    /** Posée par la modération une fois le signalement traité. */
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  },
+  (table) => [
+    unique('social_reports_once').on(table.reporterId, table.reportedUserId, table.sessionId),
+    index('social_reports_open_idx').on(table.resolvedAt, table.createdAt),
+    check(
+      'social_reports_reason_check',
+      sql`${table.reason} in (${sql.raw(REPORT_REASONS.map((reason) => `'${reason}'`).join(', '))})`,
+    ),
+    check('social_reports_not_self_check', sql`${table.reporterId} <> ${table.reportedUserId}`),
+  ],
 );
 
 /**

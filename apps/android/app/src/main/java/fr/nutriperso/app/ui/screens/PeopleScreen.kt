@@ -46,7 +46,7 @@ import kotlinx.coroutines.launch
  * gérer ses abonnés. Les règles (demande, acceptation) sont celles du serveur.
  */
 @Composable
-fun PeopleScreen(model: AppModel, onBack: () -> Unit) {
+fun PeopleScreen(model: AppModel, onBack: () -> Unit, onModerate: (ModerationTarget) -> Unit) {
     val community = Domains.community
     val scope = rememberCoroutineScope()
     val home = rememberLoaded(model.revision) { model.api.socialHome() }
@@ -62,6 +62,8 @@ fun PeopleScreen(model: AppModel, onBack: () -> Unit) {
         delay(300)
         results = model.api.people(query.trim()).let { if (it is ApiResult.Ok) it.value.people else emptyList() }
     }
+
+    val onMore: (PublicPerson) -> Unit = { onModerate(ModerationTarget(it)) }
 
     fun act(action: String, userId: Long, done: String) {
         if (busy) return
@@ -94,7 +96,7 @@ fun PeopleScreen(model: AppModel, onBack: () -> Unit) {
                 textSize = 14f,
             )
             if (results.isNotEmpty()) {
-                PeopleCard(results.map { PublicPerson(it.id, it.handle, it.displayName) to it.state }) { person, state ->
+                PeopleCard(results.map { PublicPerson(it.id, it.handle, it.displayName) to it.state }, onMore) { person, state ->
                     when (state) {
                         "following" -> Action("Ne plus suivre", false) { act("unfollow", person.id, "Tu ne suis plus @${person.handle}") }
                         "requested" -> Action("Demandé", false) { act("unfollow", person.id, "Demande annulée") }
@@ -110,7 +112,7 @@ fun PeopleScreen(model: AppModel, onBack: () -> Unit) {
 
             if (data.requests.isNotEmpty()) {
                 SectionCaps("Demandes")
-                PeopleCard(data.requests.map { it to "request" }) { person, _ ->
+                PeopleCard(data.requests.map { it to "request" }, onMore) { person, _ ->
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Action("Refuser", false) { act("decline", person.id, "Demande refusée") }
                         Action("Accepter", true) { act("accept", person.id, "@${person.handle} te suit") }
@@ -119,7 +121,7 @@ fun PeopleScreen(model: AppModel, onBack: () -> Unit) {
             }
             if (data.requested.isNotEmpty()) {
                 SectionCaps("En attente")
-                PeopleCard(data.requested.map { it to "requested" }) { person, _ ->
+                PeopleCard(data.requested.map { it to "requested" }, onMore) { person, _ ->
                     Action("Annuler", false) { act("unfollow", person.id, "Demande annulée") }
                 }
             }
@@ -127,7 +129,7 @@ fun PeopleScreen(model: AppModel, onBack: () -> Unit) {
             if (data.following.isEmpty()) {
                 Txt("Personne pour l'instant. Cherche tes amis par leur identifiant.", Type.secondary, Modifier.padding(horizontal = 4.dp))
             } else {
-                PeopleCard(data.following.map { PublicPerson(it.id, it.handle, it.displayName) to "following" }) { person, _ ->
+                PeopleCard(data.following.map { PublicPerson(it.id, it.handle, it.displayName) to "following" }, onMore) { person, _ ->
                     Action("Ne plus suivre", false) { act("unfollow", person.id, "Tu ne suis plus @${person.handle}") }
                 }
             }
@@ -135,16 +137,32 @@ fun PeopleScreen(model: AppModel, onBack: () -> Unit) {
             if (data.followers.isEmpty()) {
                 Txt("Personne ne te suit encore.", Type.secondary, Modifier.padding(horizontal = 4.dp))
             } else {
-                PeopleCard(data.followers.map { it to "follower" }) { person, _ ->
+                PeopleCard(data.followers.map { it to "follower" }, onMore) { person, _ ->
                     Action("Retirer", false) { act("remove", person.id, "@${person.handle} ne te suit plus") }
                 }
+            }
+            if (data.blocked.isNotEmpty()) {
+                SectionCaps("Bloqués")
+                PeopleCard(data.blocked.map { it to "blocked" }, null) { person, _ ->
+                    Action("Débloquer", false) { act("unblock", person.id, "@${person.handle} débloqué") }
+                }
+                Txt(
+                    "Vous ne vous voyez plus. Débloquer ne rétablit pas les abonnements.",
+                    Type.small,
+                    Modifier.padding(horizontal = 4.dp),
+                )
             }
         }
     }
 }
 
 @Composable
-private fun PeopleCard(people: List<Pair<PublicPerson, String>>, trailing: @Composable (PublicPerson, String) -> Unit) {
+private fun PeopleCard(
+    people: List<Pair<PublicPerson, String>>,
+    /** Signaler ou bloquer ; absent dans la liste des bloqués. */
+    onMore: ((PublicPerson) -> Unit)?,
+    trailing: @Composable (PublicPerson, String) -> Unit,
+) {
     Column(Modifier.fillMaxWidth().card()) {
         people.forEachIndexed { index, (person, state) ->
             if (index > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Neutrals.divider))
@@ -162,6 +180,7 @@ private fun PeopleCard(people: List<Pair<PublicPerson, String>>, trailing: @Comp
                     if (person.displayName != null) Txt("@${person.handle}", Type.small, maxLines = 1)
                 }
                 trailing(person, state)
+                if (onMore != null) MoreButton { onMore(person) }
             }
         }
     }

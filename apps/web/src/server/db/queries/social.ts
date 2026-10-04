@@ -1,7 +1,8 @@
 import 'server-only';
-import { and, asc, desc, eq, ilike, inArray, isNotNull, lt, ne, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, lt, ne, or, sql, type SQL } from 'drizzle-orm';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { db, schema } from '../client';
-import type { FollowState, PublicPerson, SessionVisibility } from '@/lib/social';
+import type { FollowState, PublicPerson, ReportReason, SessionVisibility } from '@/lib/social';
 
 /**
  * Accès au partage des séances.
@@ -26,6 +27,19 @@ function people(
   rows: readonly { id: number; handle: string | null; displayName: string | null }[],
 ): PublicPerson[] {
   return rows.map(toPerson).filter((value): value is PublicPerson => value !== null);
+}
+
+/**
+ * Vrai s'il y a un blocage entre moi et ce compte, dans un sens ou dans
+ * l'autre. Le blocage coupe dans les deux sens : celui qui est bloqué ne doit
+ * pas plus voir que celui qui bloque.
+ */
+function blockedWith(viewerId: number, other: AnyPgColumn): SQL {
+  return sql`exists (
+    select 1 from ${schema.userBlocks}
+    where (${schema.userBlocks.blockerId} = ${viewerId} and ${schema.userBlocks.blockedId} = ${other})
+       or (${schema.userBlocks.blockerId} = ${other} and ${schema.userBlocks.blockedId} = ${viewerId})
+  )`;
 }
 
 /** Mon identité publique, telle que je l'ai choisie, ou `null`. */
@@ -103,7 +117,8 @@ async function followStates(
  * Cherche des comptes par identifiant ou par nom.
  *
  * Seuls les comptes présentés — un identifiant choisi — sont trouvables : ne
- * pas en choisir, c'est rester invisible. Le compte qui cherche est exclu.
+ * pas en choisir, c'est rester invisible. Le compte qui cherche est exclu, et
+ * un blocage, dans un sens ou dans l'autre, efface l'un pour l'autre.
  */
 export async function searchPeople(
   viewerId: number,
@@ -118,6 +133,7 @@ export async function searchPeople(
       and(
         ne(schema.users.id, viewerId),
         isNotNull(schema.users.handle),
+        sql`not ${blockedWith(viewerId, schema.users.id)}`,
         or(
           ilike(schema.users.handle, `${escaped}%`),
           ilike(schema.users.displayName, `%${escaped}%`),
@@ -137,7 +153,8 @@ export async function searchPeople(
 
 /**
  * Demande à suivre un compte présenté. Rejouable : une demande déjà faite, ou
- * acceptée, n'est ni dédoublée ni ramenée en attente.
+ * acceptée, n'est ni dédoublée ni ramenée en attente. Refusée s'il y a un
+ * blocage entre les deux comptes, sans dire lequel a bloqué l'autre.
  */
 export async function insertFollowRequest(viewerId: number, followeeId: number): Promise<boolean> {
   if (viewerId === followeeId) {
@@ -146,7 +163,13 @@ export async function insertFollowRequest(viewerId: number, followeeId: number):
   const [target] = await db()
     .select({ id: schema.users.id })
     .from(schema.users)
-    .where(and(eq(schema.users.id, followeeId), isNotNull(schema.users.handle)))
+    .where(
+      and(
+        eq(schema.users.id, followeeId),
+        isNotNull(schema.users.handle),
+        sql`not ${blockedWith(viewerId, schema.users.id)}`,
+      ),
+    )
     .limit(1);
   if (!target) {
     return false;
@@ -252,7 +275,9 @@ export async function updateSessionVisibility(
 
 /**
  * La condition qui rend une séance visible à ce compte : partagée, terminée,
- * et à moi ou à quelqu'un que je suis avec son accord.
+ * et à moi ou à quelqu'un que je suis avec son accord. Un blocage supprime
+ * déjà la relation ; il est revérifié ici, pour qu'aucune séance ne passe entre
+ * la pose du blocage et la suppression.
  */
 function visibleTo(viewerId: number) {
   return and(
@@ -260,12 +285,12 @@ function visibleTo(viewerId: number) {
     isNotNull(schema.workoutSessions.finishedAt),
     or(
       eq(schema.workoutSessions.userId, viewerId),
-      sql`exists (
+      sql`(exists (
         select 1 from ${schema.follows}
         where ${schema.follows.followerId} = ${viewerId}
           and ${schema.follows.followeeId} = ${schema.workoutSessions.userId}
           and ${schema.follows.status} = 'accepted'
-      )`,
+      ) and not ${blockedWith(viewerId, schema.workoutSessions.userId)})`,
     ),
   );
 }
@@ -451,4 +476,172 @@ export async function countIncomingRequests(viewerId: number): Promise<number> {
     .from(schema.follows)
     .where(and(eq(schema.follows.followeeId, viewerId), eq(schema.follows.status, 'pending')));
   return Number(row?.count ?? 0);
+}
+
+/**
+ * Bloque un compte. Le blocage est posé d'abord, pour qu'aucune demande ne
+ * puisse se recréer pendant qu'on nettoie ; puis les relations des deux sens
+ * et les bravos échangés disparaissent. Rejouable : bloquer deux fois répare
+ * ce qu'une première fois interrompue aurait laissé.
+ */
+export async function insertBlock(viewerId: number, blockedId: number): Promise<boolean> {
+  if (viewerId === blockedId) {
+    return false;
+  }
+  const [target] = await db()
+    .select({ id: schema.users.id })
+    .from(schema.users)
+    .where(eq(schema.users.id, blockedId))
+    .limit(1);
+  if (!target) {
+    return false;
+  }
+  await db().insert(schema.userBlocks).values({ blockerId: viewerId, blockedId }).onConflictDoNothing();
+  await db()
+    .delete(schema.follows)
+    .where(
+      or(
+        and(eq(schema.follows.followerId, viewerId), eq(schema.follows.followeeId, blockedId)),
+        and(eq(schema.follows.followerId, blockedId), eq(schema.follows.followeeId, viewerId)),
+      ),
+    );
+  const sessionsOf = (userId: number) =>
+    db()
+      .select({ id: schema.workoutSessions.id })
+      .from(schema.workoutSessions)
+      .where(eq(schema.workoutSessions.userId, userId));
+  await db()
+    .delete(schema.sessionKudos)
+    .where(
+      or(
+        and(eq(schema.sessionKudos.userId, blockedId), inArray(schema.sessionKudos.sessionId, sessionsOf(viewerId))),
+        and(eq(schema.sessionKudos.userId, viewerId), inArray(schema.sessionKudos.sessionId, sessionsOf(blockedId))),
+      ),
+    );
+  return true;
+}
+
+/** Lève un blocage que j'ai posé. Les relations supprimées ne reviennent pas. */
+export async function deleteBlock(viewerId: number, blockedId: number): Promise<void> {
+  await db()
+    .delete(schema.userBlocks)
+    .where(and(eq(schema.userBlocks.blockerId, viewerId), eq(schema.userBlocks.blockedId, blockedId)));
+}
+
+/** Ceux que j'ai bloqués, pour pouvoir les débloquer. Jamais ceux qui m'ont bloqué. */
+export async function listBlocked(viewerId: number): Promise<PublicPerson[]> {
+  const rows = await db()
+    .select(person)
+    .from(schema.userBlocks)
+    .innerJoin(schema.users, eq(schema.users.id, schema.userBlocks.blockedId))
+    .where(eq(schema.userBlocks.blockerId, viewerId))
+    .orderBy(asc(schema.users.handle));
+  return people(rows);
+}
+
+export interface NewReport {
+  reportedUserId: number;
+  sessionId: number | null;
+  reason: ReportReason;
+  note: string | null;
+}
+
+export interface ReportContext {
+  id: number;
+  reporter: { id: number; handle: string | null };
+  reported: { id: number; handle: string | null };
+  session: { id: number; name: string | null } | null;
+}
+
+/**
+ * Enregistre un signalement. On ne signale qu'un compte présenté, et une
+ * séance qu'on peut voir : un identifiant venu du client ne dit rien de ce
+ * qu'on a le droit de désigner. Rejouer un signalement encore ouvert ne le
+ * duplique pas. Rend de quoi prévenir la modération, ou `null` si la cible
+ * n'est pas recevable.
+ */
+export async function insertReport(viewerId: number, report: NewReport): Promise<ReportContext | null> {
+  if (viewerId === report.reportedUserId) {
+    return null;
+  }
+  const [reported] = await db()
+    .select({ id: schema.users.id, handle: schema.users.handle })
+    .from(schema.users)
+    .where(and(eq(schema.users.id, report.reportedUserId), isNotNull(schema.users.handle)))
+    .limit(1);
+  if (!reported) {
+    return null;
+  }
+
+  let session: ReportContext['session'] = null;
+  if (report.sessionId !== null) {
+    const [row] = await db()
+      .select({ id: schema.workoutSessions.id, name: schema.workoutTemplates.name })
+      .from(schema.workoutSessions)
+      .leftJoin(
+        schema.workoutTemplates,
+        eq(schema.workoutTemplates.id, schema.workoutSessions.templateId),
+      )
+      .where(
+        and(
+          eq(schema.workoutSessions.id, report.sessionId),
+          eq(schema.workoutSessions.userId, report.reportedUserId),
+          visibleTo(viewerId),
+        ),
+      )
+      .limit(1);
+    if (!row) {
+      return null;
+    }
+    session = row;
+  }
+
+  const sameTarget = and(
+    eq(schema.socialReports.reporterId, viewerId),
+    eq(schema.socialReports.reportedUserId, report.reportedUserId),
+    session === null ? isNull(schema.socialReports.sessionId) : eq(schema.socialReports.sessionId, session.id),
+  );
+  const [open] = await db()
+    .select({ id: schema.socialReports.id })
+    .from(schema.socialReports)
+    .where(and(sameTarget, isNull(schema.socialReports.resolvedAt)))
+    .limit(1);
+
+  const [reporter] = await db()
+    .select({ id: schema.users.id, handle: schema.users.handle })
+    .from(schema.users)
+    .where(eq(schema.users.id, viewerId))
+    .limit(1);
+  const context = (id: number): ReportContext => ({
+    id,
+    reporter: reporter ?? { id: viewerId, handle: null },
+    reported,
+    session,
+  });
+  if (open) {
+    return context(open.id);
+  }
+
+  const [inserted] = await db()
+    .insert(schema.socialReports)
+    .values({
+      reporterId: viewerId,
+      reportedUserId: report.reportedUserId,
+      sessionId: session?.id ?? null,
+      reason: report.reason,
+      note: report.note,
+    })
+    .onConflictDoNothing()
+    .returning({ id: schema.socialReports.id });
+  // Un signalement déjà traité sur la même séance bute sur l'unicité : il est
+  // rouvert plutôt que perdu.
+  if (!inserted) {
+    const [reopened] = await db()
+      .update(schema.socialReports)
+      .set({ resolvedAt: null, reason: report.reason, note: report.note, createdAt: new Date() })
+      .where(sameTarget)
+      .returning({ id: schema.socialReports.id });
+    return reopened ? context(reopened.id) : null;
+  }
+  return context(inserted.id);
 }

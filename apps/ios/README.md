@@ -80,7 +80,8 @@ Branché :
   un article, scanner pour cocher en rayon ;
 - Sport : semaine, séance du jour, programme, dernières séances ;
 - Communauté : suivis, classement de la semaine, fil et bravos, identifiant
-  à choisir ; Personnes (chercher, suivre, demandes, abonnés) ;
+  à choisir ; Personnes (chercher, suivre, demandes, abonnés, bloqués) ;
+  signaler ou bloquer depuis « … » sur une séance ou une personne ;
 - Moi, Progression (tonnage, poids, 1RM estimé), Historique et détail d'un
   jour, Compte et données (objectif, code de secours, export vers Fichiers,
   politique de confidentialité, déconnexion, suppression du compte) ;

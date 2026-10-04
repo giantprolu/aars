@@ -103,7 +103,10 @@ la même que `LEGAL_CONTACT_EMAIL` côté serveur.
 - **Annonces** : non.
 - **Classification du contenu** : questionnaire IARC, pas de violence. Répondre
   oui à « achats numériques » (l'abonnement) et à « partage de contenu entre
-  utilisateurs » (la Communauté).
+  utilisateurs » (la Communauté). Google demande, pour ce contenu, de quoi
+  signaler et bloquer depuis l'app : « … » sur une séance du fil ou une
+  personne (Signaler, Bloquer), Communauté › Personnes › Bloqués pour
+  débloquer, et `npm run moderation` côté équipe.
 - **Public cible** : 16 ans et plus (aligné sur la politique). Pas destinée
   aux enfants.
 - **Applications de santé** (déclaration obligatoire depuis 2025) : cocher
@@ -129,7 +132,7 @@ agissant pour notre compte ne comptent pas comme un partage).
 | Infos personnelles | Autres (date de naissance, sexe) | Oui | Oui | Fonctionnalités de l'app (cible calorique) |
 | Santé et remise en forme | Informations sur la santé (poids, taille, masse grasse, repas) | Oui | Oui | Fonctionnalités de l'app |
 | Santé et remise en forme | Informations sur la remise en forme (séances, énergie active) | Oui | Non | Fonctionnalités de l'app |
-| Activité dans l'app | Autre contenu généré (recettes, listes de courses) | Oui | Non | Fonctionnalités de l'app |
+| Activité dans l'app | Autre contenu généré (recettes, listes de courses, signalements et leur note) | Oui | Non | Fonctionnalités de l'app, sécurité et conformité (modération) |
 | Activité dans l'app | Interactions avec l'appli (compteurs par jour : ouvertures, repas ajoutés et leur moyen de saisie, limites gratuites atteintes) | Oui | Oui | Analyses |
 | Infos financières | Historique des achats (offre, état, échéance de l'abonnement) | Oui | Non | Fonctionnalités de l'app, gestion du compte |
 

@@ -126,6 +126,11 @@ final class Api {
         await send("POST", "/api/social/relations", RelationBody(action: action, userId: userId))
     }
 
+    /// Signale une personne, ou une de ses séances, à l'équipe qui modère.
+    func report(userId: Int, sessionId: Int?, reason: String, note: String?) async -> ApiResult<Void> {
+        await send("POST", "/api/social/reports", ReportBody(userId: userId, sessionId: sessionId, reason: reason, note: note))
+    }
+
     func recoveryCode() async -> ApiResult<RecoveryCodeResponse> {
         decode(await raw("POST", "/api/account/recovery-code", body: Data("{}".utf8)), as: RecoveryCodeResponse.self)
     }

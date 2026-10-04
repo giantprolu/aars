@@ -70,7 +70,10 @@ qui donne l'adresse `LEGAL_CONTACT_EMAIL`. **URL de confidentialité** :
   active (un total par jour, trente jours au plus) pour ajuster la cible
   calorique. Rien n'est écrit dans Santé, rien n'est lu en arrière-plan, ces
   données ne servent ni à la publicité ni à des tiers. Accès depuis
-  Moi › Santé. Suppression du compte : Moi › Compte et données. »
+  Moi › Santé. Suppression du compte : Moi › Compte et données.
+  Communauté : on ne voit que les personnes qu'on suit, avec leur accord.
+  « … » sur une séance du fil ou une personne permet de la signaler ou de la
+  bloquer ; les signalements sont traités sous 24 heures. »
 - **Classification par âge** : répondre au questionnaire. Contenu généré par
   les utilisateurs : oui (Communauté : noms de séances et identifiants vus par
   les abonnés acceptés). Viser au moins 16 ans, comme la politique.
@@ -89,7 +92,7 @@ marche pas.
 | Identifiants | Identifiant utilisateur | pseudonyme (`@identifiant`) | Fonctionnalités de l'app |
 | Santé et forme | Santé | poids, taille, masse grasse, repas, énergie active lue dans Santé | Fonctionnalités de l'app |
 | Santé et forme | Forme | séances, séries, charges | Fonctionnalités de l'app |
-| Contenu utilisateur | Autre contenu | recettes, plans, listes de courses | Fonctionnalités de l'app |
+| Contenu utilisateur | Autre contenu | recettes, plans, listes de courses, signalements et leur note | Fonctionnalités de l'app |
 | Données d'utilisation | Interactions avec le produit | compteurs par jour (ouvertures, repas ajoutés et leur moyen, limites atteintes), effacés après treize mois | Analyses |
 | Autres données | Autres types de données | date de naissance, sexe (calcul de la cible) | Fonctionnalités de l'app |
 
@@ -108,11 +111,16 @@ et plantages, identifiants publicitaires.
    dans l'app iOS. Soit ajouter StoreKit et une vérification serveur
    (`POST /api/billing/apple`, comme `billing/google`), soit publier sans
    avantages hors iOS.
-2. **Contenu généré par les utilisateurs** (règle 1.2) : la Communauté a les
-   abonnements sur acceptation et « Retirer » un abonné, mais pas de
-   signalement ni de blocage explicites. Apple les demande pour une app où des
-   utilisateurs voient le contenu d'autres. À ajouter côté serveur et dans
-   les trois clients, ou à justifier dans les notes d'examen.
+2. ~~**Contenu généré par les utilisateurs** (règle 1.2)~~ : réglé.
+   - Filtrer : on ne voit que ceux qu'on suit, et suivre s'accepte.
+   - Signaler : « … » sur une séance du fil ou une personne, avec un motif
+     (`POST /api/social/reports`). L'équipe est prévenue par courriel si
+     `RESEND_API_KEY`, `MAIL_FROM` et `LEGAL_CONTACT_EMAIL` sont posées.
+   - Bloquer : même menu ; Communauté › Personnes › Bloqués pour débloquer.
+   - Traiter sous 24 heures : `npm run moderation` (lister, clore, rendre une
+     séance privée, supprimer un compte).
+   - Coordonnées publiées : l'URL d'assistance et `LEGAL_CONTACT_EMAIL`.
+   Avant l'envoi, prévoir quelqu'un pour lire les alertes chaque jour.
 3. **Notifications** : le rappel du déjeuner est en Web Push (VAPID). Sur
    iOS natif, il faudrait APNs : rien n'est branché, la fiche ne doit pas en
    promettre.

@@ -479,6 +479,8 @@ struct SocialHome: Codable, Sendable {
     @Default<Empty<PublicPerson>> var followers: [PublicPerson]
     @Default<Empty<PublicPerson>> var requested: [PublicPerson]
     @Default<Empty<BoardRow>> var board: [BoardRow]
+    /// Ceux que j'ai bloqués, pour pouvoir les débloquer.
+    @Default<Empty<PublicPerson>> var blocked: [PublicPerson]
 }
 
 struct PublicPerson: Codable, Sendable, Identifiable {
@@ -516,6 +518,14 @@ struct FeedSession: Codable, Sendable, Identifiable {
 struct FeedResponse: Codable, Sendable {
     @Default<Empty<FeedSession>> var sessions: [FeedSession]
     let next: Int?
+}
+
+/// Un signalement : une personne, ou une de ses séances, et pourquoi.
+struct ReportBody: Codable, Sendable {
+    let userId: Int
+    @Nullable var sessionId: Int?
+    let reason: String
+    @Nullable var note: String?
 }
 
 struct KudosBody: Codable, Sendable {

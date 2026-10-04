@@ -51,6 +51,7 @@ Branché :
 - Cuisine : plan, recettes (création comprise), courses générées, cochables au scanner ;
 - Sport : semaine, séance en cours plein écran, séance libre, composer ;
 - Communauté : suivis, recherche, demandes, classement, fil, bravos ;
+  signaler ou bloquer depuis « … », bloqués à débloquer dans Personnes ;
 - Compte et données : objectif, code de secours, export, suppression ;
 - Santé : Health Connect, lu au premier plan à chaque ouverture (30 jours),
   poussé sur `POST /api/activity` avec le jeton de session (écran Moi › Santé).

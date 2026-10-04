@@ -352,3 +352,24 @@ dossier a été refusée pendant la session et n'a pas été contournée.
 **Résolution.** `apps/web/.next` supprimé à la main
 (`rd /s /q`, l'Explorateur refusait), puis `npm run build` passe. C'était bien
 le cache.
+
+## B-16 — Android non compilable sur le Mac — **ouvert le 04/10/2026**
+
+**Constat.** Le dépôt est maintenant travaillé sur un Mac sans Android Studio
+ni SDK Android : `assembleDebug` ne peut pas tourner ici. Les changements
+Android y sont écrits sur le modèle du code existant, sans compilation.
+
+**Ce qui n'est pas compilé.** Depuis `4e1c5c9` : les chemins d'icônes
+corrigés, et la modération de la Communauté (`ModerationSheet.kt`, menu « … »
+du fil et de Personnes, section Bloqués, `Api.report`).
+
+**À faire côté humain.** Ouvrir `apps/android` dans Android Studio, *Sync*,
+*Run*, et remonter ici toute erreur. Ou installer Android Studio sur le Mac,
+ce qui rendrait la vérification possible ici.
+
+**Avant de déployer la modération.** Appliquer la migration
+`0022_social_safety` sur Neon (`npm run db:migrate`), puis poser
+`LEGAL_CONTACT_EMAIL`, `RESEND_API_KEY` et `MAIL_FROM` dans Vercel pour que les
+signalements arrivent par courriel (sans eux, ils restent lisibles par
+`npm run moderation`).
+

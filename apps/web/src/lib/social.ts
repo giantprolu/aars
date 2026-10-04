@@ -135,3 +135,27 @@ const AVATAR_TONES = ['bg-protein-soft', 'bg-sport-soft', 'bg-cook-soft', 'bg-bo
 export function avatarTone(id: number): string {
   return AVATAR_TONES[id % AVATAR_TONES.length] ?? 'bg-muted';
 }
+
+/**
+ * Les motifs d'un signalement. Peu nombreux et fermés : celui qui signale
+ * choisit vite, et celui qui modère trie sans relire chaque phrase.
+ */
+export const REPORT_REASONS = ['inappropriate', 'harassment', 'spam', 'other'] as const;
+
+export type ReportReason = (typeof REPORT_REASONS)[number];
+
+export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
+  inappropriate: 'Contenu inapproprié',
+  harassment: 'Harcèlement',
+  spam: 'Spam ou faux compte',
+  other: 'Autre',
+};
+
+/** La note facultative d'un signalement : de quoi préciser, pas de quoi écrire une lettre. */
+export const REPORT_NOTE_MAX = 500;
+
+/** La note nettoyée, ou `null` si elle est vide. */
+export function cleanReportNote(raw: string | null | undefined): string | null {
+  const cleaned = (raw ?? '').trim().slice(0, REPORT_NOTE_MAX);
+  return cleaned === '' ? null : cleaned;
+}

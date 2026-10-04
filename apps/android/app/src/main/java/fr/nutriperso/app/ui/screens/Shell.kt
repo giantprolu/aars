@@ -121,6 +121,7 @@ fun MainShell(model: AppModel) {
     var flow by rememberSaveable { mutableStateOf<TrainingFlow?>(null) }
     val scope = rememberCoroutineScope()
     var planSlot by remember { mutableStateOf<PlanSlot?>(null) }
+    var moderation by remember { mutableStateOf<ModerationTarget?>(null) }
     var planBasket by remember { mutableStateOf<List<fr.nutriperso.app.data.BasketRow>>(emptyList()) }
     val toast = remember { ToastState() }
     val holder = rememberSaveableStateHolder()
@@ -131,6 +132,7 @@ fun MainShell(model: AppModel) {
         fabOpen = false
         sheet = null
         planSlot = null
+        moderation = null
     }
 
     fun pick(target: AddSheet) {
@@ -157,9 +159,9 @@ fun MainShell(model: AppModel) {
         }
     }
 
-    BackHandler(enabled = fabOpen || sheet != null || planSlot != null || stack.isNotEmpty()) {
+    BackHandler(enabled = fabOpen || sheet != null || planSlot != null || moderation != null || stack.isNotEmpty()) {
         when {
-            sheet != null || fabOpen || planSlot != null -> closeAll()
+            sheet != null || fabOpen || planSlot != null || moderation != null -> closeAll()
             else -> stack = stack.dropLast(1)
         }
     }
@@ -189,7 +191,12 @@ fun MainShell(model: AppModel) {
                     onNewRecipe = { kitchenFlow = KitchenFlow.NewRecipe },
                 )
                 Tab.Training -> TrainingScreen(model, onMe = openMe, onStart = { pick(AddSheet.Session) })
-                Tab.Community -> CommunityScreen(model, onMe = openMe, onPeople = { stack = listOf(Pushed.People) })
+                Tab.Community -> CommunityScreen(
+                    model,
+                    onMe = openMe,
+                    onPeople = { stack = listOf(Pushed.People) },
+                    onModerate = { moderation = it },
+                )
             }
         }
 
@@ -219,13 +226,13 @@ fun MainShell(model: AppModel) {
                 Pushed.Progress -> ProgressScreen(model, onBack = { stack = listOf(Pushed.Me) })
                 Pushed.Account -> AccountScreen(model, onBack = { stack = listOf(Pushed.Me) }, onEditGoal = { editingGoal = true })
                 Pushed.Health -> HealthScreen(model, onBack = { stack = listOf(Pushed.Me) })
-                Pushed.People -> PeopleScreen(model, onBack = { stack = emptyList() })
+                Pushed.People -> PeopleScreen(model, onBack = { stack = emptyList() }, onModerate = { moderation = it })
                 Pushed.History -> HistoryScreen(model, onBack = { stack = emptyList() }, onDay = { historyDate = it })
                 null -> Box(Modifier.fillMaxSize())
             }
         }
 
-        Scrim(visible = fabOpen || planSlot != null || sheet == AddSheet.Meal || sheet == AddSheet.Session || sheet == AddSheet.Weigh, onDismiss = ::closeAll)
+        Scrim(visible = fabOpen || planSlot != null || moderation != null || sheet == AddSheet.Meal || sheet == AddSheet.Session || sheet == AddSheet.Weigh, onDismiss = ::closeAll)
 
         if (stack.isEmpty()) {
             FabArc(
@@ -248,6 +255,7 @@ fun MainShell(model: AppModel) {
             onMessage = toast::show,
         )
         PlanSlotSheet(planSlot, planBasket, model, onDismiss = ::closeAll)
+        ModerationSheet(moderation, model, onDismiss = ::closeAll)
         SessionSheet(
             visible = sheet == AddSheet.Session,
             model = model,

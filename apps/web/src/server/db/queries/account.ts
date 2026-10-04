@@ -41,6 +41,8 @@ export async function exportUserData(userId: number) {
     favoriteExercises,
     follows,
     kudos,
+    blocks,
+    reports,
     subscriptions,
     storeSubscriptions,
     usage,
@@ -108,6 +110,23 @@ export async function exportUserData(userId: number) {
       .from(schema.sessionKudos)
       .where(eq(schema.sessionKudos.userId, userId)),
     database
+      .select({ blockedId: schema.userBlocks.blockedId, createdAt: schema.userBlocks.createdAt })
+      .from(schema.userBlocks)
+      .where(eq(schema.userBlocks.blockerId, userId)),
+    // Les signalements faits, jamais ceux reçus : rendre ces derniers dirait
+    // qui a signalé.
+    database
+      .select({
+        reportedUserId: schema.socialReports.reportedUserId,
+        sessionId: schema.socialReports.sessionId,
+        reason: schema.socialReports.reason,
+        note: schema.socialReports.note,
+        createdAt: schema.socialReports.createdAt,
+        resolvedAt: schema.socialReports.resolvedAt,
+      })
+      .from(schema.socialReports)
+      .where(eq(schema.socialReports.reporterId, userId)),
+    database
       .select({ createdAt: schema.pushSubscriptions.createdAt })
       .from(schema.pushSubscriptions)
       .where(eq(schema.pushSubscriptions.userId, userId)),
@@ -170,7 +189,7 @@ export async function exportUserData(userId: number) {
       sets,
       favoriteExercises,
     },
-    community: { follows, kudosGiven: kudos },
+    community: { follows, kudosGiven: kudos, blocks, reportsMade: reports },
     notifications: { devices: subscriptions.length },
     billing: { subscriptions: storeSubscriptions },
     usage,

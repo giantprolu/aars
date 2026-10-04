@@ -1,8 +1,11 @@
 # Projet : NutriPerso
 
 App de suivi alimentaire. Comptes distincts, inscription libre.
-PWA d'abord ; des apps natives iOS et Android sont prévues (décision du
-01/10/2026, qui lève l'ancien « Pas d'App Store »).
+Cible : les apps natives iOS et Android seules (décision du 04/10/2026, qui
+suit celle du 01/10/2026 levant l'ancien « Pas d'App Store »). Le front web
+(les pages de `apps/web`) sera supprimé plus tard ; l'API Next.js reste, c'est
+le serveur des deux apps. D'ici là, une fonction nouvelle se fait dans l'API
+et dans les deux apps natives, pas dans les pages web.
 
 ## Organisation du dépôt (monorepo npm workspaces)
 - `apps/web` : l'app Next.js, PWA et API. Tout ce qui suit sur la stack la

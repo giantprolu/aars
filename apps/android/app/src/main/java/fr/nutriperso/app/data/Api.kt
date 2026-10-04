@@ -119,6 +119,12 @@ class Api(private val tokens: TokenStore) {
         get("/api/social/people?q=" + URLEncoder.encode(query, "UTF-8"), PeopleResponse.serializer())
     suspend fun relation(action: String, userId: Long) =
         send("POST", "/api/social/relations", json.encodeToString(RelationBody.serializer(), RelationBody(action, userId)))
+    /** Signale une personne, ou une de ses séances, à l'équipe qui modère. */
+    suspend fun report(userId: Long, sessionId: Long?, reason: String, note: String?) = send(
+        "POST", "/api/social/reports",
+        json.encodeToString(ReportBody.serializer(), ReportBody(userId, sessionId, reason, note)),
+    )
+
     suspend fun recoveryCode() = decode(raw("POST", "/api/account/recovery-code", "{}"), RecoveryCodeResponse.serializer())
 
     /** L'export complet, en JSON brut, tel que le serveur le rend. */

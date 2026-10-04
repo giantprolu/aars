@@ -85,7 +85,12 @@ private fun feedWhen(session: FeedSession): String {
 
 /** Communauté (C5) : suivis, classement de la semaine, fil des séances partagées. */
 @Composable
-fun CommunityScreen(model: AppModel, onMe: () -> Unit, onPeople: () -> Unit) {
+fun CommunityScreen(
+    model: AppModel,
+    onMe: () -> Unit,
+    onPeople: () -> Unit,
+    onModerate: (ModerationTarget) -> Unit,
+) {
     val community = Domains.community
     val scope = rememberCoroutineScope()
     val home = rememberLoaded(model.revision) { model.api.socialHome() }
@@ -197,7 +202,12 @@ fun CommunityScreen(model: AppModel, onMe: () -> Unit, onPeople: () -> Unit) {
         sessions.forEach { session ->
             val given = kudos[session.id] ?: session.kudoedByMe
             val count = session.kudos + (if (given) 1 else 0) - (if (session.kudoedByMe) 1 else 0)
-            FeedCard(session, given, count) {
+            val onMore: (() -> Unit)? = if (session.mine) {
+                null
+            } else {
+                { onModerate(ModerationTarget(session.author, session.id, session.name)) }
+            }
+            FeedCard(session, given, count, onMore) {
                 if (session.mine) return@FeedCard
                 val next = !given
                 kudos[session.id] = next
@@ -213,7 +223,7 @@ fun CommunityScreen(model: AppModel, onMe: () -> Unit, onPeople: () -> Unit) {
 }
 
 @Composable
-private fun FeedCard(session: FeedSession, given: Boolean, count: Int, onKudos: () -> Unit) {
+private fun FeedCard(session: FeedSession, given: Boolean, count: Int, onMore: (() -> Unit)?, onKudos: () -> Unit) {
     val training = Domains.training
     val click = rememberSelectionClick()
     val (volume, unit) = formatTonnage(session.volumeKg)
@@ -234,6 +244,7 @@ private fun FeedCard(session: FeedSession, given: Boolean, count: Int, onKudos: 
                 )
                 Txt(feedWhen(session), Type.small)
             }
+            if (onMore != null) MoreButton(onMore)
         }
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(training.soft).padding(vertical = 8.dp)) {
             listOfNotNull(

@@ -70,6 +70,7 @@ struct MainShell: View {
     @State private var workoutId: Int?
     @State private var flow: TrainingFlow?
     @State private var kitchenFlow: KitchenFlow?
+    @State private var moderation: ModerationTarget?
     @State private var planSlot: PlanSlot?
     @State private var planBasket: [BasketRow] = []
     /// La liste vue au moment d'ouvrir « Scanner pour cocher ».
@@ -87,7 +88,7 @@ struct MainShell: View {
                     .gesture(backSwipe)
                     .transition(.move(edge: .trailing))
             }
-            Scrim(visible: fabOpen || planSlot != nil || (sheet != nil && sheet != .scan), onDismiss: closeAll)
+            Scrim(visible: fabOpen || planSlot != nil || moderation != nil || (sheet != nil && sheet != .scan), onDismiss: closeAll)
             if stack.isEmpty {
                 FabArc(open: fabOpen, onToggle: toggle, onLongPress: { pick(.scan) }, onPick: pick)
             }
@@ -105,6 +106,7 @@ struct MainShell: View {
             )
             WeighSheet(visible: sheet == .weigh, model: model, onDismiss: closeAll)
             PlanSlotSheet(slot: planSlot, basket: planBasket, model: model, onDismiss: closeAll)
+            ModerationSheet(target: moderation, model: model, onDismiss: closeAll)
             ScannerOverlay(visible: sheet == .scan, model: model, onDismiss: closeAll) { hit in
                 scanned = hit
                 pick(.meal)
@@ -179,7 +181,7 @@ struct MainShell: View {
         case .training:
             TrainingScreen(model: model, onMe: openMe) { pick(.session) }
         case .community:
-            CommunityScreen(model: model, onMe: openMe) { stack = [.people] }
+            CommunityScreen(model: model, onMe: openMe, onPeople: { stack = [.people] }, onModerate: { moderation = $0 })
         }
     }
 
@@ -206,7 +208,7 @@ struct MainShell: View {
         case .day(let date):
             DayScreen(model: model, date: date, onBack: back)
         case .people:
-            PeopleScreen(model: model, onBack: back)
+            PeopleScreen(model: model, onBack: back) { moderation = $0 }
         }
     }
 
@@ -238,6 +240,7 @@ struct MainShell: View {
         fabOpen = false
         sheet = nil
         planSlot = nil
+        moderation = nil
     }
 
     private func pick(_ target: AddSheet) {

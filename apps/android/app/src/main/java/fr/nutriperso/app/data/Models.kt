@@ -413,6 +413,8 @@ data class SocialHome(
     val followers: List<PublicPerson> = emptyList(),
     val requested: List<PublicPerson> = emptyList(),
     val board: List<BoardRow> = emptyList(),
+    /** Ceux que j'ai bloqués, pour pouvoir les débloquer. */
+    val blocked: List<PublicPerson> = emptyList(),
 )
 
 @Serializable
@@ -445,6 +447,10 @@ data class FeedResponse(val sessions: List<FeedSession> = emptyList(), val next:
 
 @Serializable
 data class KudosBody(val sessionId: Long, val given: Boolean)
+
+/** Un signalement : une personne, ou une de ses séances, et pourquoi. */
+@Serializable
+data class ReportBody(val userId: Long, val sessionId: Long?, val reason: String, val note: String?)
 
 // Moi.
 

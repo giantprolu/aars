@@ -44,6 +44,8 @@ struct CommunityScreen: View {
     let model: AppModel
     let onMe: () -> Void
     let onPeople: () -> Void
+    /// Signaler ou bloquer l'auteur d'une séance du fil.
+    let onModerate: (ModerationTarget) -> Void
 
     @State private var home = Loaded<SocialHome>()
     @State private var feed = Loaded<FeedResponse>()
@@ -174,7 +176,15 @@ struct CommunityScreen: View {
         ForEach(sessions) { session in
             let given = kudos[session.id] ?? session.kudoedByMe
             let count = session.kudos + (given ? 1 : 0) - (session.kudoedByMe ? 1 : 0)
-            FeedCard(session: session, given: given, count: count) { toggleKudos(session, given: given) }
+            FeedCard(
+                session: session,
+                given: given,
+                count: count,
+                onKudos: { toggleKudos(session, given: given) },
+                onMore: session.mine ? nil : {
+                    onModerate(ModerationTarget(session.author, sessionId: session.id, sessionName: session.name))
+                }
+            )
         }
     }
 
@@ -196,6 +206,8 @@ private struct FeedCard: View {
     let given: Bool
     let count: Int
     let onKudos: () -> Void
+    /// Absent sur mes propres séances.
+    let onMore: (() -> Void)?
 
     var body: some View {
         let training = Domains.training
@@ -219,6 +231,9 @@ private struct FeedCard: View {
                     Text(feedWhen(session)).textStyle(TextStyles.small)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                if let onMore {
+                    MoreButton(action: onMore)
+                }
             }
             HStack(spacing: 0) {
                 ForEach(Array(figures.enumerated()), id: \.offset) { _, figure in
@@ -316,6 +331,8 @@ struct BackLink: View {
 struct PeopleScreen: View {
     let model: AppModel
     let onBack: () -> Void
+    /// Signaler ou bloquer quelqu'un de la liste.
+    let onModerate: (ModerationTarget) -> Void
 
     @State private var home = Loaded<SocialHome>()
     @State private var query = ""
@@ -341,7 +358,7 @@ struct PeopleScreen: View {
             )
             .filtered($query, maxLength(30))
             if !results.isEmpty {
-                PeopleCard(people: results.map { (PublicPerson(id: $0.id, handle: $0.handle, displayName: $0.displayName), $0.state) }) { person, state in
+                PeopleCard(people: results.map { (PublicPerson(id: $0.id, handle: $0.handle, displayName: $0.displayName), $0.state) }, onMore: more) { person, state in
                     switch state {
                     case "following": RelationAction(label: "Ne plus suivre", primary: false) { act("unfollow", person, "Tu ne suis plus @\(person.handle)") }
                     case "requested": RelationAction(label: "Demandé", primary: false) { act("unfollow", person, "Demande annulée") }
@@ -354,7 +371,7 @@ struct PeopleScreen: View {
             LoadedGate(loaded: home, onRetry: { reload += 1 }) { data in
                 if !data.requests.isEmpty {
                     SectionCaps(text: "Demandes")
-                    PeopleCard(people: data.requests.map { ($0, "request") }) { person, _ in
+                    PeopleCard(people: data.requests.map { ($0, "request") }, onMore: more) { person, _ in
                         HStack(spacing: 6) {
                             RelationAction(label: "Refuser", primary: false) { act("decline", person, "Demande refusée") }
                             RelationAction(label: "Accepter", primary: true) { act("accept", person, "@\(person.handle) te suit") }
@@ -363,7 +380,7 @@ struct PeopleScreen: View {
                 }
                 if !data.requested.isEmpty {
                     SectionCaps(text: "En attente")
-                    PeopleCard(people: data.requested.map { ($0, "requested") }) { person, _ in
+                    PeopleCard(people: data.requested.map { ($0, "requested") }, onMore: more) { person, _ in
                         RelationAction(label: "Annuler", primary: false) { act("unfollow", person, "Demande annulée") }
                     }
                 }
@@ -371,7 +388,7 @@ struct PeopleScreen: View {
                 if data.following.isEmpty {
                     Text("Personne pour l'instant. Cherche tes amis par leur identifiant.").textStyle(TextStyles.secondary).padding(.horizontal, 4)
                 } else {
-                    PeopleCard(people: data.following.map { (PublicPerson(id: $0.id, handle: $0.handle, displayName: $0.displayName), "following") }) { person, _ in
+                    PeopleCard(people: data.following.map { (PublicPerson(id: $0.id, handle: $0.handle, displayName: $0.displayName), "following") }, onMore: more) { person, _ in
                         RelationAction(label: "Ne plus suivre", primary: false) { act("unfollow", person, "Tu ne suis plus @\(person.handle)") }
                     }
                 }
@@ -379,15 +396,28 @@ struct PeopleScreen: View {
                 if data.followers.isEmpty {
                     Text("Personne ne te suit encore.").textStyle(TextStyles.secondary).padding(.horizontal, 4)
                 } else {
-                    PeopleCard(people: data.followers.map { ($0, "follower") }) { person, _ in
+                    PeopleCard(people: data.followers.map { ($0, "follower") }, onMore: more) { person, _ in
                         RelationAction(label: "Retirer", primary: false) { act("remove", person, "@\(person.handle) ne te suit plus") }
                     }
+                }
+                if !data.blocked.isEmpty {
+                    SectionCaps(text: "Bloqués")
+                    PeopleCard(people: data.blocked.map { ($0, "blocked") }, onMore: nil) { person, _ in
+                        RelationAction(label: "Débloquer", primary: false) { act("unblock", person, "@\(person.handle) débloqué") }
+                    }
+                    Text("Vous ne vous voyez plus. Débloquer ne rétablit pas les abonnements.")
+                        .textStyle(TextStyles.small)
+                        .padding(.horizontal, 4)
                 }
             }
         }
         .background(Neutrals.screen.ignoresSafeArea())
         .task(id: "\(model.revision)-\(reload)") { home.take(await model.api.socialHome()) }
         .task(id: "\(typed)-\(model.revision)") { await search(typed) }
+    }
+
+    private func more(_ person: PublicPerson) {
+        onModerate(ModerationTarget(person))
     }
 
     private func search(_ typed: String) async {
@@ -418,6 +448,8 @@ struct PeopleScreen: View {
 
 private struct PeopleCard<Trailing: View>: View {
     let people: [(PublicPerson, String)]
+    /// Signaler ou bloquer ; absent dans la liste des bloqués.
+    let onMore: ((PublicPerson) -> Void)?
     @ViewBuilder let trailing: (PublicPerson, String) -> Trailing
 
     var body: some View {
@@ -436,6 +468,9 @@ private struct PeopleCard<Trailing: View>: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     trailing(person, entry.1)
+                    if let onMore {
+                        MoreButton { onMore(person) }
+                    }
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
@@ -461,5 +496,17 @@ private struct RelationAction: View {
             .padding(.vertical, 7)
             .background(primary ? community.fill : .clear, in: Capsule())
             .tap(action)
+    }
+}
+
+/// « … » : signaler ou bloquer.
+private struct MoreButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        LucideIcon(.ellipsis, 18, Neutrals.muted)
+            .frame(width: 30, height: 30)
+            .tap(action)
+            .accessibilityLabel("Signaler ou bloquer")
     }
 }

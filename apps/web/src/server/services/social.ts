@@ -1,12 +1,17 @@
 import 'server-only';
 import { sessionVolume } from '@/lib/workout';
+import { env } from '../env';
+import { sendMail } from '../clients/mail';
 import {
+  REPORT_REASON_LABELS,
   cleanDisplayName,
+  cleanReportNote,
   isValidHandle,
   normalizeHandle,
   type FeedSession,
   type FollowState,
   type PublicPerson,
+  type ReportReason,
   type SessionVisibility,
   type SharedExercise,
   type WeekBoardRow,
@@ -14,11 +19,15 @@ import {
 import {
   answerFollowRequest,
   countIncomingRequests,
+  deleteBlock,
   deleteFollow,
   deleteFollower,
   findIdentity,
+  insertBlock,
   insertFollowRequest,
+  insertReport,
   kudosFor,
+  listBlocked,
   listFeed,
   listFollowers,
   listFollowing,
@@ -74,16 +83,75 @@ export async function findPeople(
   return searchPeople(viewerId, query, SEARCH_LIMIT);
 }
 
+export type FollowResult = 'requested' | 'no_identity' | 'unavailable';
+
 /**
  * Demande à suivre. Refusé tant que le demandeur ne s'est pas présenté : une
- * demande venue d'un compte sans nom ne dirait pas qui la fait.
+ * demande venue d'un compte sans nom ne dirait pas qui la fait. Un compte
+ * absent et un blocage répondent pareil : `unavailable`, sans plus de détail.
  */
-export async function follow(viewerId: number, followeeId: number): Promise<boolean> {
+export async function follow(viewerId: number, followeeId: number): Promise<FollowResult> {
   const me = await findIdentity(viewerId);
   if (me.handle === null) {
+    return 'no_identity';
+  }
+  return (await insertFollowRequest(viewerId, followeeId)) ? 'requested' : 'unavailable';
+}
+
+/** Bloque un compte : voir `user_blocks` dans le schéma pour ce que cela coupe. */
+export function block(viewerId: number, blockedId: number): Promise<boolean> {
+  return insertBlock(viewerId, blockedId);
+}
+
+export function unblock(viewerId: number, blockedId: number): Promise<void> {
+  return deleteBlock(viewerId, blockedId);
+}
+
+export function blockedBy(viewerId: number): Promise<PublicPerson[]> {
+  return listBlocked(viewerId);
+}
+
+/**
+ * Signale une personne, ou une de ses séances, à l'équipe qui modère.
+ *
+ * Le signalement est d'abord écrit en base, la seule trace qui compte ; le
+ * courriel à l'adresse de contact n'est qu'une alerte, envoyée si le service
+ * d'envoi est configuré, et son échec n'annule rien. Il ne contient que des
+ * identifiants publics, jamais une adresse.
+ */
+export async function report(
+  viewerId: number,
+  input: { userId: number; sessionId: number | null; reason: ReportReason; note: string | null },
+): Promise<boolean> {
+  const context = await insertReport(viewerId, {
+    reportedUserId: input.userId,
+    sessionId: input.sessionId,
+    reason: input.reason,
+    note: cleanReportNote(input.note),
+  });
+  if (context === null) {
     return false;
   }
-  return insertFollowRequest(viewerId, followeeId);
+  const contact = env.legalContactEmail;
+  if (contact !== undefined) {
+    const name = (who: { id: number; handle: string | null }) => `@${who.handle ?? '?'} (compte ${who.id})`;
+    await sendMail({
+      to: contact,
+      subject: `Signalement n° ${context.id} : ${name(context.reported)}`,
+      text: [
+        `Signalé : ${name(context.reported)}`,
+        `Par : ${name(context.reporter)}`,
+        `Motif : ${REPORT_REASON_LABELS[input.reason]}`,
+        context.session === null
+          ? 'Sur : la personne'
+          : `Sur : la séance « ${context.session.name ?? 'Séance'} » (n° ${context.session.id})`,
+        `Note : ${cleanReportNote(input.note) ?? '—'}`,
+        '',
+        'À traiter sous 24 h : npm run moderation -- list',
+      ].join('\n'),
+    });
+  }
+  return true;
 }
 
 export function unfollow(viewerId: number, followeeId: number): Promise<void> {
