@@ -1,4 +1,4 @@
-package fr.nutriperso.app.data
+package fr.aars.app.data
 
 import android.content.Context
 import androidx.health.connect.client.HealthConnectClient

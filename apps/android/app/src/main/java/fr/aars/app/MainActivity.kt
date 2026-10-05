@@ -1,4 +1,4 @@
-package fr.nutriperso.app
+package fr.aars.app
 
 import android.content.Intent
 import android.graphics.Color
@@ -16,11 +16,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import fr.nutriperso.app.data.LunchReminder
-import fr.nutriperso.app.ui.auth.AuthScreen
-import fr.nutriperso.app.ui.onboarding.OnboardingFlow
-import fr.nutriperso.app.ui.screens.MainShell
-import fr.nutriperso.app.ui.theme.Neutrals
+import fr.aars.app.data.LunchReminder
+import fr.aars.app.ui.auth.AuthScreen
+import fr.aars.app.ui.onboarding.OnboardingFlow
+import fr.aars.app.ui.screens.MainShell
+import fr.aars.app.ui.theme.Neutrals
 
 class MainActivity : ComponentActivity() {
     private val model: AppModel by viewModels()

@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "B0A1C2D3E4F5060708090006"
-               BuildableName = "NutriPerso.app"
-               BlueprintName = "NutriPerso"
-               ReferencedContainer = "container:NutriPerso.xcodeproj">
+               BuildableName = "Aars.app"
+               BlueprintName = "Aars"
+               ReferencedContainer = "container:Aars.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -43,9 +43,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B0A1C2D3E4F5060708090006"
-            BuildableName = "NutriPerso.app"
-            BlueprintName = "NutriPerso"
-            ReferencedContainer = "container:NutriPerso.xcodeproj">
+            BuildableName = "Aars.app"
+            BlueprintName = "Aars"
+            ReferencedContainer = "container:Aars.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -60,9 +60,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B0A1C2D3E4F5060708090006"
-            BuildableName = "NutriPerso.app"
-            BlueprintName = "NutriPerso"
-            ReferencedContainer = "container:NutriPerso.xcodeproj">
+            BuildableName = "Aars.app"
+            BlueprintName = "Aars"
+            ReferencedContainer = "container:Aars.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

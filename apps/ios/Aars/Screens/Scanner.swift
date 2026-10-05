@@ -166,7 +166,7 @@ struct ScannerOverlay: View {
 /// sur sa propre file, que la session tolère (documentation d'AVFoundation).
 final class CaptureSession: @unchecked Sendable {
     let session = AVCaptureSession()
-    private let queue = DispatchQueue(label: "fr.nutriperso.camera")
+    private let queue = DispatchQueue(label: "fr.aars.camera")
 
     func start() {
         queue.async { if !self.session.isRunning { self.session.startRunning() } }

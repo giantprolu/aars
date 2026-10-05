@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.screens
+package fr.aars.app.ui.screens
 
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
@@ -56,35 +56,35 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import fr.nutriperso.app.AppModel
-import fr.nutriperso.app.R
-import fr.nutriperso.app.data.ApiResult
-import fr.nutriperso.app.data.QuickSession
-import fr.nutriperso.app.data.SearchHit
-import fr.nutriperso.app.ui.kitchen.AddItemScreen
-import fr.nutriperso.app.ui.kitchen.ImportRecipeScreen
-import fr.nutriperso.app.ui.kitchen.RecipeEditorScreen
-import fr.nutriperso.app.ui.kitchen.ScanCheckScreen
-import fr.nutriperso.app.ui.onboarding.OnboardingFlow
-import fr.nutriperso.app.ui.training.ComposeScreen
-import fr.nutriperso.app.ui.training.ImportScreen
-import fr.nutriperso.app.ui.training.WorkoutScreen
-import fr.nutriperso.app.ui.add.MealSheet
-import fr.nutriperso.app.ui.add.ScannerOverlay
-import fr.nutriperso.app.ui.add.SessionSheet
-import fr.nutriperso.app.ui.add.WeighSheet
-import fr.nutriperso.app.ui.components.Icon
-import fr.nutriperso.app.ui.components.Scrim
-import fr.nutriperso.app.ui.components.ToastHost
-import fr.nutriperso.app.ui.components.ToastState
-import fr.nutriperso.app.ui.components.Txt
-import fr.nutriperso.app.ui.components.tap
-import fr.nutriperso.app.ui.theme.Domains
-import fr.nutriperso.app.ui.theme.Motion
-import fr.nutriperso.app.ui.theme.Neutrals
-import fr.nutriperso.app.ui.theme.Space
-import fr.nutriperso.app.ui.theme.Type
-import fr.nutriperso.app.ui.theme.nt
+import fr.aars.app.AppModel
+import fr.aars.app.R
+import fr.aars.app.data.ApiResult
+import fr.aars.app.data.QuickSession
+import fr.aars.app.data.SearchHit
+import fr.aars.app.ui.kitchen.AddItemScreen
+import fr.aars.app.ui.kitchen.ImportRecipeScreen
+import fr.aars.app.ui.kitchen.RecipeEditorScreen
+import fr.aars.app.ui.kitchen.ScanCheckScreen
+import fr.aars.app.ui.onboarding.OnboardingFlow
+import fr.aars.app.ui.training.ComposeScreen
+import fr.aars.app.ui.training.ImportScreen
+import fr.aars.app.ui.training.WorkoutScreen
+import fr.aars.app.ui.add.MealSheet
+import fr.aars.app.ui.add.ScannerOverlay
+import fr.aars.app.ui.add.SessionSheet
+import fr.aars.app.ui.add.WeighSheet
+import fr.aars.app.ui.components.Icon
+import fr.aars.app.ui.components.Scrim
+import fr.aars.app.ui.components.ToastHost
+import fr.aars.app.ui.components.ToastState
+import fr.aars.app.ui.components.Txt
+import fr.aars.app.ui.components.tap
+import fr.aars.app.ui.theme.Domains
+import fr.aars.app.ui.theme.Motion
+import fr.aars.app.ui.theme.Neutrals
+import fr.aars.app.ui.theme.Space
+import fr.aars.app.ui.theme.Type
+import fr.aars.app.ui.theme.nt
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -123,7 +123,7 @@ fun MainShell(model: AppModel) {
     val scope = rememberCoroutineScope()
     var planSlot by remember { mutableStateOf<PlanSlot?>(null) }
     var moderation by remember { mutableStateOf<ModerationTarget?>(null) }
-    var planBasket by remember { mutableStateOf<List<fr.nutriperso.app.data.BasketRow>>(emptyList()) }
+    var planBasket by remember { mutableStateOf<List<fr.aars.app.data.BasketRow>>(emptyList()) }
     val toast = remember { ToastState() }
     val holder = rememberSaveableStateHolder()
 
@@ -352,7 +352,7 @@ enum class TrainingFlow { Compose, Import }
 
 /** Les écrans plein écran de Cuisine. */
 sealed interface KitchenFlow {
-    data class ScanCheck(val week: String, val items: List<fr.nutriperso.app.data.ShoppingItemRow>) : KitchenFlow
+    data class ScanCheck(val week: String, val items: List<fr.aars.app.data.ShoppingItemRow>) : KitchenFlow
     data class AddItem(val week: String) : KitchenFlow
     data object NewRecipe : KitchenFlow
     data object ImportRecipe : KitchenFlow

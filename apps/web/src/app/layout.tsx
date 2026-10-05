@@ -34,13 +34,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'NutriPerso',
+  title: 'Aars',
   description: 'Registre alimentaire personnel.',
   manifest: '/manifest.json',
-  applicationName: 'NutriPerso',
+  applicationName: 'Aars',
   appleWebApp: {
     capable: true,
-    title: 'NutriPerso',
+    title: 'Aars',
     statusBarStyle: 'black-translucent',
   },
   formatDetection: { telephone: false },

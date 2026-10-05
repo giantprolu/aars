@@ -1,4 +1,4 @@
-# NutriPerso Android
+# Aars Android
 
 Application native Kotlin + Jetpack Compose. Elle ne partage aucun code avec
 `apps/web` : elle consomme l'API HTTP servie par l'app Next.js
@@ -34,7 +34,7 @@ Par défaut, la production (`https://nutri-rosy-one.vercel.app`). Pour le
 serveur de dev, dans `local.properties` (non versionné) :
 
 ```
-nutriperso.apiUrl=http://10.0.2.2:3000
+aars.apiUrl=http://10.0.2.2:3000
 ```
 
 `10.0.2.2` est le poste vu depuis l'émulateur. Le HTTP en clair n'est permis

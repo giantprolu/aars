@@ -31,7 +31,7 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.NutriPerso">
+        android:theme="@style/Theme.Aars">
         <activity
             android:name=".MainActivity"
             android:exported="true"

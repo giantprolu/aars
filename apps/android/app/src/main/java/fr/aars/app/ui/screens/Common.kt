@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.screens
+package fr.aars.app.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,8 +14,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import fr.nutriperso.app.data.Identity
-import fr.nutriperso.app.ui.theme.Space
+import fr.aars.app.data.Identity
+import fr.aars.app.ui.theme.Space
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale

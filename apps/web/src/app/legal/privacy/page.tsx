@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { env } from '@/server/env';
 import { Contact, LegalPage } from '../LegalPage';
 
-export const metadata: Metadata = { title: 'Confidentialité · NutriPerso' };
+export const metadata: Metadata = { title: 'Confidentialité · Aars' };
 
 /**
  * Politique de confidentialité, publique (fiche Google Play, Health Connect).
@@ -16,7 +16,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Politique de confidentialité" updated="4 octobre 2026">
       <p>
-        NutriPerso est un journal alimentaire et sportif. Cette page dit quelles données
+        Aars est un journal alimentaire et sportif. Cette page dit quelles données
         l&apos;application (web, Android et iOS) conserve, pourquoi, avec qui elles sont partagées et
         comment les effacer. Certaines sont des données de santé : elles ne servent qu&apos;à te
         rendre le service, ne sont jamais vendues, jamais utilisées pour de la publicité et

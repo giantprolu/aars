@@ -5,7 +5,7 @@ import SwiftUI
 private let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")
 
 /**
- NutriPerso Premium : l'abonnement mensuel, et Cuisine+ quand elle est en
+ Aars Premium : l'abonnement mensuel, et Cuisine+ quand elle est en
  vente. Ouvert depuis Moi, ou dès qu'une action bute sur une limite gratuite.
 
  Les prix viennent d'Apple, dans la devise du compte ; les droits, du
@@ -27,7 +27,7 @@ struct PremiumScreen: View {
         ScreenColumn(withTabBar: false) {
             BackLink(label: "Retour", action: onBack)
             VStack(alignment: .leading, spacing: 6) {
-                Text("NutriPerso Premium").textStyle(TextStyles.screenTitle)
+                Text("Aars Premium").textStyle(TextStyles.screenTitle)
                 Text("Le journal, l'export et la suppression du compte restent gratuits, pour toujours.")
                     .textStyle(TextStyles.secondary)
             }

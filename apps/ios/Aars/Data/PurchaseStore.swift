@@ -96,7 +96,7 @@ final class PurchaseStore {
         }
     }
 
-    /// Restaure les achats de ce compte Apple, et les rattache au compte NutriPerso.
+    /// Restaure les achats de ce compte Apple, et les rattache au compte Aars.
     func restore(_ api: Api) async -> String {
         busy = true
         defer { busy = false }
@@ -113,7 +113,7 @@ final class PurchaseStore {
 
     /**
      Fait rattacher une transaction par le serveur, puis la termine. Une
-     transaction refusée (achetée par un autre compte NutriPerso, ou achat de
+     transaction refusée (achetée par un autre compte Aars, ou achat de
      test local qu'Apple ne connaît pas) est terminée aussi : elle ne sera
      jamais rattachée ici. Si le serveur ne répond pas,
      elle reste ouverte et repassera. Rend `nil` si tout va bien.
@@ -126,7 +126,7 @@ final class PurchaseStore {
             return nil
         case .failure(let failure) where failure.code == "purchase_invalid":
             await transaction.finish()
-            return "Cet achat n'a pas pu être rattaché à ton compte NutriPerso."
+            return "Cet achat n'a pas pu être rattaché à ton compte Aars."
         case .failure(let failure):
             return failure.message
         }

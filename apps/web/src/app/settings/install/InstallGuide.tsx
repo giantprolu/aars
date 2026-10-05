@@ -101,7 +101,7 @@ export function InstallGuide() {
             disabled={busy}
             className="mt-4 w-full"
           >
-            {busy ? 'Installation…' : 'Installer NutriPerso'}
+            {busy ? 'Installation…' : 'Installer Aars'}
           </Button>
           {outcome === 'dismissed' ? (
             <p role="status" className="mt-3 text-muted-foreground">

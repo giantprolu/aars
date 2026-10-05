@@ -61,7 +61,7 @@ struct HealthScreen: View {
                 .tap {
                     if let settings = URL(string: UIApplication.openSettingsURLString) { openURL(settings) }
                 }
-                Text("Dans Réglages › Santé › Accès aux données et appareils › NutriPerso.")
+                Text("Dans Réglages › Santé › Accès aux données et appareils › Aars.")
                     .textStyle(nt(12.5, 400, Neutrals.muted))
                     .padding(.horizontal, 4)
             }

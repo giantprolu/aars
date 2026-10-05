@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.components
+package fr.aars.app.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -45,12 +45,12 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import fr.nutriperso.app.R
-import fr.nutriperso.app.ui.theme.Motion
-import fr.nutriperso.app.ui.theme.Neutrals
-import fr.nutriperso.app.ui.theme.Radius
-import fr.nutriperso.app.ui.theme.Type
-import fr.nutriperso.app.ui.theme.nt
+import fr.aars.app.R
+import fr.aars.app.ui.theme.Motion
+import fr.aars.app.ui.theme.Neutrals
+import fr.aars.app.ui.theme.Radius
+import fr.aars.app.ui.theme.Type
+import fr.aars.app.ui.theme.nt
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

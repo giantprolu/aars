@@ -94,7 +94,7 @@ export const INSTALL_STEPS: Record<InstallPlatform, readonly string[]> = {
   ],
   desktop: [
     'Cherche l’icône d’installation dans la barre d’adresse, à droite.',
-    'À défaut, ouvre le menu du navigateur et cherche « Installer NutriPerso ».',
+    'À défaut, ouvre le menu du navigateur et cherche « Installer Aars ».',
   ],
   'in-app': [
     'Touche les trois points, en haut de cet écran.',

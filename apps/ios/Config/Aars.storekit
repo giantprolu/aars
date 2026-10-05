@@ -15,7 +15,7 @@
           "locale" : "fr_FR"
         }
       ],
-      "productID" : "nutriperso_cuisine_plus",
+      "productID" : "aars_cuisine_plus",
       "referenceName" : "Cuisine+",
       "type" : "NonConsumable"
     }
@@ -34,7 +34,7 @@
       "localizations" : [
 
       ],
-      "name" : "NutriPerso Premium",
+      "name" : "Aars Premium",
       "subscriptions" : [
         {
           "adHocOffers" : [
@@ -50,12 +50,12 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Tout NutriPerso, sans limite.",
+              "description" : "Tout Aars, sans limite.",
               "displayName" : "Premium mensuel",
               "locale" : "fr_FR"
             }
           ],
-          "productID" : "nutriperso_premium_mensuel",
+          "productID" : "aars_premium_mensuel",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Premium mensuel",
           "subscriptionGroupID" : "21500001",

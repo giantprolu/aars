@@ -15,7 +15,7 @@ export async function GET(): Promise<Response> {
   return new Response(JSON.stringify(data, null, 2), {
     headers: {
       'content-type': 'application/json; charset=utf-8',
-      'content-disposition': `attachment; filename="nutriperso-${todayInParis()}.json"`,
+      'content-disposition': `attachment; filename="aars-${todayInParis()}.json"`,
       'cache-control': 'no-store',
     },
   });

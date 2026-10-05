@@ -76,12 +76,12 @@ export type Store = (typeof STORES)[number];
 
 /** L'abonnement mensuel. Google range les durées en forfaits d'un même produit, Apple en produits distincts. */
 export const SUBSCRIPTION_PRODUCTS: Record<Store, string> = {
-  google_play: 'nutriperso_premium',
-  app_store: 'nutriperso_premium_mensuel',
+  google_play: 'aars_premium',
+  app_store: 'aars_premium_mensuel',
 };
 
 /** Cuisine+ : le même identifiant dans les deux magasins. */
-export const KITCHEN_PLUS_PRODUCT = 'nutriperso_cuisine_plus';
+export const KITCHEN_PLUS_PRODUCT = 'aars_cuisine_plus';
 
 /**
  * Cuisine+ en vente dans les apps : ses deux fonctions existent depuis le

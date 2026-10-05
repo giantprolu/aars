@@ -1,4 +1,4 @@
-# NutriPerso
+# Aars
 
 Registre alimentaire personnel. PWA installable sur iPhone, mono-utilisateur,
 sans compte ni objectif ni coaching.

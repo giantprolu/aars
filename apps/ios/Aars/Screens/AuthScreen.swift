@@ -23,7 +23,7 @@ struct AuthScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("NutriPerso").textStyle(nt(14, 600, nutrition.textOnLight))
+                    Text("Aars").textStyle(nt(14, 600, nutrition.textOnLight))
                     Text(title).textStyle(nt(34, 600, line: 1.1, tracking: -0.035))
                     Text(subtitle).textStyle(nt(15, 400, Neutrals.muted))
                 }

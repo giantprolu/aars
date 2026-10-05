@@ -9,7 +9,7 @@ const bodySchema = z.object({
   // Les jetons Google font quelques centaines de caractères ; la borne évite
   // seulement qu'un corps démesuré parte vers l'API de Google.
   purchaseToken: z.string().min(10).max(4096),
-  /** Absent pour l'abonnement ; `nutriperso_cuisine_plus` pour l'achat unique. */
+  /** Absent pour l'abonnement ; `aars_cuisine_plus` pour l'achat unique. */
   productId: z.string().max(100).nullish(),
 });
 

@@ -79,7 +79,7 @@ const schema = z.object({
    * appelle à chaque renouvellement ou résiliation : sans lui, n'importe qui
    * pourrait déclencher des relectures.
    */
-  GOOGLE_PLAY_PACKAGE_NAME: z.string().min(1).default('fr.nutriperso.app'),
+  GOOGLE_PLAY_PACKAGE_NAME: z.string().min(1).default('fr.aars.app'),
   GOOGLE_PLAY_SERVICE_ACCOUNT: z.string().min(1).optional(),
   GOOGLE_PLAY_RTDN_SECRET: z.string().min(16).optional(),
   /**
@@ -89,7 +89,7 @@ const schema = z.object({
    * elles, aucun achat iOS n'est rattaché, et l'app reste gratuite sur iPhone
    * comme ailleurs. Le secret protège l'URL des notifications App Store.
    */
-  APPLE_BUNDLE_ID: z.string().min(1).default('fr.nutriperso.app'),
+  APPLE_BUNDLE_ID: z.string().min(1).default('fr.aars.app'),
   APPLE_IAP_ISSUER_ID: z.string().min(1).optional(),
   APPLE_IAP_KEY_ID: z.string().min(1).optional(),
   APPLE_IAP_PRIVATE_KEY: z.string().min(1).optional(),
@@ -98,7 +98,7 @@ const schema = z.object({
   OFF_USER_AGENT: z
     .string()
     .min(1)
-    .default('NutriPerso/0.1 (usage personnel; https://github.com/giantprolu/nutri-perso)'),
+    .default('Aars/0.1 (usage personnel; https://github.com/giantprolu/nutri)'),
 });
 
 type Env = z.infer<typeof schema>;

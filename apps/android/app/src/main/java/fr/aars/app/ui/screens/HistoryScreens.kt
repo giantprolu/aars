@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.screens
+package fr.aars.app.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -27,26 +27,26 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import fr.nutriperso.app.AppModel
-import fr.nutriperso.app.Meal
-import fr.nutriperso.app.R
-import fr.nutriperso.app.data.ApiResult
-import fr.nutriperso.app.data.DayTotals
-import fr.nutriperso.app.data.Entry
-import fr.nutriperso.app.ui.components.Bars
-import fr.nutriperso.app.ui.components.Icon
-import fr.nutriperso.app.ui.components.MacroBar
-import fr.nutriperso.app.ui.components.MacroSplit
-import fr.nutriperso.app.ui.components.Txt
-import fr.nutriperso.app.ui.components.card
-import fr.nutriperso.app.ui.components.formatInt
-import fr.nutriperso.app.ui.components.rememberSelectionClick
-import fr.nutriperso.app.ui.components.tap
-import fr.nutriperso.app.ui.theme.Domains
-import fr.nutriperso.app.ui.theme.Macros
-import fr.nutriperso.app.ui.theme.Neutrals
-import fr.nutriperso.app.ui.theme.Type
-import fr.nutriperso.app.ui.theme.nt
+import fr.aars.app.AppModel
+import fr.aars.app.Meal
+import fr.aars.app.R
+import fr.aars.app.data.ApiResult
+import fr.aars.app.data.DayTotals
+import fr.aars.app.data.Entry
+import fr.aars.app.ui.components.Bars
+import fr.aars.app.ui.components.Icon
+import fr.aars.app.ui.components.MacroBar
+import fr.aars.app.ui.components.MacroSplit
+import fr.aars.app.ui.components.Txt
+import fr.aars.app.ui.components.card
+import fr.aars.app.ui.components.formatInt
+import fr.aars.app.ui.components.rememberSelectionClick
+import fr.aars.app.ui.components.tap
+import fr.aars.app.ui.theme.Domains
+import fr.aars.app.ui.theme.Macros
+import fr.aars.app.ui.theme.Neutrals
+import fr.aars.app.ui.theme.Type
+import fr.aars.app.ui.theme.nt
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -101,7 +101,7 @@ fun HistoryScreen(model: AppModel, onBack: () -> Unit, onDay: (String) -> Unit) 
                     Txt(LocalDate.parse(it.entryDate).format(monthFormat).replaceFirstChar { c -> c.titlecase(Locale.FRENCH) }, Type.secondary)
                 }
             }
-            error?.let { fr.nutriperso.app.ui.components.ErrorBanner(it) { scope.launch { load(0) } } }
+            error?.let { fr.aars.app.ui.components.ErrorBanner(it) { scope.launch { load(0) } } }
             if (!loaded) return@ScreenColumn
             if (days.isEmpty()) {
                 EmptyCard("Rien d'enregistré", "Les jours notés apparaîtront ici.")

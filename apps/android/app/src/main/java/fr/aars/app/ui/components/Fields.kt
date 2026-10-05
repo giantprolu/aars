@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.components
+package fr.aars.app.ui.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
@@ -32,10 +32,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import fr.nutriperso.app.ui.theme.Domains
-import fr.nutriperso.app.ui.theme.Neutrals
-import fr.nutriperso.app.ui.theme.Radius
-import fr.nutriperso.app.ui.theme.nt
+import fr.aars.app.ui.theme.Domains
+import fr.aars.app.ui.theme.Neutrals
+import fr.aars.app.ui.theme.Radius
+import fr.aars.app.ui.theme.nt
 
 /**
  * Champ de saisie de la maquette : 50 de haut, rayon 14, fond crème, filet

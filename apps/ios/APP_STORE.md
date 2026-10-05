@@ -11,13 +11,13 @@ donnée ou un sous-traitant change, mettre à jour ce fichier **et**
 | Exigence | Où |
 |---|---|
 | iOS 17 et plus, iPhone, portrait | `project.pbxproj` |
-| Identifiant de bundle `fr.nutriperso.app` | `project.pbxproj` |
+| Identifiant de bundle `fr.aars.app` | `project.pbxproj` |
 | Version et numéro de build | `MARKETING_VERSION`, `CURRENT_PROJECT_VERSION` |
 | Jeton de session dans le trousseau, ni sauvegardé ni migré | `Data/TokenStore.swift` |
 | HTTPS seul, HTTP en clair vers le réseau local uniquement | `Config/Info.plist` (`NSAllowsLocalNetworking`) |
 | Chiffrement standard seulement (HTTPS) | `ITSAppUsesNonExemptEncryption` à `NO` |
 | Caméra : texte d'usage | `NSCameraUsageDescription` |
-| HealthKit : capacité et texte d'usage, lecture seule | `Config/NutriPerso.entitlements`, `NSHealthShareUsageDescription` |
+| HealthKit : capacité et texte d'usage, lecture seule | `Config/Aars.entitlements`, `NSHealthShareUsageDescription` |
 | Suppression du compte dans l'app | Moi › Compte et données |
 | Politique de confidentialité publique | `https://nutri-rosy-one.vercel.app/legal/privacy` |
 | Icône 1024 | `Resources/Assets.xcassets/AppIcon.appiconset` |
@@ -31,8 +31,8 @@ donnée ou un sous-traitant change, mettre à jour ce fichier **et**
    `DEVELOPMENT_TEAM = XXXXXXXXXX`, ou Xcode › cible › *Signing &
    Capabilities* › *Team*. La signature automatique crée l'identifiant d'app
    avec la capacité HealthKit.
-3. **App Store Connect** › *Apps* › *Nouvelle app* : iOS, nom « NutriPerso »,
-   langue principale français, bundle `fr.nutriperso.app`, SKU au choix.
+3. **App Store Connect** › *Apps* › *Nouvelle app* : iOS, nom « Aars »,
+   langue principale français, bundle `fr.aars.app`, SKU au choix.
 4. **Archive** : Xcode › destination *Any iOS Device* › *Product* ›
    *Archive*, puis *Distribute App* › *App Store Connect*. Chaque envoi
    demande un `CURRENT_PROJECT_VERSION` plus grand que le précédent.
@@ -45,7 +45,7 @@ donnée ou un sous-traitant change, mettre à jour ce fichier **et**
 
 ## Fiche
 
-**Nom** (30 car.) : `NutriPerso`
+**Nom** (30 car.) : `Aars`
 
 **Sous-titre** (30 car.) : `Journal, cible calorique, sport`
 
@@ -111,8 +111,8 @@ Deux façons de payer (décision du 05/10/2026), les mêmes que sur Android :
 
 | Produit | Type App Store | Ce qu'il ouvre |
 |---|---|---|
-| `nutriperso_premium_mensuel` | abonnement renouvelable, 1 mois, groupe « NutriPerso Premium » | tout : recettes et favoris au-delà de 10, et Cuisine+ |
-| `nutriperso_cuisine_plus` | non consommable | le plan automatique de la semaine et l'import de recette, à vie |
+| `aars_premium_mensuel` | abonnement renouvelable, 1 mois, groupe « Aars Premium » | tout : recettes et favoris au-delà de 10, et Cuisine+ |
+| `aars_cuisine_plus` | non consommable | le plan automatique de la semaine et l'import de recette, à vie |
 
 Cuisine+ est en vente (`KITCHEN_PLUS_ON_SALE`, `apps/web/src/lib/premium.ts`) :
 l'offre s'affiche dès que le produit existe dans App Store Connect. Ses deux
@@ -132,22 +132,22 @@ Dans App Store Connect, dans l'ordre :
 
 1. **Accords, taxes et banque** : signer l'accord des apps payantes et
    renseigner le compte bancaire. Sans lui, aucun achat ne se vend.
-2. **Produits** : *Abonnements* › groupe « NutriPerso Premium » › produit
-   `nutriperso_premium_mensuel`, durée 1 mois, prix, nom et description en
+2. **Produits** : *Abonnements* › groupe « Aars Premium » › produit
+   `aars_premium_mensuel`, durée 1 mois, prix, nom et description en
    français, capture de l'écran Premium pour l'examen. Puis *Achats intégrés*
-   › `nutriperso_cuisine_plus`, non consommable, prix, capture du Plan.
+   › `aars_cuisine_plus`, non consommable, prix, capture du Plan.
 3. **Clé d'API** : *Utilisateurs et accès* › *Intégrations* › *Achat
    intégré* › générer une clé. Dans Vercel : `APPLE_IAP_KEY_ID`,
    `APPLE_IAP_ISSUER_ID`, `APPLE_IAP_PRIVATE_KEY` (le contenu du `.p8`,
    sensible) ; `APPLE_BUNDLE_ID` seulement s'il diffère de
-   `fr.nutriperso.app`.
+   `fr.aars.app`.
 4. **Notifications** : *App* › *Informations sur l'app* › *Notifications du
    serveur App Store*, version 2, production et bac à sable :
    `https://nutri-rosy-one.vercel.app/api/billing/apple/notify?secret=<APPLE_NOTIFY_SECRET>`,
    avec `APPLE_NOTIFY_SECRET` (32 caractères aléatoires) dans Vercel.
 5. **Base** : `npm run db:migrate` pour `store_purchases` (migration 0023).
 6. **Essai** : en local, Xcode › *Product* › *Scheme* › *Edit Scheme…* ›
-   *Run* › *Options* › *StoreKit Configuration* › `Config/NutriPerso.storekit`
+   *Run* › *Options* › *StoreKit Configuration* › `Config/Aars.storekit`
    (prix fictifs). Un achat local n'est pas connu d'Apple : le serveur le
    refuse, c'est normal. Pour le circuit complet, un testeur bac à sable et
    TestFlight.

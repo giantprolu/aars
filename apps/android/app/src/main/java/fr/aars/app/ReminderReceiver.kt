@@ -1,12 +1,12 @@
-package fr.nutriperso.app
+package fr.aars.app
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import fr.nutriperso.app.data.Api
-import fr.nutriperso.app.data.ApiResult
-import fr.nutriperso.app.data.LunchReminder
-import fr.nutriperso.app.data.TokenStore
+import fr.aars.app.data.Api
+import fr.aars.app.data.ApiResult
+import fr.aars.app.data.LunchReminder
+import fr.aars.app.data.TokenStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

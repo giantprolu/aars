@@ -11,7 +11,7 @@ donnée ou un sous-traitant change, mettre à jour ce fichier **et**
 |---|---|
 | `targetSdk` 36, `compileSdk` 37, bord à bord | `app/build.gradle.kts`, `MainActivity` |
 | Bundle signé par la clé d'envoi, hors dépôt | `signingConfigs.upload`, `keystore.properties` |
-| `versionCode` croissant | `-Pnutriperso.versionCode=N` |
+| `versionCode` croissant | `-Paars.versionCode=N` |
 | Minification et réduction des ressources | `isMinifyEnabled`, `isShrinkResources` |
 | Aucune sauvegarde des données de l'app | `allowBackup=false`, `data_extraction_rules.xml` |
 | HTTP en clair interdit en release | config réseau en debug seulement |
@@ -28,14 +28,14 @@ donnée ou un sous-traitant change, mettre à jour ce fichier **et**
    Google) :
 
    ```
-   keytool -genkeypair -v -keystore nutriperso-upload.jks -alias upload \
+   keytool -genkeypair -v -keystore aars-upload.jks -alias upload \
      -keyalg RSA -keysize 4096 -validity 10000
    ```
 
 2. `apps/android/keystore.properties` (ignoré par git) :
 
    ```
-   storeFile=../nutriperso-upload.jks
+   storeFile=../aars-upload.jks
    storePassword=…
    keyAlias=upload
    keyPassword=…
@@ -47,7 +47,7 @@ donnée ou un sous-traitant change, mettre à jour ce fichier **et**
 3. Android Studio › *Build* › *Generate Signed App Bundle*, ou :
 
    ```
-   ./gradlew :app:bundleRelease -Pnutriperso.versionCode=1 -Pnutriperso.versionName=1.0.0
+   ./gradlew :app:bundleRelease -Paars.versionCode=1 -Paars.versionName=1.0.0
    ```
 
    Le bundle sort dans `app/build/outputs/bundle/release/app-release.aab`.
@@ -58,7 +58,7 @@ donnée ou un sous-traitant change, mettre à jour ce fichier **et**
 
 ## Play Console, dans l'ordre
 
-1. **Créer l'app** : nom « NutriPerso », langue par défaut français, App,
+1. **Créer l'app** : nom « Aars », langue par défaut français, App,
    Gratuite. Activer la signature d'apps par Google Play (proposée par défaut).
 2. **Compte personnel récent** : Google exige un test fermé avec au moins
    12 testeurs pendant 14 jours avant d'ouvrir la production. Prévoir cette
@@ -72,7 +72,7 @@ donnée ou un sous-traitant change, mettre à jour ce fichier **et**
 
 ## Fiche
 
-**Titre** (30 car.) : `NutriPerso`
+**Titre** (30 car.) : `Aars`
 
 **Description courte** (80 car.) :
 `Journal alimentaire, cible calorique, séances de sport et liste de courses.`
@@ -80,7 +80,7 @@ donnée ou un sous-traitant change, mettre à jour ce fichier **et**
 **Description complète** :
 
 ```
-NutriPerso tient ton journal alimentaire et calcule ta cible calorique à partir de ton profil, de ton objectif et de ta dépense réelle.
+Aars tient ton journal alimentaire et calcule ta cible calorique à partir de ton profil, de ton objectif et de ta dépense réelle.
 
 • Aujourd'hui : calories et macros du jour, repas dépliables, pesée en un geste.
 • Ajouter un repas : recherche dans la table CIQUAL et Open Food Facts, scanner de code-barres, repas récents et favoris.
@@ -171,9 +171,9 @@ suppression du compte.
 
 Deux façons de payer (décision du 05/10/2026), les mêmes que sur iPhone :
 
-- l'abonnement mensuel `nutriperso_premium`, qui ouvre tout : recettes et
+- l'abonnement mensuel `aars_premium`, qui ouvre tout : recettes et
   favoris au-delà de 10, et Cuisine+ ;
-- l'achat unique `nutriperso_cuisine_plus` (produit intégré, non
+- l'achat unique `aars_cuisine_plus` (produit intégré, non
   consommable) : le plan automatique de la semaine (« Remplir la semaine »)
   et l'import de recette depuis un lien, à vie. En vente
   (`KITCHEN_PLUS_ON_SALE`, `apps/web/src/lib/premium.ts`) : l'offre s'affiche
@@ -191,11 +191,11 @@ l'éditeur : rien à déclarer de plus dans la Sécurité des données.
 
 1. **Profil de paiement** : Play Console › *Paramètres* › *Profil de
    paiement*, avec le SIRET. Sans lui, aucun produit payant ne se crée.
-2. **Produits** : *Monétiser* › *Abonnements* › créer `nutriperso_premium`,
+2. **Produits** : *Monétiser* › *Abonnements* › créer `aars_premium`,
    avec un forfait de base mensuel (l'app prend l'offre de base, sans offre
    promotionnelle). L'essai gratuit se règle ici, comme offre sur le forfait,
    sans rien changer au code. Puis *Monétiser* › *Produits intégrés* › créer
-   `nutriperso_cuisine_plus`, achat unique, avec son prix.
+   `aars_cuisine_plus`, achat unique, avec son prix.
 3. **Compte de service** : Google Cloud › *IAM* › *Comptes de service*, en
    créer un et télécharger sa clé JSON. Play Console › *Utilisateurs et
    autorisations* › l'inviter avec les droits « Afficher les données
@@ -210,7 +210,7 @@ l'éditeur : rien à déclarer de plus dans la Sécurité des données.
 5. **Vercel** : `GOOGLE_PLAY_SERVICE_ACCOUNT` (la clé JSON entière, sur une
    ligne), `GOOGLE_PLAY_RTDN_SECRET` (32 caractères aléatoires, le même que
    dans l'URL), et `GOOGLE_PLAY_PACKAGE_NAME` si le paquet n'est pas
-   `fr.nutriperso.app`. Puis `npm run db:migrate` pour la table
+   `fr.aars.app`. Puis `npm run db:migrate` pour la table
    `store_subscriptions`.
 6. **Testeurs de licence** : Play Console › *Paramètres* › *Test de licence*,
    ajouter ses adresses Gmail. Leurs achats sont gratuits et les abonnements

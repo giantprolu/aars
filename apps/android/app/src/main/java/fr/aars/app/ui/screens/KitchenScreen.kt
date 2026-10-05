@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.screens
+package fr.aars.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -41,37 +41,37 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import fr.nutriperso.app.AppModel
-import fr.nutriperso.app.Meal
-import fr.nutriperso.app.R
-import fr.nutriperso.app.data.ApiResult
-import fr.nutriperso.app.data.BasketRow
-import fr.nutriperso.app.data.PlannedRow
-import fr.nutriperso.app.data.RecipeRow
-import fr.nutriperso.app.data.ShoppingItemRow
-import fr.nutriperso.app.ui.components.Badge
-import fr.nutriperso.app.ui.components.DomainBadge
-import fr.nutriperso.app.ui.components.DomainHeader
-import fr.nutriperso.app.ui.components.Icon
-import fr.nutriperso.app.ui.components.LinkText
-import fr.nutriperso.app.ui.components.NutriField
-import fr.nutriperso.app.ui.components.NutriSheet
-import fr.nutriperso.app.ui.components.ProgressTrack
-import fr.nutriperso.app.ui.components.SegmentedPill
-import fr.nutriperso.app.ui.components.Txt
-import fr.nutriperso.app.ui.components.card
-import fr.nutriperso.app.ui.components.dashedBorder
-import fr.nutriperso.app.ui.components.formatInt
-import fr.nutriperso.app.ui.components.photoStripes
-import fr.nutriperso.app.ui.components.rememberSelectionClick
-import fr.nutriperso.app.ui.components.tap
-import fr.nutriperso.app.ui.components.tinted
-import fr.nutriperso.app.ui.components.valueWithUnit
-import fr.nutriperso.app.ui.theme.Domains
-import fr.nutriperso.app.ui.theme.Neutrals
-import fr.nutriperso.app.ui.theme.Radius
-import fr.nutriperso.app.ui.theme.Type
-import fr.nutriperso.app.ui.theme.nt
+import fr.aars.app.AppModel
+import fr.aars.app.Meal
+import fr.aars.app.R
+import fr.aars.app.data.ApiResult
+import fr.aars.app.data.BasketRow
+import fr.aars.app.data.PlannedRow
+import fr.aars.app.data.RecipeRow
+import fr.aars.app.data.ShoppingItemRow
+import fr.aars.app.ui.components.Badge
+import fr.aars.app.ui.components.DomainBadge
+import fr.aars.app.ui.components.DomainHeader
+import fr.aars.app.ui.components.Icon
+import fr.aars.app.ui.components.LinkText
+import fr.aars.app.ui.components.NutriField
+import fr.aars.app.ui.components.NutriSheet
+import fr.aars.app.ui.components.ProgressTrack
+import fr.aars.app.ui.components.SegmentedPill
+import fr.aars.app.ui.components.Txt
+import fr.aars.app.ui.components.card
+import fr.aars.app.ui.components.dashedBorder
+import fr.aars.app.ui.components.formatInt
+import fr.aars.app.ui.components.photoStripes
+import fr.aars.app.ui.components.rememberSelectionClick
+import fr.aars.app.ui.components.tap
+import fr.aars.app.ui.components.tinted
+import fr.aars.app.ui.components.valueWithUnit
+import fr.aars.app.ui.theme.Domains
+import fr.aars.app.ui.theme.Neutrals
+import fr.aars.app.ui.theme.Radius
+import fr.aars.app.ui.theme.Type
+import fr.aars.app.ui.theme.nt
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -201,7 +201,7 @@ fun KitchenScreen(
             else -> if (LoadedGate(shopping)) {
                 if (shopping.value?.list == null) {
                     EmptyCard("Pas encore de liste", "Elle se compose à partir des plats choisis pour la semaine.")
-                    fr.nutriperso.app.ui.components.PrimaryButton("Composer la liste de courses", kitchen, {
+                    fr.aars.app.ui.components.PrimaryButton("Composer la liste de courses", kitchen, {
                         scope.launch {
                             when (val result = model.api.generateShopping(week)) {
                                 is ApiResult.Ok -> model.bump()

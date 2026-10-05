@@ -63,7 +63,7 @@ const CACHE_SECONDS = 3600;
  * Côté serveur, `User-Agent` est posable directement, contrairement au
  * navigateur qui impose la variante `X-User-Agent`.
  */
-const USER_AGENT = 'NutriPerso/1.0 (registre alimentaire personnel)';
+const USER_AGENT = 'Aars/1.0 (registre alimentaire personnel)';
 
 const querySchema = z.object({
   q: z.string().trim().min(3).max(100),

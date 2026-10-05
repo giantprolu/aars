@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.screens
+package fr.aars.app.ui.screens
 
 import android.Manifest
 import android.content.Intent
@@ -46,26 +46,26 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
-import fr.nutriperso.app.AppModel
-import fr.nutriperso.app.R
-import fr.nutriperso.app.data.LunchReminder
-import fr.nutriperso.app.ui.components.Avatar
-import fr.nutriperso.app.ui.components.Badge
-import fr.nutriperso.app.ui.components.Bars
-import fr.nutriperso.app.ui.components.Icon
-import fr.nutriperso.app.ui.components.SegmentedPill
-import fr.nutriperso.app.ui.components.Txt
-import fr.nutriperso.app.ui.components.card
-import fr.nutriperso.app.ui.components.formatKg
-import fr.nutriperso.app.ui.components.formatSigned
-import fr.nutriperso.app.ui.components.rememberSelectionClick
-import fr.nutriperso.app.ui.components.tap
-import fr.nutriperso.app.ui.components.tinted
-import fr.nutriperso.app.ui.components.valueWithUnit
-import fr.nutriperso.app.ui.theme.Domains
-import fr.nutriperso.app.ui.theme.Neutrals
-import fr.nutriperso.app.ui.theme.Type
-import fr.nutriperso.app.ui.theme.nt
+import fr.aars.app.AppModel
+import fr.aars.app.R
+import fr.aars.app.data.LunchReminder
+import fr.aars.app.ui.components.Avatar
+import fr.aars.app.ui.components.Badge
+import fr.aars.app.ui.components.Bars
+import fr.aars.app.ui.components.Icon
+import fr.aars.app.ui.components.SegmentedPill
+import fr.aars.app.ui.components.Txt
+import fr.aars.app.ui.components.card
+import fr.aars.app.ui.components.formatKg
+import fr.aars.app.ui.components.formatSigned
+import fr.aars.app.ui.components.rememberSelectionClick
+import fr.aars.app.ui.components.tap
+import fr.aars.app.ui.components.tinted
+import fr.aars.app.ui.components.valueWithUnit
+import fr.aars.app.ui.theme.Domains
+import fr.aars.app.ui.theme.Neutrals
+import fr.aars.app.ui.theme.Type
+import fr.aars.app.ui.theme.nt
 
 @Composable
 private fun BackRow(label: String, onBack: () -> Unit, trailing: (@Composable () -> Unit)? = null) {

@@ -56,7 +56,7 @@ self.addEventListener('push', (event) => {
   } catch {
     payload = {};
   }
-  const title = typeof payload.title === 'string' ? payload.title : 'NutriPerso';
+  const title = typeof payload.title === 'string' ? payload.title : 'Aars';
   const url = typeof payload.url === 'string' && payload.url.startsWith('/') ? payload.url : '/';
 
   event.waitUntil(

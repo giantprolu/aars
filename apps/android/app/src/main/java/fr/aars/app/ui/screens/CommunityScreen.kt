@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.screens
+package fr.aars.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,26 +31,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import fr.nutriperso.app.AppModel
-import fr.nutriperso.app.R
-import fr.nutriperso.app.data.ApiResult
-import fr.nutriperso.app.data.FeedSession
-import fr.nutriperso.app.data.Identity
-import fr.nutriperso.app.ui.components.Avatar
-import fr.nutriperso.app.ui.components.DomainBadge
-import fr.nutriperso.app.ui.components.DomainHeader
-import fr.nutriperso.app.ui.components.Icon
-import fr.nutriperso.app.ui.components.ProgressTrack
-import fr.nutriperso.app.ui.components.Txt
-import fr.nutriperso.app.ui.components.card
-import fr.nutriperso.app.ui.components.dashedBorder
-import fr.nutriperso.app.ui.components.rememberSelectionClick
-import fr.nutriperso.app.ui.components.tap
-import fr.nutriperso.app.ui.theme.Domains
-import fr.nutriperso.app.ui.theme.Macros
-import fr.nutriperso.app.ui.theme.Neutrals
-import fr.nutriperso.app.ui.theme.Type
-import fr.nutriperso.app.ui.theme.nt
+import fr.aars.app.AppModel
+import fr.aars.app.R
+import fr.aars.app.data.ApiResult
+import fr.aars.app.data.FeedSession
+import fr.aars.app.data.Identity
+import fr.aars.app.ui.components.Avatar
+import fr.aars.app.ui.components.DomainBadge
+import fr.aars.app.ui.components.DomainHeader
+import fr.aars.app.ui.components.Icon
+import fr.aars.app.ui.components.ProgressTrack
+import fr.aars.app.ui.components.Txt
+import fr.aars.app.ui.components.card
+import fr.aars.app.ui.components.dashedBorder
+import fr.aars.app.ui.components.rememberSelectionClick
+import fr.aars.app.ui.components.tap
+import fr.aars.app.ui.theme.Domains
+import fr.aars.app.ui.theme.Macros
+import fr.aars.app.ui.theme.Neutrals
+import fr.aars.app.ui.theme.Type
+import fr.aars.app.ui.theme.nt
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -293,10 +293,10 @@ private fun IdentityCard(model: AppModel) {
                 "Tes séances restent privées tant que tu ne les partages pas.",
             Type.secondary,
         )
-        fr.nutriperso.app.ui.components.NutriField(handle, { handle = it.take(21) }, prefix = "@", placeholder = "identifiant", focusColor = community.textOnLight)
-        fr.nutriperso.app.ui.components.NutriField(name, { name = it.take(40) }, placeholder = "Nom affiché, facultatif", focusColor = community.textOnLight)
+        fr.aars.app.ui.components.NutriField(handle, { handle = it.take(21) }, prefix = "@", placeholder = "identifiant", focusColor = community.textOnLight)
+        fr.aars.app.ui.components.NutriField(name, { name = it.take(40) }, placeholder = "Nom affiché, facultatif", focusColor = community.textOnLight)
         error?.let { Txt(it, nt(13f, 500, Macros.protein.text)) }
-        fr.nutriperso.app.ui.components.PrimaryButton("Continuer", community, {
+        fr.aars.app.ui.components.PrimaryButton("Continuer", community, {
             val normalized = handle.trim().lowercase(Locale.ROOT)
             if (!Regex("^[a-z0-9_]{3,20}$").matches(normalized)) {
                 error = "Un identifiant de 3 à 20 caractères : lettres, chiffres et _."

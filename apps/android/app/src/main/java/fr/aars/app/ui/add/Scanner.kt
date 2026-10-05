@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.add
+package fr.aars.app.ui.add
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -61,19 +61,19 @@ import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
-import fr.nutriperso.app.AppModel
-import fr.nutriperso.app.data.MacroValues
-import fr.nutriperso.app.data.PartialProduct
-import fr.nutriperso.app.data.SearchHit
-import fr.nutriperso.app.ui.components.CloseButton
-import fr.nutriperso.app.ui.components.Labeled
-import fr.nutriperso.app.ui.components.NutriField
-import fr.nutriperso.app.ui.components.PrimaryButton
-import fr.nutriperso.app.ui.components.Txt
-import fr.nutriperso.app.ui.theme.Domains
-import fr.nutriperso.app.ui.theme.Motion
-import fr.nutriperso.app.ui.theme.Neutrals
-import fr.nutriperso.app.ui.theme.nt
+import fr.aars.app.AppModel
+import fr.aars.app.data.MacroValues
+import fr.aars.app.data.PartialProduct
+import fr.aars.app.data.SearchHit
+import fr.aars.app.ui.components.CloseButton
+import fr.aars.app.ui.components.Labeled
+import fr.aars.app.ui.components.NutriField
+import fr.aars.app.ui.components.PrimaryButton
+import fr.aars.app.ui.components.Txt
+import fr.aars.app.ui.theme.Domains
+import fr.aars.app.ui.theme.Motion
+import fr.aars.app.ui.theme.Neutrals
+import fr.aars.app.ui.theme.nt
 import kotlinx.coroutines.launch
 
 private val BARCODE = Regex("^\\d{8}$|^\\d{12}$|^\\d{13}$")
@@ -283,7 +283,7 @@ private fun CompletionForm(model: AppModel, completion: Completion, onDone: (Sea
             Column(Modifier.weight(1f)) { Labeled("Glucides") { NutriField(carbs, { carbs = it.take(6) }, keyboardType = KeyboardType.Decimal) } }
             Column(Modifier.weight(1f)) { Labeled("Lipides") { NutriField(fat, { fat = it.take(6) }, keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done) } }
         }
-        error?.let { Txt(it, nt(13f, 500, fr.nutriperso.app.ui.theme.Macros.protein.text)) }
+        error?.let { Txt(it, nt(13f, 500, fr.aars.app.ui.theme.Macros.protein.text)) }
         val values = listOf(kcal, protein, carbs, fat).map(number)
         PrimaryButton(
             "Enregistrer le produit",

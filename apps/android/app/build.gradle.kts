@@ -8,13 +8,13 @@ plugins {
 }
 
 // L'adresse de l'API se règle dans local.properties (non versionné), par
-// exemple `nutriperso.apiUrl=http://10.0.2.2:3000` pour le serveur de dev vu
+// exemple `aars.apiUrl=http://10.0.2.2:3000` pour le serveur de dev vu
 // depuis l'émulateur. Par défaut : la production.
 val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) file.inputStream().use(::load)
 }
-val apiUrl: String = localProperties.getProperty("nutriperso.apiUrl")
+val apiUrl: String = localProperties.getProperty("aars.apiUrl")
     ?: "https://nutri-rosy-one.vercel.app"
 
 // Signature de publication : jamais dans le dépôt. `keystore.properties` (non
@@ -30,16 +30,16 @@ fun signingValue(key: String, env: String): String? =
 val releaseStoreFile = signingValue("storeFile", "NUTRI_UPLOAD_STORE_FILE")
 
 // Chaque envoi à la Play Console exige un versionCode plus grand que le
-// précédent : la CI le passe par `-Pnutriperso.versionCode=…`.
-val appVersionCode = (findProperty("nutriperso.versionCode") as String?)?.toIntOrNull() ?: 1
-val appVersionName = (findProperty("nutriperso.versionName") as String?) ?: "1.0.0"
+// précédent : la CI le passe par `-Paars.versionCode=…`.
+val appVersionCode = (findProperty("aars.versionCode") as String?)?.toIntOrNull() ?: 1
+val appVersionName = (findProperty("aars.versionName") as String?) ?: "1.0.0"
 
 android {
-    namespace = "fr.nutriperso.app"
+    namespace = "fr.aars.app"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "fr.nutriperso.app"
+        applicationId = "fr.aars.app"
         minSdk = 26
         targetSdk = 36
         versionCode = appVersionCode

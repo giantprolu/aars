@@ -27,7 +27,7 @@ import type { Readable } from 'node:stream';
 const TIMEOUT_MS = 10_000;
 const MAX_BYTES = 3 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
-const USER_AGENT = 'Mozilla/5.0 (compatible; NutriPerso/1.0; import de recette)';
+const USER_AGENT = 'Mozilla/5.0 (compatible; Aars/1.0; import de recette)';
 
 /** Les plages qu'une page publique n'occupe jamais. */
 const PRIVATE = new BlockList();

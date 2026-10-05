@@ -1,4 +1,4 @@
-# Blocages — NutriPerso
+# Blocages — Aars
 
 Consigné pendant le sprint BMAD. Chaque entrée dit ce qui manque, ce qui a été
 fait pour continuer malgré tout, et ce qui reste à faire côté humain.
@@ -292,7 +292,7 @@ Environment Variables (Production et Preview), en recopiant les valeurs de
 
 Puis, pour la réinitialisation par courriel : créer un compte Resend, vérifier
 un domaine d'envoi, et poser `RESEND_API_KEY` (sensible) et `MAIL_FROM`
-(par exemple `NutriPerso <noreply@ton-domaine.fr>`). Redéployer ensuite.
+(par exemple `Aars <noreply@ton-domaine.fr>`). Redéployer ensuite.
 
 Les tâches planifiées sont déclarées dans `vercel.json` (12 h et 13 h UTC,
 seule celle qui tombe à 14 h à Paris envoie).

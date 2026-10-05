@@ -13,6 +13,7 @@ import { env, requireEnv } from './env';
  * environnement.
  */
 
+// Nom d'avant Aars, gardé : le changer déconnecterait toutes les sessions.
 export const SESSION_COOKIE = 'nutriperso_session';
 
 /** 30 jours : un usage quotidien ne doit jamais redemander le mot de passe (FR-3). */

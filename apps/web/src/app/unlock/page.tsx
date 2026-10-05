@@ -2,7 +2,7 @@ import { LeafIcon } from 'lucide-react';
 import type { Metadata } from 'next';
 import { UnlockForm } from './UnlockForm';
 
-export const metadata: Metadata = { title: 'NutriPerso' };
+export const metadata: Metadata = { title: 'Aars' };
 
 /**
  * Écran de connexion (FR-1, UJ-6).
@@ -17,7 +17,7 @@ export default function UnlockPage() {
       >
         <LeafIcon className="size-[22px]" />
       </span>
-      <h1 className="text-[25px] font-semibold tracking-tight">NutriPerso</h1>
+      <h1 className="text-[25px] font-semibold tracking-tight">Aars</h1>
       <p className="mt-1.5 mb-6 text-muted-foreground">
         Chacun son compte, son journal et sa cible. Connecte-toi, ou crée le tien.
       </p>

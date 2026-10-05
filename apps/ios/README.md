@@ -1,4 +1,4 @@
-# NutriPerso iOS
+# Aars iOS
 
 Application native SwiftUI. Elle ne partage aucun code avec `apps/web` : elle
 consomme l'API HTTP servie par l'app Next.js (`packages/api-contract`).
@@ -12,11 +12,11 @@ natifs : trousseau, haptique, caméra, Santé et notifications locales.
 
 ## Ouvrir et lancer
 
-1. Xcode › *Open* › `apps/ios/NutriPerso.xcodeproj`.
+1. Xcode › *Open* › `apps/ios/Aars.xcodeproj`.
 2. Choisir un simulateur iPhone, puis *Run*.
 
 Aucune dépendance externe. Le projet utilise des dossiers synchronisés : un
-fichier ajouté sous `NutriPerso/` entre dans la cible sans toucher au projet.
+fichier ajouté sous `Aars/` entre dans la cible sans toucher au projet.
 
 En ligne de commande, si `xcode-select -p` pointe encore sur les Command Line
 Tools, préfixer par `DEVELOPER_DIR` (ou faire une fois
@@ -24,7 +24,7 @@ Tools, préfixer par `DEVELOPER_DIR` (ou faire une fois
 
 ```
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-  xcodebuild -project apps/ios/NutriPerso.xcodeproj -scheme NutriPerso \
+  xcodebuild -project apps/ios/Aars.xcodeproj -scheme Aars \
   -destination 'platform=iOS Simulator,name=iPhone 17' build
 ```
 
@@ -116,7 +116,7 @@ L'abonnement mensuel et Cuisine+ s'achètent dans
 Moi › Abonnement ; l'écran s'ouvre aussi de lui-même dès qu'une action bute
 sur une limite gratuite ou sur une fonction de Cuisine+. StoreKit 2, transaction rattachée au compte par le serveur
 avant d'être terminée (`Data/PurchaseStore.swift`). Pour essayer sans App
-Store Connect : le fichier `Config/NutriPerso.storekit`, à choisir dans le
+Store Connect : le fichier `Config/Aars.storekit`, à choisir dans le
 schéma (voir `APP_STORE.md`, *Achat intégré*).
 
 ## Publication

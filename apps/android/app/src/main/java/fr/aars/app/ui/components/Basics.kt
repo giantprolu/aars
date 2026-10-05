@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.components
+package fr.aars.app.ui.components
 
 import android.view.HapticFeedbackConstants
 import androidx.annotation.DrawableRes
@@ -44,13 +44,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import fr.nutriperso.app.R
-import fr.nutriperso.app.ui.theme.DomainColors
-import fr.nutriperso.app.ui.theme.Domains
-import fr.nutriperso.app.ui.theme.Neutrals
-import fr.nutriperso.app.ui.theme.Radius
-import fr.nutriperso.app.ui.theme.Type
-import fr.nutriperso.app.ui.theme.nt
+import fr.aars.app.R
+import fr.aars.app.ui.theme.DomainColors
+import fr.aars.app.ui.theme.Domains
+import fr.aars.app.ui.theme.Neutrals
+import fr.aars.app.ui.theme.Radius
+import fr.aars.app.ui.theme.Type
+import fr.aars.app.ui.theme.nt
 
 /** Un texte de la maquette. Aucun composant Material : tout part de BasicText. */
 @Composable

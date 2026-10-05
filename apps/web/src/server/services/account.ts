@@ -120,11 +120,11 @@ export async function requestEmailReset(email: string, now: Date = new Date()): 
   const link = `${mail.appUrl}/recover/reset?token=${encodeURIComponent(token)}`;
   await sendMail({
     to: user.email,
-    subject: 'NutriPerso — nouveau mot de passe',
+    subject: 'Aars — nouveau mot de passe',
     text: [
       'Bonjour,',
       '',
-      'Pour choisir un nouveau mot de passe NutriPerso, ouvre ce lien :',
+      'Pour choisir un nouveau mot de passe Aars, ouvre ce lien :',
       link,
       '',
       `Il vaut ${RESET_TOKEN_MINUTES} minutes et ne sert qu’une fois.`,
@@ -150,7 +150,7 @@ export async function resetWithToken(token: string, newPassword: string): Promis
 export async function exportAccount(userId: number) {
   return {
     exportedAt: new Date().toISOString(),
-    format: 'nutriperso-export-1',
+    format: 'aars-export-1',
     ...(await exportUserData(userId)),
   };
 }

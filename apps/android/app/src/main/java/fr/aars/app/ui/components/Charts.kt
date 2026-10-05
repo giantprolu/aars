@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.components
+package fr.aars.app.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -32,9 +32,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import fr.nutriperso.app.ui.theme.MacroColors
-import fr.nutriperso.app.ui.theme.Neutrals
-import fr.nutriperso.app.ui.theme.nt
+import fr.aars.app.ui.theme.MacroColors
+import fr.aars.app.ui.theme.Neutrals
+import fr.aars.app.ui.theme.nt
 
 /**
  * Anneau plein façon `conic-gradient` : des parts posées bout à bout depuis
@@ -115,9 +115,9 @@ fun MacroSplit(protein: Double, carbs: Double, fat: Double, modifier: Modifier =
     ) {
         if (total > 0) {
             listOf(
-                protein to fr.nutriperso.app.ui.theme.Macros.protein.fill,
-                carbs to fr.nutriperso.app.ui.theme.Macros.carbs.fill,
-                fat to fr.nutriperso.app.ui.theme.Macros.fat.fill,
+                protein to fr.aars.app.ui.theme.Macros.protein.fill,
+                carbs to fr.aars.app.ui.theme.Macros.carbs.fill,
+                fat to fr.aars.app.ui.theme.Macros.fat.fill,
             ).filter { it.first > 0 }.forEach { (value, color) ->
                 Box(Modifier.weight(value.toFloat()).fillMaxHeight().background(color))
             }

@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { emailRecoveryAvailable } from '@/server/services/account';
 import { RecoverForm } from './RecoverForm';
 
-export const metadata: Metadata = { title: 'NutriPerso' };
+export const metadata: Metadata = { title: 'Aars' };
 
 // La disponibilité du courriel se lit à chaque affichage : elle dépend de
 // variables d'environnement, qu'on peut poser sans reconstruire.

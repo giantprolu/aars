@@ -1,4 +1,4 @@
-package fr.nutriperso.app.data
+package fr.aars.app.data
 
 import android.Manifest
 import android.app.AlarmManager
@@ -12,9 +12,9 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import fr.nutriperso.app.MainActivity
-import fr.nutriperso.app.R
-import fr.nutriperso.app.ReminderReceiver
+import fr.aars.app.MainActivity
+import fr.aars.app.R
+import fr.aars.app.ReminderReceiver
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -30,8 +30,8 @@ import java.time.ZonedDateTime
  */
 object LunchReminder {
     const val HOUR = 14
-    const val ACTION_FIRE = "fr.nutriperso.app.LUNCH_REMINDER"
-    const val EXTRA_OPEN = "fr.nutriperso.app.OPEN"
+    const val ACTION_FIRE = "fr.aars.app.LUNCH_REMINDER"
+    const val EXTRA_OPEN = "fr.aars.app.OPEN"
     const val OPEN_MEAL = "meal"
 
     private const val PREFS = "reminders"

@@ -1,4 +1,4 @@
-package fr.nutriperso.app.data
+package fr.aars.app.data
 
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
@@ -61,7 +61,7 @@ class TokenStore(context: Context) {
 
     private companion object {
         const val KEYSTORE = "AndroidKeyStore"
-        const val ALIAS = "nutriperso_session"
+        const val ALIAS = "aars_session"
         const val KEY_TOKEN = "token"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
         const val IV_BYTES = 12

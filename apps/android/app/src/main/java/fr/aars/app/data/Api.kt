@@ -1,6 +1,6 @@
-package fr.nutriperso.app.data
+package fr.aars.app.data
 
-import fr.nutriperso.app.BuildConfig
+import fr.aars.app.BuildConfig
 import java.io.IOException
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
@@ -29,7 +29,7 @@ fun <T> ApiResult<T>.valueOrNull(): T? = when (this) {
 }
 
 /**
- * Le client de l'API NutriPerso.
+ * Le client de l'API Aars.
  *
  * Le jeton part en `Authorization: Bearer`, jamais en paramètre : le serveur
  * en tire l'utilisateur, l'app n'envoie jamais d'identifiant elle-même

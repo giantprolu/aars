@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.screens
+package fr.aars.app.ui.screens
 
 import android.app.Activity
 import android.content.Context
@@ -23,22 +23,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.android.billingclient.api.ProductDetails
-import fr.nutriperso.app.AppModel
-import fr.nutriperso.app.R
-import fr.nutriperso.app.ui.components.Badge
-import fr.nutriperso.app.ui.components.GhostButton
-import fr.nutriperso.app.ui.components.Icon
-import fr.nutriperso.app.ui.components.LinkText
-import fr.nutriperso.app.ui.components.PrimaryButton
-import fr.nutriperso.app.ui.components.Txt
-import fr.nutriperso.app.ui.components.card
-import fr.nutriperso.app.ui.components.tinted
-import fr.nutriperso.app.ui.components.valueWithUnit
-import fr.nutriperso.app.ui.theme.Domains
-import fr.nutriperso.app.ui.theme.Neutrals
-import fr.nutriperso.app.ui.theme.Radius
-import fr.nutriperso.app.ui.theme.Type
-import fr.nutriperso.app.ui.theme.nt
+import fr.aars.app.AppModel
+import fr.aars.app.R
+import fr.aars.app.ui.components.Badge
+import fr.aars.app.ui.components.GhostButton
+import fr.aars.app.ui.components.Icon
+import fr.aars.app.ui.components.LinkText
+import fr.aars.app.ui.components.PrimaryButton
+import fr.aars.app.ui.components.Txt
+import fr.aars.app.ui.components.card
+import fr.aars.app.ui.components.tinted
+import fr.aars.app.ui.components.valueWithUnit
+import fr.aars.app.ui.theme.Domains
+import fr.aars.app.ui.theme.Neutrals
+import fr.aars.app.ui.theme.Radius
+import fr.aars.app.ui.theme.Type
+import fr.aars.app.ui.theme.nt
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -55,7 +55,7 @@ private tailrec fun Context.activity(): Activity? = when (this) {
 }
 
 /**
- * NutriPerso Premium : l'abonnement mensuel, et Cuisine+ quand elle est en
+ * Aars Premium : l'abonnement mensuel, et Cuisine+ quand elle est en
  * vente. Ouvert depuis Moi, ou dès qu'une action bute sur une limite gratuite.
  *
  * Les prix viennent de Google, dans la devise du compte ; les droits, du
@@ -78,7 +78,7 @@ fun PremiumScreen(model: AppModel, onBack: () -> Unit) {
         ScreenColumn(withTabBar = false) {
             BackLink("Retour", onBack)
             Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Txt("NutriPerso Premium", Type.screenTitle)
+                Txt("Aars Premium", Type.screenTitle)
                 Txt("Le journal, l'export et la suppression du compte restent gratuits, pour toujours.", Type.secondary)
             }
             if (store.premium) {

@@ -5,7 +5,7 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSHealthShareUsageDescription</key>
-	<string>NutriPerso lit ton énergie active pour ajuster ta cible calorique à ta dépense réelle. Un total par jour est envoyé, rien n'est écrit dans Santé.</string>
+	<string>Aars lit ton énergie active pour ajuster ta cible calorique à ta dépense réelle. Un total par jour est envoyé, rien n'est écrit dans Santé.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>La caméra lit le code-barres d'un produit. Aucune image n'est enregistrée ni envoyée.</string>
 	<key>NutriAPIBaseURL</key>

@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.screens
+package fr.aars.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -22,22 +22,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import fr.nutriperso.app.AppModel
-import fr.nutriperso.app.R
-import fr.nutriperso.app.data.ApiResult
-import fr.nutriperso.app.data.FoundPerson
-import fr.nutriperso.app.data.Identity
-import fr.nutriperso.app.data.PublicPerson
-import fr.nutriperso.app.ui.components.Avatar
-import fr.nutriperso.app.ui.components.NutriField
-import fr.nutriperso.app.ui.components.SectionCaps
-import fr.nutriperso.app.ui.components.Txt
-import fr.nutriperso.app.ui.components.card
-import fr.nutriperso.app.ui.components.tap
-import fr.nutriperso.app.ui.theme.Domains
-import fr.nutriperso.app.ui.theme.Neutrals
-import fr.nutriperso.app.ui.theme.Type
-import fr.nutriperso.app.ui.theme.nt
+import fr.aars.app.AppModel
+import fr.aars.app.R
+import fr.aars.app.data.ApiResult
+import fr.aars.app.data.FoundPerson
+import fr.aars.app.data.Identity
+import fr.aars.app.data.PublicPerson
+import fr.aars.app.ui.components.Avatar
+import fr.aars.app.ui.components.NutriField
+import fr.aars.app.ui.components.SectionCaps
+import fr.aars.app.ui.components.Txt
+import fr.aars.app.ui.components.card
+import fr.aars.app.ui.components.tap
+import fr.aars.app.ui.theme.Domains
+import fr.aars.app.ui.theme.Neutrals
+import fr.aars.app.ui.theme.Type
+import fr.aars.app.ui.theme.nt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 

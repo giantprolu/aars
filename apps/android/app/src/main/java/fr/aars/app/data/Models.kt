@@ -1,4 +1,4 @@
-package fr.nutriperso.app.data
+package fr.aars.app.data
 
 import kotlinx.serialization.Serializable
 

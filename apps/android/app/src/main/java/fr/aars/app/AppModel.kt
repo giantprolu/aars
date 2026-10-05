@@ -1,4 +1,4 @@
-package fr.nutriperso.app
+package fr.aars.app
 
 import android.app.Application
 import androidx.compose.runtime.getValue
@@ -7,21 +7,21 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import fr.nutriperso.app.data.Api
-import fr.nutriperso.app.data.ApiResult
-import fr.nutriperso.app.data.valueOrNull
-import fr.nutriperso.app.data.MacroValues
-import fr.nutriperso.app.data.QuickAddContext
-import fr.nutriperso.app.data.RecentFood
-import fr.nutriperso.app.data.QuickFavorite
-import fr.nutriperso.app.data.SearchHit
-import fr.nutriperso.app.data.TodayResponse
-import fr.nutriperso.app.data.HealthAvailability
-import fr.nutriperso.app.data.HealthSync
-import fr.nutriperso.app.data.LunchReminder
-import fr.nutriperso.app.data.PurchaseStore
-import fr.nutriperso.app.data.TokenStore
-import fr.nutriperso.app.ui.components.formatKg
+import fr.aars.app.data.Api
+import fr.aars.app.data.ApiResult
+import fr.aars.app.data.valueOrNull
+import fr.aars.app.data.MacroValues
+import fr.aars.app.data.QuickAddContext
+import fr.aars.app.data.RecentFood
+import fr.aars.app.data.QuickFavorite
+import fr.aars.app.data.SearchHit
+import fr.aars.app.data.TodayResponse
+import fr.aars.app.data.HealthAvailability
+import fr.aars.app.data.HealthSync
+import fr.aars.app.data.LunchReminder
+import fr.aars.app.data.PurchaseStore
+import fr.aars.app.data.TokenStore
+import fr.aars.app.ui.components.formatKg
 import java.time.LocalTime
 import java.time.ZoneId
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -202,7 +202,7 @@ class AppModel(application: Application) : AndroidViewModel(application) {
     /** Issue d'une lecture de code-barres. */
     sealed interface BarcodeOutcome {
         data class Found(val hit: SearchHit) : BarcodeOutcome
-        data class Incomplete(val partial: fr.nutriperso.app.data.PartialProduct) : BarcodeOutcome
+        data class Incomplete(val partial: fr.aars.app.data.PartialProduct) : BarcodeOutcome
         data class Unknown(val barcode: String) : BarcodeOutcome
         data class Failed(val message: String) : BarcodeOutcome
     }
@@ -226,7 +226,7 @@ class AppModel(application: Application) : AndroidViewModel(application) {
     suspend fun saveManualProduct(barcode: String, name: String, per100g: MacroValues, servingSizeG: Double?): SearchHit? =
         api.saveManualProduct(barcode, name, per100g, servingSizeG).valueOrNull()?.product?.toHit()
 
-    private fun fr.nutriperso.app.data.CachedProduct.toHit() =
+    private fun fr.aars.app.data.CachedProduct.toHit() =
         SearchHit(kind = "product", ref = ref, name = name, per100g = per100g, servingSizeG = servingSizeG, origin = "cache")
 
     fun addRecent(recent: RecentFood, meal: Meal, done: () -> Unit) = write(
@@ -266,7 +266,7 @@ class AppModel(application: Application) : AndroidViewModel(application) {
         {},
     )
 
-    fun deleteEntry(entry: fr.nutriperso.app.data.Entry) = write(
+    fun deleteEntry(entry: fr.aars.app.data.Entry) = write(
         { api.deleteEntry(entry.id) },
         "${entry.foodLabel} retiré du journal",
         {},

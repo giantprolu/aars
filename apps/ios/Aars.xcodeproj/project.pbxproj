@@ -7,16 +7,16 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		B0A1C2D3E4F5060708090001 /* NutriPerso.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NutriPerso.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		B0A1C2D3E4F5060708090011 /* NutriPerso.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = NutriPerso.xcconfig; sourceTree = "<group>"; };
+		B0A1C2D3E4F5060708090001 /* Aars.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Aars.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B0A1C2D3E4F5060708090011 /* Aars.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Aars.xcconfig; sourceTree = "<group>"; };
 		B0A1C2D3E4F5060708090012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		B0A1C2D3E4F5060708090013 /* NutriPerso.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NutriPerso.entitlements; sourceTree = "<group>"; };
+		B0A1C2D3E4F5060708090013 /* Aars.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Aars.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		B0A1C2D3E4F5060708090002 /* NutriPerso */ = {
+		B0A1C2D3E4F5060708090002 /* Aars */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = NutriPerso;
+			path = Aars;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -35,7 +35,7 @@
 		B0A1C2D3E4F5060708090004 = {
 			isa = PBXGroup;
 			children = (
-				B0A1C2D3E4F5060708090002 /* NutriPerso */,
+				B0A1C2D3E4F5060708090002 /* Aars */,
 				B0A1C2D3E4F5060708090010 /* Config */,
 				B0A1C2D3E4F5060708090005 /* Products */,
 			);
@@ -44,7 +44,7 @@
 		B0A1C2D3E4F5060708090005 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				B0A1C2D3E4F5060708090001 /* NutriPerso.app */,
+				B0A1C2D3E4F5060708090001 /* Aars.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -52,9 +52,9 @@
 		B0A1C2D3E4F5060708090010 /* Config */ = {
 			isa = PBXGroup;
 			children = (
-				B0A1C2D3E4F5060708090011 /* NutriPerso.xcconfig */,
+				B0A1C2D3E4F5060708090011 /* Aars.xcconfig */,
 				B0A1C2D3E4F5060708090012 /* Info.plist */,
-				B0A1C2D3E4F5060708090013 /* NutriPerso.entitlements */,
+				B0A1C2D3E4F5060708090013 /* Aars.entitlements */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -62,9 +62,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		B0A1C2D3E4F5060708090006 /* NutriPerso */ = {
+		B0A1C2D3E4F5060708090006 /* Aars */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = B0A1C2D3E4F5060708090007 /* Build configuration list for PBXNativeTarget "NutriPerso" */;
+			buildConfigurationList = B0A1C2D3E4F5060708090007 /* Build configuration list for PBXNativeTarget "Aars" */;
 			buildPhases = (
 				B0A1C2D3E4F5060708090008 /* Sources */,
 				B0A1C2D3E4F5060708090003 /* Frameworks */,
@@ -75,13 +75,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				B0A1C2D3E4F5060708090002 /* NutriPerso */,
+				B0A1C2D3E4F5060708090002 /* Aars */,
 			);
-			name = NutriPerso;
+			name = Aars;
 			packageProductDependencies = (
 			);
-			productName = NutriPerso;
-			productReference = B0A1C2D3E4F5060708090001 /* NutriPerso.app */;
+			productName = Aars;
+			productReference = B0A1C2D3E4F5060708090001 /* Aars.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -99,7 +99,7 @@
 					};
 				};
 			};
-			buildConfigurationList = B0A1C2D3E4F506070809000B /* Build configuration list for PBXProject "NutriPerso" */;
+			buildConfigurationList = B0A1C2D3E4F506070809000B /* Build configuration list for PBXProject "Aars" */;
 			developmentRegion = fr;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -113,7 +113,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				B0A1C2D3E4F5060708090006 /* NutriPerso */,
+				B0A1C2D3E4F5060708090006 /* Aars */,
 			);
 		};
 /* End PBXProject section */
@@ -196,16 +196,16 @@
 		};
 		B0A1C2D3E4F506070809000E /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = B0A1C2D3E4F5060708090011 /* NutriPerso.xcconfig */;
+			baseConfigurationReference = B0A1C2D3E4F5060708090011 /* Aars.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Config/NutriPerso.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Config/Aars.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Config/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = NutriPerso;
+				INFOPLIST_KEY_CFBundleDisplayName = Aars;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -216,7 +216,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = fr.nutriperso.app;
+				PRODUCT_BUNDLE_IDENTIFIER = fr.aars.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -229,16 +229,16 @@
 		};
 		B0A1C2D3E4F506070809000F /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = B0A1C2D3E4F5060708090011 /* NutriPerso.xcconfig */;
+			baseConfigurationReference = B0A1C2D3E4F5060708090011 /* Aars.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Config/NutriPerso.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Config/Aars.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Config/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = NutriPerso;
+				INFOPLIST_KEY_CFBundleDisplayName = Aars;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -249,7 +249,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = fr.nutriperso.app;
+				PRODUCT_BUNDLE_IDENTIFIER = fr.aars.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -263,7 +263,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		B0A1C2D3E4F5060708090007 /* Build configuration list for PBXNativeTarget "NutriPerso" */ = {
+		B0A1C2D3E4F5060708090007 /* Build configuration list for PBXNativeTarget "Aars" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B0A1C2D3E4F506070809000E /* Debug */,
@@ -272,7 +272,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		B0A1C2D3E4F506070809000B /* Build configuration list for PBXProject "NutriPerso" */ = {
+		B0A1C2D3E4F506070809000B /* Build configuration list for PBXProject "Aars" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B0A1C2D3E4F506070809000C /* Debug */,

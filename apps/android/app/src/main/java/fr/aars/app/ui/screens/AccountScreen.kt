@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.screens
+package fr.aars.app.ui.screens
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -29,24 +29,24 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import fr.nutriperso.app.AppModel
-import fr.nutriperso.app.BuildConfig
-import fr.nutriperso.app.R
-import fr.nutriperso.app.data.ApiResult
-import fr.nutriperso.app.ui.components.Icon
-import fr.nutriperso.app.ui.components.NutriField
-import fr.nutriperso.app.ui.components.PrimaryButton
-import fr.nutriperso.app.ui.components.SectionCaps
-import fr.nutriperso.app.ui.components.Txt
-import fr.nutriperso.app.ui.components.card
-import fr.nutriperso.app.ui.components.tap
-import fr.nutriperso.app.ui.components.tinted
-import fr.nutriperso.app.ui.theme.Domains
-import fr.nutriperso.app.ui.theme.Macros
-import fr.nutriperso.app.ui.theme.Neutrals
-import fr.nutriperso.app.ui.theme.Radius
-import fr.nutriperso.app.ui.theme.Type
-import fr.nutriperso.app.ui.theme.nt
+import fr.aars.app.AppModel
+import fr.aars.app.BuildConfig
+import fr.aars.app.R
+import fr.aars.app.data.ApiResult
+import fr.aars.app.ui.components.Icon
+import fr.aars.app.ui.components.NutriField
+import fr.aars.app.ui.components.PrimaryButton
+import fr.aars.app.ui.components.SectionCaps
+import fr.aars.app.ui.components.Txt
+import fr.aars.app.ui.components.card
+import fr.aars.app.ui.components.tap
+import fr.aars.app.ui.components.tinted
+import fr.aars.app.ui.theme.Domains
+import fr.aars.app.ui.theme.Macros
+import fr.aars.app.ui.theme.Neutrals
+import fr.aars.app.ui.theme.Radius
+import fr.aars.app.ui.theme.Type
+import fr.aars.app.ui.theme.nt
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -109,7 +109,7 @@ fun AccountScreen(model: AppModel, onBack: () -> Unit, onEditGoal: () -> Unit) {
                         when (val result = model.api.exportData()) {
                             is ApiResult.Ok -> {
                                 exportJson = result.value
-                                save.launch("nutriperso-${LocalDate.now()}.json")
+                                save.launch("aars-${LocalDate.now()}.json")
                             }
                             is ApiResult.Failed -> model.toast(result.message)
                         }

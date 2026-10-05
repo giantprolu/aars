@@ -18,7 +18,7 @@ extension Result {
 }
 
 /**
- Le client de l'API NutriPerso, même surface que l'app Android (data/Api.kt).
+ Le client de l'API Aars, même surface que l'app Android (data/Api.kt).
 
  Le jeton part en `Authorization: Bearer`, jamais en paramètre : le serveur en
  tire l'utilisateur, l'app n'envoie jamais d'identifiant elle-même
@@ -27,7 +27,7 @@ extension Result {
 @MainActor
 @Observable
 final class Api {
-    /// L'adresse du serveur, posée par `NUTRI_API_URL` (Config/NutriPerso.xcconfig).
+    /// L'adresse du serveur, posée par `NUTRI_API_URL` (Config/Aars.xcconfig).
     let baseURL: String
     private(set) var signedIn: Bool
 

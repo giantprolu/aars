@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.screens
+package fr.aars.app.ui.screens
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,13 +15,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import fr.nutriperso.app.data.ApiResult
-import fr.nutriperso.app.ui.components.ErrorBanner
-import fr.nutriperso.app.ui.components.Txt
-import fr.nutriperso.app.ui.components.card
-import fr.nutriperso.app.ui.components.tinted
-import fr.nutriperso.app.ui.theme.Neutrals
-import fr.nutriperso.app.ui.theme.Type
+import fr.aars.app.data.ApiResult
+import fr.aars.app.ui.components.ErrorBanner
+import fr.aars.app.ui.components.Txt
+import fr.aars.app.ui.components.card
+import fr.aars.app.ui.components.tinted
+import fr.aars.app.ui.theme.Neutrals
+import fr.aars.app.ui.theme.Type
 
 /** Une lecture d'écran : la dernière valeur reçue, l'erreur éventuelle, et de quoi relire. */
 @Stable
@@ -72,7 +72,7 @@ fun <T> LoadedGate(loaded: Loaded<T>, skeletons: List<Dp> = listOf(80.dp, 160.dp
 @Composable
 fun EmptyCard(title: String, body: String) {
     androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().card().padding(16.dp)) {
-        Txt(title, fr.nutriperso.app.ui.theme.nt(15f, 600))
+        Txt(title, fr.aars.app.ui.theme.nt(15f, 600))
         Txt(body, Type.secondary)
     }
 }

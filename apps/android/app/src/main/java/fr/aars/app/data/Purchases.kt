@@ -1,4 +1,4 @@
-package fr.nutriperso.app.data
+package fr.aars.app.data
 
 import android.app.Activity
 import android.content.Context
@@ -154,7 +154,7 @@ class PurchaseStore(
         }
     }
 
-    /** Restaure les achats de ce compte Google, et les rattache au compte NutriPerso. */
+    /** Restaure les achats de ce compte Google, et les rattache au compte Aars. */
     suspend fun restore(): String {
         busy = true
         try {
@@ -205,7 +205,7 @@ class PurchaseStore(
                 null
             }
             is ApiResult.Failed ->
-                if (result.code == "purchase_invalid") "Cet achat n'a pas pu être rattaché à ton compte NutriPerso." else result.message
+                if (result.code == "purchase_invalid") "Cet achat n'a pas pu être rattaché à ton compte Aars." else result.message
         }
     }
 }

@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.theme
+package fr.aars.app.ui.theme
 
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.runtime.Immutable

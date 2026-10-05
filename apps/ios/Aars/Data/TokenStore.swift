@@ -9,7 +9,7 @@ import Security
  un autre appareil (`ThisDeviceOnly`).
  */
 enum TokenStore {
-    private static let service = "fr.nutriperso.app.session"
+    private static let service = "fr.aars.app.session"
     private static let account = "token"
     private static let installedKey = "installed"
 

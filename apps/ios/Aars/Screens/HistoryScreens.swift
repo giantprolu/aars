@@ -276,7 +276,7 @@ struct AccountScreen: View {
             isPresented: Binding(get: { export != nil }, set: { if !$0 { export = nil } }),
             document: export,
             contentType: .json,
-            defaultFilename: "nutriperso-\(localToday()).json"
+            defaultFilename: "aars-\(localToday()).json"
         ) { result in
             switch result {
             case .success: model.toast("Données exportées")

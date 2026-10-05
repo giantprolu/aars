@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.components
+package fr.aars.app.ui.components
 
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind

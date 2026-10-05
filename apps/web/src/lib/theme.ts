@@ -12,6 +12,7 @@
  * seconde dans le mauvais thème avant que le navigateur ne corrige.
  */
 
+// Nom d'avant Aars, gardé : le changer ferait oublier le thème choisi.
 export const THEME_COOKIE = 'nutriperso_appearance';
 
 export const APPEARANCES = ['auto', 'light', 'dark'] as const;

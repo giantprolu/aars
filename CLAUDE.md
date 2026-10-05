@@ -1,4 +1,4 @@
-# Projet : NutriPerso
+# Projet : Aars (anciennement NutriPerso)
 
 App de suivi alimentaire. Comptes distincts, inscription libre.
 Cible : les apps natives iOS et Android seules (décision du 04/10/2026, qui

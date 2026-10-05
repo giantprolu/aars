@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.screens
+package fr.aars.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -20,23 +20,23 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
-import fr.nutriperso.app.AppModel
-import fr.nutriperso.app.R
-import fr.nutriperso.app.data.SessionRow
-import fr.nutriperso.app.ui.components.Badge
-import fr.nutriperso.app.ui.components.DomainBadge
-import fr.nutriperso.app.ui.components.DomainHeader
-import fr.nutriperso.app.ui.components.Icon
-import fr.nutriperso.app.ui.components.SegmentDots
-import fr.nutriperso.app.ui.components.Txt
-import fr.nutriperso.app.ui.components.card
-import fr.nutriperso.app.ui.components.tap
-import fr.nutriperso.app.ui.components.tinted
-import fr.nutriperso.app.ui.theme.Domains
-import fr.nutriperso.app.ui.theme.Neutrals
-import fr.nutriperso.app.ui.theme.Radius
-import fr.nutriperso.app.ui.theme.Type
-import fr.nutriperso.app.ui.theme.nt
+import fr.aars.app.AppModel
+import fr.aars.app.R
+import fr.aars.app.data.SessionRow
+import fr.aars.app.ui.components.Badge
+import fr.aars.app.ui.components.DomainBadge
+import fr.aars.app.ui.components.DomainHeader
+import fr.aars.app.ui.components.Icon
+import fr.aars.app.ui.components.SegmentDots
+import fr.aars.app.ui.components.Txt
+import fr.aars.app.ui.components.card
+import fr.aars.app.ui.components.tap
+import fr.aars.app.ui.components.tinted
+import fr.aars.app.ui.theme.Domains
+import fr.aars.app.ui.theme.Neutrals
+import fr.aars.app.ui.theme.Radius
+import fr.aars.app.ui.theme.Type
+import fr.aars.app.ui.theme.nt
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -44,7 +44,7 @@ import java.util.Locale
 /** « 8,4 t » au-delà d'une tonne, « 850 kg » en deçà (`formatTonnage`, lib/workout-progress.ts). */
 fun formatTonnage(kg: Double): Pair<String, String> =
     if (kg >= 1000) String.format(Locale.FRANCE, "%.1f", Math.round(kg / 100) / 10.0) to " t"
-    else fr.nutriperso.app.ui.components.formatInt(kg) to " kg"
+    else fr.aars.app.ui.components.formatInt(kg) to " kg"
 
 private val dayFormat = DateTimeFormatter.ofPattern("EEEE d", Locale.FRENCH)
 

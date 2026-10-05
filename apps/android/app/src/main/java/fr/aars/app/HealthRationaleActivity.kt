@@ -1,4 +1,4 @@
-package fr.nutriperso.app
+package fr.aars.app
 
 import android.content.Intent
 import android.graphics.Color
@@ -17,15 +17,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import fr.nutriperso.app.ui.components.PrimaryButton
-import fr.nutriperso.app.ui.components.Txt
-import fr.nutriperso.app.ui.components.card
-import fr.nutriperso.app.ui.screens.PRIVACY_URL
-import fr.nutriperso.app.ui.screens.ScreenColumn
-import fr.nutriperso.app.ui.theme.Domains
-import fr.nutriperso.app.ui.theme.Neutrals
-import fr.nutriperso.app.ui.theme.Type
-import fr.nutriperso.app.ui.theme.nt
+import fr.aars.app.ui.components.PrimaryButton
+import fr.aars.app.ui.components.Txt
+import fr.aars.app.ui.components.card
+import fr.aars.app.ui.screens.PRIVACY_URL
+import fr.aars.app.ui.screens.ScreenColumn
+import fr.aars.app.ui.theme.Domains
+import fr.aars.app.ui.theme.Neutrals
+import fr.aars.app.ui.theme.Type
+import fr.aars.app.ui.theme.nt
 
 /**
  * L'explication que Health Connect affiche quand on lui demande pourquoi
@@ -43,7 +43,7 @@ class HealthRationaleActivity : ComponentActivity() {
         setContent {
             Box(Modifier.fillMaxSize().background(Neutrals.screen)) {
                 ScreenColumn(withTabBar = false) {
-                    Txt("NutriPerso et Health Connect", Type.screenTitle, Modifier.padding(horizontal = 4.dp))
+                    Txt("Aars et Health Connect", Type.screenTitle, Modifier.padding(horizontal = 4.dp))
                     Column(Modifier.fillMaxWidth().card().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Txt("Ce qui est lu", nt(14f, 600))
                         Txt(
@@ -53,7 +53,7 @@ class HealthRationaleActivity : ComponentActivity() {
                         Txt("Pourquoi", nt(14f, 600))
                         Txt(
                             "Pour ajuster ta cible calorique à ta dépense réelle. L'app n'en garde qu'un total d'énergie active " +
-                                "par jour, envoyé à ton compte NutriPerso. Elle n'écrit rien dans Health Connect, ne lit rien en " +
+                                "par jour, envoyé à ton compte Aars. Elle n'écrit rien dans Health Connect, ne lit rien en " +
                                 "arrière-plan et ne partage ces données avec personne.",
                             Type.secondary,
                         )

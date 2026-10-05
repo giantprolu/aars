@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { env } from '@/server/env';
 import { Contact, LegalPage } from '../LegalPage';
 
-export const metadata: Metadata = { title: 'Supprimer son compte · NutriPerso' };
+export const metadata: Metadata = { title: 'Supprimer son compte · Aars' };
 
 /**
  * Page publique de suppression du compte, exigée par Google Play pour toute
@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: 'Supprimer son compte · NutriPerso' 
 export default function AccountDeletionPage() {
   const contact = env.legalContactEmail;
   return (
-    <LegalPage title="Supprimer ton compte NutriPerso" updated="1er octobre 2026">
+    <LegalPage title="Supprimer ton compte Aars" updated="1er octobre 2026">
       <h2>Depuis l&apos;application Android</h2>
       <ul>
         <li>Touche ton avatar en haut à droite, puis l&apos;engrenage.</li>

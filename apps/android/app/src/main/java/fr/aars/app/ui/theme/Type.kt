@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.theme
+package fr.aars.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -8,7 +8,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import fr.nutriperso.app.R
+import fr.aars.app.R
 
 /**
  * Instrument Sans, police variable embarquée (OFL, licences/). Chaque graisse

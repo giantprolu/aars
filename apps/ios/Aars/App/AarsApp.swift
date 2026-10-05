@@ -2,7 +2,7 @@ import SwiftUI
 import UserNotifications
 
 @main
-struct NutriPersoApp: App {
+struct AarsApp: App {
     @State private var model: AppModel
     /// Gardé ici : le centre de notifications ne retient son délégué que faiblement.
     private let router: NotificationRouter

@@ -1,4 +1,4 @@
-package fr.nutriperso.app.ui.training
+package fr.aars.app.ui.training
 
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
@@ -47,23 +47,23 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import fr.nutriperso.app.AppModel
-import fr.nutriperso.app.R
-import fr.nutriperso.app.data.ApiResult
-import fr.nutriperso.app.data.Runner
-import fr.nutriperso.app.data.RunnerExercise
-import fr.nutriperso.app.data.RunnerSet
-import fr.nutriperso.app.data.SetBody
-import fr.nutriperso.app.ui.components.CloseButton
-import fr.nutriperso.app.ui.components.Icon
-import fr.nutriperso.app.ui.components.ProgressTrack
-import fr.nutriperso.app.ui.components.Txt
-import fr.nutriperso.app.ui.components.rememberSelectionClick
-import fr.nutriperso.app.ui.components.tap
-import fr.nutriperso.app.ui.screens.formatTonnage
-import fr.nutriperso.app.ui.theme.Domains
-import fr.nutriperso.app.ui.theme.Neutrals
-import fr.nutriperso.app.ui.theme.nt
+import fr.aars.app.AppModel
+import fr.aars.app.R
+import fr.aars.app.data.ApiResult
+import fr.aars.app.data.Runner
+import fr.aars.app.data.RunnerExercise
+import fr.aars.app.data.RunnerSet
+import fr.aars.app.data.SetBody
+import fr.aars.app.ui.components.CloseButton
+import fr.aars.app.ui.components.Icon
+import fr.aars.app.ui.components.ProgressTrack
+import fr.aars.app.ui.components.Txt
+import fr.aars.app.ui.components.rememberSelectionClick
+import fr.aars.app.ui.components.tap
+import fr.aars.app.ui.screens.formatTonnage
+import fr.aars.app.ui.theme.Domains
+import fr.aars.app.ui.theme.Neutrals
+import fr.aars.app.ui.theme.nt
 import java.time.Instant
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -491,8 +491,8 @@ private fun FinishedPanel(data: Runner, busy: Boolean, onVisibility: (String) ->
 /** Liste filtrable du catalogue, plein écran. */
 @Composable
 fun ExercisePicker(
-    exercises: List<fr.nutriperso.app.data.CatalogExercise>,
-    onPick: (fr.nutriperso.app.data.CatalogExercise) -> Unit,
+    exercises: List<fr.aars.app.data.CatalogExercise>,
+    onPick: (fr.aars.app.data.CatalogExercise) -> Unit,
     onClose: () -> Unit,
     title: String = "Ajouter un exercice",
 ) {
@@ -502,7 +502,7 @@ fun ExercisePicker(
             Txt(title, nt(19f, 600, tracking = -0.02f), Modifier.weight(1f))
             CloseButton(onClose)
         }
-        fr.nutriperso.app.ui.components.NutriField(
+        fr.aars.app.ui.components.NutriField(
             query, { query = it }, Modifier.padding(horizontal = 16.dp),
             placeholder = "Chercher un exercice",
             leadingIcon = R.drawable.lucide_search,

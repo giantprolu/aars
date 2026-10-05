@@ -2,7 +2,7 @@ import { KeyRoundIcon } from 'lucide-react';
 import type { Metadata } from 'next';
 import { ResetForm } from './ResetForm';
 
-export const metadata: Metadata = { title: 'NutriPerso' };
+export const metadata: Metadata = { title: 'Aars' };
 
 /** Nouveau mot de passe, depuis le lien reçu par courriel. */
 export default async function ResetPage({
