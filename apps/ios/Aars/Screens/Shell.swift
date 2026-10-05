@@ -47,6 +47,7 @@ enum KitchenFlow: Equatable {
     case addItem(week: String)
     case newRecipe
     case importRecipe
+    case catalogMeal(week: String)
 }
 
 /// Les écrans plein écran du Sport.
@@ -71,6 +72,8 @@ struct MainShell: View {
     @State private var workoutId: Int?
     @State private var flow: TrainingFlow?
     @State private var kitchenFlow: KitchenFlow?
+    /// Le plat du catalogue ouvert par `.catalogMeal`, gardé à part comme les articles de courses.
+    @State private var catalogMeal: CatalogMealRow?
     @State private var moderation: ModerationTarget?
     @State private var planSlot: PlanSlot?
     @State private var planBasket: [BasketRow] = []
@@ -129,6 +132,11 @@ struct MainShell: View {
             case .importRecipe:
                 ImportRecipeScreen(model: model) { kitchenFlow = nil }
                     .transition(.move(edge: .bottom))
+            case .catalogMeal(let week):
+                if let catalogMeal {
+                    CatalogMealScreen(model: model, meal: catalogMeal, weekStart: week) { kitchenFlow = nil }
+                        .transition(.move(edge: .bottom))
+                }
             case nil:
                 EmptyView()
             }
@@ -196,7 +204,11 @@ struct MainShell: View {
                 },
                 onAddItem: { kitchenFlow = .addItem(week: $0) },
                 onNewRecipe: { kitchenFlow = .newRecipe },
-                onImportRecipe: { kitchenFlow = .importRecipe }
+                onImportRecipe: { kitchenFlow = .importRecipe },
+                onCatalogMeal: { meal, week in
+                    catalogMeal = meal
+                    kitchenFlow = .catalogMeal(week: week)
+                }
             )
         case .training:
             TrainingScreen(model: model, onMe: openMe) { pick(.session) }

@@ -2,6 +2,7 @@ import 'server-only';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { db, schema } from '../client';
 import type { Macros } from '@/lib/types';
+import { isMeal } from '@/lib/meal';
 import {
   cookingYield,
   isIngredientRefKind,
@@ -155,7 +156,12 @@ function toRecipe(
   row: typeof schema.recipes.$inferSelect,
   ingredients: RecipeIngredient[],
   imageUrl: string | null,
+  catalogSlot: string | null,
 ): Recipe {
+  // Le moment choisi l'emporte ; sinon celui du plat d'origine. Les deux
+  // colonnes sont bornées par une contrainte, `isMeal` ne fait que le dire au
+  // typage.
+  const meal = row.meal ?? catalogSlot;
   return {
     id: row.id,
     name: row.name,
@@ -165,18 +171,23 @@ function toRecipe(
     notes: row.notes,
     ingredients,
     imageUrl,
+    meal: isMeal(meal) ? meal : null,
   };
 }
 
 /**
- * La recette et la photo du plat dont elle est la copie.
+ * La recette, la photo et le moment du plat dont elle est la copie.
  *
  * Jointure à gauche sur `catalog_slug` : une recette écrite à la main, ou dont
  * le plat a quitté le catalogue, garde sa ligne et reçoit simplement `null`.
  */
 function recipesWithImage() {
   return db()
-    .select({ recipe: schema.recipes, imageUrl: schema.catalogMeals.imageUrl })
+    .select({
+      recipe: schema.recipes,
+      imageUrl: schema.catalogMeals.imageUrl,
+      catalogSlot: schema.catalogMeals.slot,
+    })
     .from(schema.recipes)
     .leftJoin(schema.catalogMeals, eq(schema.catalogMeals.slug, schema.recipes.catalogSlug));
 }
@@ -189,7 +200,7 @@ export async function listRecipes(userId: number): Promise<Recipe[]> {
 
   const ingredients = await ingredientsFor(rows.map((row) => row.recipe.id));
   return rows.map((row) =>
-    toRecipe(row.recipe, ingredients.get(row.recipe.id) ?? [], row.imageUrl),
+    toRecipe(row.recipe, ingredients.get(row.recipe.id) ?? [], row.imageUrl, row.catalogSlot),
   );
 }
 
@@ -206,7 +217,7 @@ export async function findRecipe(userId: number, id: number): Promise<Recipe | n
     return null;
   }
   const ingredients = await ingredientsFor([row.recipe.id]);
-  return toRecipe(row.recipe, ingredients.get(row.recipe.id) ?? [], row.imageUrl);
+  return toRecipe(row.recipe, ingredients.get(row.recipe.id) ?? [], row.imageUrl, row.catalogSlot);
 }
 
 /** Les lignes d'ingrédients prêtes à écrire, dans l'ordre reçu. */
@@ -251,6 +262,7 @@ export async function insertRecipe(
       prepMinutes: input.prepMinutes,
       notes: input.notes,
       catalogSlug,
+      meal: input.meal ?? null,
     })
     .returning({ id: schema.recipes.id });
 
@@ -288,6 +300,8 @@ export async function updateRecipe(
       steps: input.steps,
       prepMinutes: input.prepMinutes,
       notes: input.notes,
+      // Absent, le moment reste ce qu'il était (voir `RecipeInput.meal`).
+      ...(input.meal === undefined ? {} : { meal: input.meal }),
       updatedAt: new Date(),
     })
     .where(and(eq(schema.recipes.userId, userId), eq(schema.recipes.id, id)))

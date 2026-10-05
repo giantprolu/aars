@@ -2,6 +2,7 @@ import 'server-only';
 import { z } from 'zod';
 import { MAX_INGREDIENTS, MAX_SERVINGS, MAX_STEPS } from '@/lib/recipe';
 import { MAX_QUANTITY_G } from '@/lib/nutrition';
+import { MEALS } from '@/lib/meal';
 import { MAX_NAME_LENGTH, MAX_PREP_MINUTES, type RecipeRejection } from '../services/recipes';
 
 /**
@@ -31,6 +32,9 @@ export const recipeSchema = z.object({
   prepMinutes: z.number().int().min(0).max(MAX_PREP_MINUTES).nullable(),
   notes: z.string().trim().max(1000).nullable(),
   ingredients: z.array(ingredientSchema).min(1).max(MAX_INGREDIENTS),
+  // Facultatif : absent, il ne change rien (les apps d'avant le 05/10/2026
+  // ne l'envoient pas) ; `null` retire le moment choisi.
+  meal: z.enum(MEALS).nullish(),
 });
 
 /**

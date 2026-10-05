@@ -19,10 +19,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { MIN_QUERY_LENGTH, SEARCH_DEBOUNCE_MS, searchFoods } from '@/lib/client/search';
 import { cacheProduct } from '@/lib/client/products';
 import { createRecipe, updateRecipe } from '@/lib/client/recipes';
+import { MEALS, MEAL_SHORT_LABELS, isMeal, type Meal } from '@/lib/meal';
 import {
   MAX_INGREDIENTS,
   MAX_SERVINGS,
@@ -102,6 +104,7 @@ export function RecipeEditor({ recipe }: { recipe: Recipe | null }) {
 
   const [name, setName] = useState(recipe?.name ?? '');
   const [servings, setServings] = useState(recipe?.servings ?? 2);
+  const [meal, setMeal] = useState<Meal | null>(recipe?.meal ?? null);
   // Changer les parts refait les quantités par défaut : c'est ce qu'on attend
   // en passant une recette de deux à quatre. L'autre lecture — même plat, parts
   // plus petites — reste possible, en le disant.
@@ -228,6 +231,7 @@ export function RecipeEditor({ recipe }: { recipe: Recipe | null }) {
           steps: steps.split('\n'),
           prepMinutes: parsedPrep,
           notes: null,
+          meal,
           ingredients: ingredients.map((ingredient) => ({
             refKind: ingredient.refKind,
             refValue: ingredient.refValue,
@@ -243,6 +247,7 @@ export function RecipeEditor({ recipe }: { recipe: Recipe | null }) {
           steps: steps.split('\n'),
           prepMinutes: parsedPrep,
           notes: null,
+          meal,
           ingredients: ingredients.map((ingredient) => ({
             refKind: ingredient.refKind,
             refValue: ingredient.refValue,
@@ -309,6 +314,25 @@ export function RecipeEditor({ recipe }: { recipe: Recipe | null }) {
             onChange={(event) => setName(event.target.value)}
             placeholder="Riz, œufs et légumes"
           />
+        </div>
+
+        <div className="grid gap-2">
+          <Label id="recipe-meal-label">Moment</Label>
+          <Tabs
+            value={meal ?? 'none'}
+            onValueChange={(value) => setMeal(isMeal(value) ? value : null)}
+          >
+            <TabsList aria-labelledby="recipe-meal-label" className="w-full">
+              <TabsTrigger value="none" className="px-1">
+                Aucun
+              </TabsTrigger>
+              {MEALS.map((candidate) => (
+                <TabsTrigger key={candidate} value={candidate} className="px-1">
+                  {MEAL_SHORT_LABELS[candidate]}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </div>
 
         <div className="grid grid-cols-[1fr_auto] items-end gap-3">

@@ -57,10 +57,10 @@ export async function POST(request: Request): Promise<Response> {
     return apiError('invalid_input');
   }
 
-  const { name, servings, steps, prepMinutes, notes, ingredients, imported } = parsed.data;
+  const { name, servings, steps, prepMinutes, notes, ingredients, meal, imported } = parsed.data;
   const result = await createRecipe(
     userId,
-    { name, servings, steps, prepMinutes, notes, ingredients },
+    { name, servings, steps, prepMinutes, notes, ingredients, meal },
     { imported: imported === true },
   );
   if (result.kind === 'invalid') {

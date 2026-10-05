@@ -319,6 +319,8 @@ struct BasketRow: Codable, Sendable, Identifiable {
     let recipeName: String
     let servings: Double
     let plannedServings: Double
+    /// Moment de la recette (`breakfast`…), choisi ou repris de son plat ; absent sinon.
+    let meal: String?
 }
 
 struct BasketResponse: Codable, Sendable {
@@ -354,6 +356,8 @@ struct RecipeRow: Codable, Sendable, Identifiable {
     @Default<Zero> var kcalPerServing: Double
     /// Photo du plat du catalogue ; absente pour une recette écrite à la main.
     let imageUrl: String?
+    /// Moment de la recette (`breakfast`…), choisi ou repris de son plat ; absent sinon.
+    let meal: String?
 }
 
 struct RecipesResponse: Codable, Sendable {
@@ -853,6 +857,8 @@ struct RecipeCreateBody: Codable, Sendable {
     @Nullable var prepMinutes: Int?
     @Nullable var notes: String?
     let ingredients: [IngredientBody]
+    /// Le moment choisi (`breakfast`…), ou `nil`.
+    @Nullable var meal: String?
     /// Vrai pour une recette venue de l'import (Cuisine+) : elle ne compte pas dans la limite gratuite.
     var imported: Bool?
 }
@@ -861,6 +867,7 @@ struct RecipeCreateBody: Codable, Sendable {
 
 struct FillWeekBody: Codable, Sendable {
     let weekStart: String
+    let meals: [String]
 }
 
 /// « Remplir la semaine » : ce qui a été posé, et ce qui a rejoint le panier pour y parvenir.
@@ -868,6 +875,47 @@ struct FillWeekResponse: Codable, Sendable {
     let placed: Int
     @Default<Empty<String>> var added: [String]
     let empty: Int
+}
+
+// MARK: Catalogue de plats.
+
+struct CatalogIngredientRow: Codable, Sendable {
+    let label: String
+    let quantityG: Double
+    let unitName: String?
+    let unitGrams: Double?
+}
+
+struct CatalogMealRow: Codable, Sendable, Identifiable {
+    let slug: String
+    let name: String
+    let slot: String
+    let servings: Double
+    let prepMinutes: Int?
+    @Default<Empty<String>> var steps: [String]
+    @Default<Empty<CatalogIngredientRow>> var ingredients: [CatalogIngredientRow]
+    let imageUrl: String?
+    /// Ordre de grandeur pour une part.
+    @Default<ZeroInt> var kcal: Int
+    @Default<ZeroInt> var proteinG: Int
+    /// La recette du compte qui en est la copie, absente s'il n'est pas installé.
+    let recipeId: Int?
+
+    var id: String { slug }
+}
+
+struct CatalogResponse: Codable, Sendable {
+    @Default<Empty<CatalogMealRow>> var meals: [CatalogMealRow]
+}
+
+struct CatalogSlugsBody: Codable, Sendable {
+    let slugs: [String]
+}
+
+struct BasketCatalogBody: Codable, Sendable {
+    var source = "catalog"
+    let weekStart: String
+    let slugs: [String]
 }
 
 struct ImportRecipeBody: Codable, Sendable {

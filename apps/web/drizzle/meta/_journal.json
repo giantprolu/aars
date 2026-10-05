@@ -169,6 +169,13 @@
       "when": 1791184519050,
       "tag": "0023_store_purchases",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791230662366,
+      "tag": "0024_recipe_meal",
+      "breakpoints": true
     }
   ]
 }

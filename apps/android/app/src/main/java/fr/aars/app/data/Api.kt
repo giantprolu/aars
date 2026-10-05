@@ -1,6 +1,7 @@
 package fr.aars.app.data
 
 import fr.aars.app.BuildConfig
+import fr.aars.app.Meal
 import java.io.IOException
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
@@ -197,10 +198,25 @@ class Api(private val tokens: TokenStore) {
         json.encodeToString(PlanMealBody.serializer(), PlanMealBody(planDate, meal, recipeId, servings)),
     )
 
-    /** « Remplir la semaine » (Cuisine+). */
-    suspend fun fillWeek(weekStart: String) = decode(
-        raw("POST", "/api/plan/auto", json.encodeToString(FillWeekBody.serializer(), FillWeekBody(weekStart))),
+    /** « Remplir la semaine » (Cuisine+), sur les moments donnés. */
+    suspend fun fillWeek(weekStart: String, meals: List<Meal>) = decode(
+        raw("POST", "/api/plan/auto", json.encodeToString(FillWeekBody.serializer(), FillWeekBody(weekStart, meals.map { it.api }))),
         FillWeekResponse.serializer(),
+    )
+
+    /** Les plats du catalogue pour l'objectif du compte. */
+    suspend fun catalog() = get("/api/catalog", CatalogResponse.serializer())
+
+    /** Ajoute un plat du catalogue aux recettes, sans le mettre au panier. */
+    suspend fun installCatalog(slug: String) = send(
+        "POST", "/api/catalog",
+        json.encodeToString(CatalogSlugsBody.serializer(), CatalogSlugsBody(listOf(slug))),
+    )
+
+    /** Choisit un plat du catalogue pour la semaine : installé s'il ne l'est pas, puis mis au panier. */
+    suspend fun chooseCatalog(weekStart: String, slug: String) = send(
+        "POST", "/api/basket",
+        json.encodeToString(BasketCatalogBody.serializer(), BasketCatalogBody(weekStart = weekStart, slugs = listOf(slug))),
     )
 
     /** Lit une page de recette et rend un brouillon (Cuisine+). Rien n'est enregistré. */

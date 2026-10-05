@@ -3,29 +3,36 @@
  * (AD-8). Le service `plan-auto` lit le plan, le panier et le catalogue, et
  * confie ici le seul choix qui demande réflexion : quel plat sur quelle case.
  *
- * Une case est un midi ou un soir, du jour même à dimanche ; une part se pose
- * sur une case, comme quand on place un plat à la main. Les plats tournent
+ * Une case est un repas d'un jour, du jour même à dimanche : midi et soir par
+ * défaut, matin et collation aussi quand l'app les demande (05/10/2026). Une
+ * part se pose sur une case, comme quand on place un plat à la main. Les plats tournent
  * d'une case à l'autre plutôt que de se suivre : trois soirs de curry de
  * suite, c'est ce qu'un plan fait à la main évite, et un plan automatique
  * doit au moins faire aussi bien.
  */
 
-import type { Meal } from './meal';
+import { MEALS, type Meal } from './meal';
 
-/** Les deux repas que porte le plan. */
+/**
+ * Les repas remplis quand l'app ne dit rien : midi et soir, ceux d'avant le
+ * 05/10/2026. Une version installée qui ne connaît qu'eux ne doit pas trouver
+ * son plan rempli de matins qu'elle ne sait pas montrer.
+ */
 export const PLAN_MEALS = ['lunch', 'dinner'] as const satisfies readonly Meal[];
-export type PlanMeal = (typeof PLAN_MEALS)[number];
+
+/** Midi et soir : les repas principaux, entre lesquels un plat peut passer. */
+const MAIN_MEALS: readonly Meal[] = PLAN_MEALS;
 
 export interface PlanSlot {
   date: string;
-  meal: PlanMeal;
+  meal: Meal;
 }
 
 /** Un plat qui a des parts à poser. `meal` à `null` : il va midi comme soir. */
 export interface PlanDish {
   recipeId: number;
   portions: number;
-  meal: PlanMeal | null;
+  meal: Meal | null;
 }
 
 export interface PlanAssignment {
@@ -33,23 +40,42 @@ export interface PlanAssignment {
   recipeId: number;
 }
 
-/** Les cases libres, dans l'ordre du temps : jour par jour, midi avant soir. */
+/** Les cases libres, dans l'ordre du temps : jour par jour, matin avant soir. */
 export function emptySlots(
   days: readonly string[],
   taken: readonly { planDate: string; meal: string }[],
+  meals: readonly Meal[] = PLAN_MEALS,
 ): PlanSlot[] {
   const occupied = new Set(taken.map((item) => `${item.planDate}|${item.meal}`));
+  const wanted = MEALS.filter((meal) => meals.includes(meal));
   return days.flatMap((date) =>
-    PLAN_MEALS.filter((meal) => !occupied.has(`${date}|${meal}`)).map((meal) => ({ date, meal })),
+    wanted.filter((meal) => !occupied.has(`${date}|${meal}`)).map((meal) => ({ date, meal })),
   );
+}
+
+/**
+ * Un plat peut-il aller sur cette case ?
+ *
+ * Le matin et la collation ne prennent que leurs propres plats : des lasagnes
+ * au petit-déjeuner ne remplissent pas une case, elles la gâchent. Midi et
+ * soir prennent un plat sans moment, et, faute de mieux, celui de l'autre.
+ */
+function fits(dish: Meal | null, slot: Meal, strict: boolean): boolean {
+  if (!MAIN_MEALS.includes(slot)) {
+    return dish === slot;
+  }
+  if (dish === null || dish === slot) {
+    return true;
+  }
+  return !strict && MAIN_MEALS.includes(dish);
 }
 
 /**
  * Pose les parts sur les cases, en tournant d'un plat à l'autre.
  *
  * Un plat destiné au soir ne va pas au midi tant qu'un autre peut y aller :
- * une première passe respecte les repas, une seconde remplit ce qui reste
- * avec n'importe quel plat qui a encore des parts. Les parts entières seules
+ * une première passe respecte les repas, une seconde remplit les midis et
+ * soirs qui restent avec un plat de l'autre repas principal (voir `fits`). Les parts entières seules
  * comptent : une demi-part ne fait pas un repas.
  */
 export function assignPortions(
@@ -68,7 +94,7 @@ export function assignPortions(
       for (let step = 0; step < left.length; step += 1) {
         const index = (cursor + step) % left.length;
         const dish = left[index]!;
-        if (dish.portions > 0 && (!strict || dish.meal === null || dish.meal === slot.meal)) {
+        if (dish.portions > 0 && fits(dish.meal, slot.meal, strict)) {
           picked = index;
           break;
         }
@@ -104,19 +130,23 @@ export interface CatalogChoice {
  */
 export function pickCatalogMeals(
   catalog: readonly CatalogChoice[],
-  need: Record<PlanMeal, number>,
+  need: Partial<Record<Meal, number>>,
   exclude: ReadonlySet<string>,
   weekIndex: number,
 ): string[] {
   const picked: string[] = [];
-  for (const meal of PLAN_MEALS) {
+  for (const meal of MEALS) {
+    const wanted = need[meal] ?? 0;
+    if (wanted <= 0) {
+      continue;
+    }
     const candidates = catalog
       .filter((item) => item.slot === meal && !exclude.has(item.slug))
       .map((item) => ({ item, rank: fnv1a(`${weekIndex}:${item.slug}`) }))
       .sort((a, b) => a.rank - b.rank || a.item.slug.localeCompare(b.item.slug));
     let covered = 0;
     for (const { item } of candidates) {
-      if (covered >= need[meal]) {
+      if (covered >= wanted) {
         break;
       }
       picked.push(item.slug);

@@ -105,3 +105,32 @@ export async function reopenMeal(id: number): Promise<UnplanOutcome> {
     return { kind: 'error' };
   }
 }
+
+export type FillWeekOutcome =
+  | { kind: 'filled'; placed: number; added: string[]; empty: number }
+  | { kind: 'refused'; message: string }
+  | { kind: 'error' };
+
+/** « Remplir la semaine » : un plat sur chaque repas libre des moments demandés. */
+export async function fillWeek(weekStart: string, meals: readonly Meal[]): Promise<FillWeekOutcome> {
+  let response: Response;
+  try {
+    response = await fetch('/api/plan/auto', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ weekStart, meals }),
+    });
+  } catch {
+    return { kind: 'error' };
+  }
+
+  if (response.status === 400 || response.status === 402 || response.status === 403) {
+    return { kind: 'refused', message: await readMessage(response, 'Remplissage refusé.') };
+  }
+  if (!response.ok) {
+    return { kind: 'error' };
+  }
+
+  const body = (await response.json()) as { placed: number; added: string[]; empty: number };
+  return { kind: 'filled', placed: body.placed, added: body.added, empty: body.empty };
+}

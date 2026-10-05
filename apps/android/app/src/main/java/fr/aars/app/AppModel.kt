@@ -28,16 +28,25 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 
-/** Les quatre repas de l'API, dans l'ordre du sélecteur. */
-enum class Meal(val api: String, val label: String, val short: String, val inPhrase: String) {
-    Breakfast("breakfast", "Petit-déjeuner", "Petit-déj", "au petit-déjeuner"),
-    Lunch("lunch", "Déjeuner", "Déjeuner", "au déjeuner"),
-    Snack("snack", "Collation", "Collation", "à la collation"),
-    Dinner("dinner", "Dîner", "Dîner", "au dîner"),
+/**
+ * Les quatre repas de l'API, dans l'ordre du sélecteur. `moment` est le mot
+ * court des colonnes du plan (matin, midi, soir, collation).
+ */
+enum class Meal(val api: String, val label: String, val short: String, val inPhrase: String, val moment: String) {
+    Breakfast("breakfast", "Petit-déjeuner", "Petit-déj", "au petit-déjeuner", "Matin"),
+    Lunch("lunch", "Déjeuner", "Déjeuner", "au déjeuner", "Midi"),
+    Snack("snack", "Collation", "Collation", "à la collation", "Collation"),
+    Dinner("dinner", "Dîner", "Dîner", "au dîner", "Soir"),
     ;
 
     companion object {
         fun fromApi(value: String): Meal = entries.firstOrNull { it.api == value } ?: Snack
+
+        /** Un moment de recette ou de plat : `null` reste `null`, une valeur inconnue aussi. */
+        fun orNull(value: String?): Meal? = entries.firstOrNull { it.api == value }
+
+        /** L'ordre du plan et des filtres, le même que la PWA : matin, midi, soir, collation. */
+        val planOrder = listOf(Breakfast, Lunch, Dinner, Snack)
 
         /** Le repas que l'heure suggère, mêmes bornes que `mealForHour` (lib/meal.ts). */
         fun forNow(): Meal {

@@ -6,6 +6,8 @@ import { useState } from 'react';
 import { DishImage } from '@/components/DishImage';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MEALS, MEAL_SHORT_LABELS, isMeal, type Meal } from '@/lib/meal';
 import { formatKcal } from '@/lib/nutrition';
 
 /** Ce que la grille montre d'une recette, calculé côté serveur. */
@@ -18,6 +20,8 @@ export interface RecipeTile {
   /** Au moins un ingrédient sans fiche : le chiffre est un plancher. */
   partial: boolean;
   imageUrl: string | null;
+  /** Le moment de la recette, `null` si elle n'en a pas. */
+  meal: Meal | null;
 }
 
 /** Sans accents ni casse : « creme » doit trouver « Crème brûlée ». */
@@ -37,8 +41,11 @@ function fold(text: string): string {
  */
 export function RecipeGrid({ recipes }: { recipes: readonly RecipeTile[] }) {
   const [term, setTerm] = useState('');
+  const [slot, setSlot] = useState<Meal | 'all'>('all');
   const needle = fold(term.trim());
-  const shown = needle === '' ? recipes : recipes.filter((r) => fold(r.name).includes(needle));
+  const shown = recipes.filter(
+    (r) => (needle === '' || fold(r.name).includes(needle)) && (slot === 'all' || r.meal === slot),
+  );
 
   return (
     <>
@@ -56,6 +63,21 @@ export function RecipeGrid({ recipes }: { recipes: readonly RecipeTile[] }) {
           className="pl-9"
         />
       </div>
+
+      <Tabs
+        value={slot}
+        onValueChange={(value) => setSlot(value === 'all' ? 'all' : isMeal(value) ? value : 'all')}
+        className="mt-3"
+      >
+        <TabsList aria-label="Moment du repas" className="w-full">
+          <TabsTrigger value="all">Tout</TabsTrigger>
+          {MEALS.map((candidate) => (
+            <TabsTrigger key={candidate} value={candidate} className="px-1">
+              {MEAL_SHORT_LABELS[candidate]}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {shown.length === 0 ? (
         <p className="py-8 text-center text-muted-foreground">Aucune recette ne correspond.</p>

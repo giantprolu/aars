@@ -46,6 +46,7 @@ import fr.aars.app.Meal
 import fr.aars.app.R
 import fr.aars.app.data.ApiResult
 import fr.aars.app.data.BasketRow
+import fr.aars.app.data.CatalogMealRow
 import fr.aars.app.data.PlannedRow
 import fr.aars.app.data.RecipeRow
 import fr.aars.app.data.ShoppingItemRow
@@ -80,7 +81,8 @@ import java.util.Locale
 import kotlinx.coroutines.launch
 
 /** Deux repas par jour, sept jours : ce que le plan peut porter. */
-private const val SLOTS_PER_WEEK = 14
+/** Quatre moments par jour depuis le 05/10/2026 : matin, midi, soir, collation. */
+private val SLOTS_PER_WEEK = Meal.planOrder.size * 7
 
 /** Une case vide du plan, en attente d'un plat. */
 data class PlanSlot(val date: LocalDate, val meal: Meal)
@@ -95,6 +97,7 @@ fun KitchenScreen(
     onAddItem: (String) -> Unit,
     onNewRecipe: () -> Unit,
     onImportRecipe: () -> Unit,
+    onCatalogMeal: (CatalogMealRow, String) -> Unit,
 ) {
     val kitchen = Domains.kitchen
     val scope = rememberCoroutineScope()
@@ -145,7 +148,7 @@ fun KitchenScreen(
                 }
                 BasketCard(chosen, onChoose = { section = 1 })
                 val open = (0L until 7L).map { monday.plusDays(it) }.filter { it >= today }.sumOf { date ->
-                    listOf(Meal.Lunch, Meal.Dinner).count { meal ->
+                    Meal.planOrder.count { meal ->
                         planned.none { it.planDate == date.toString() && Meal.fromApi(it.meal) == meal }
                     }
                 }
@@ -162,7 +165,7 @@ fun KitchenScreen(
                         } else if (!filling) {
                             filling = true
                             scope.launch {
-                                when (val result = model.api.fillWeek(week)) {
+                                when (val result = model.api.fillWeek(week, Meal.planOrder)) {
                                     is ApiResult.Ok -> {
                                         val done = result.value
                                         val placed = "${done.placed} repas ${if (done.placed > 1) "placés" else "placé"}"
@@ -197,7 +200,12 @@ fun KitchenScreen(
                     },
                 )
             }
-            1 -> RecipesSection(model, week, onNewRecipe, onImport = { if (locked) model.requestPaywall() else onImportRecipe() }, locked = locked)
+            1 -> RecipesSection(
+                model, week, onNewRecipe,
+                onImport = { if (locked) model.requestPaywall() else onImportRecipe() },
+                onCatalogMeal = { meal -> onCatalogMeal(meal, week) },
+                locked = locked,
+            )
             else -> if (LoadedGate(shopping)) {
                 if (shopping.value?.list == null) {
                     EmptyCard("Pas encore de liste", "Elle se compose à partir des plats choisis pour la semaine.")
@@ -293,22 +301,23 @@ private fun PlanGrid(
 ) {
     val kitchen = Domains.kitchen
     Column(Modifier.fillMaxWidth().card()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
-            Spacer(Modifier.width(52.dp))
-            Txt("Midi", nt(11.5f, color = Neutrals.muted), Modifier.weight(1f))
-            Txt("Soir", nt(11.5f, color = Neutrals.muted), Modifier.weight(1f))
+        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Spacer(Modifier.width(36.dp))
+            Meal.planOrder.forEach { meal ->
+                Txt(meal.moment, nt(11f, color = Neutrals.muted), Modifier.weight(1f), maxLines = 1)
+            }
         }
         (0L until 7L).forEach { offset ->
             val date = monday.plusDays(offset)
             val isToday = date == today
             Box(Modifier.fillMaxWidth().height(1.dp).background(Neutrals.divider))
             Row(
-                Modifier.fillMaxWidth().background(if (isToday) kitchen.soft else Color.Transparent).padding(horizontal = 12.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                Modifier.fillMaxWidth().background(if (isToday) kitchen.soft else Color.Transparent).padding(horizontal = 8.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Txt(dayLabel(date), if (isToday) nt(12f, 700, kitchen.textOnLight) else nt(12f, color = Neutrals.muted), Modifier.width(46.dp))
-                listOf(Meal.Lunch, Meal.Dinner).forEach { meal ->
+                Txt(dayLabel(date), if (isToday) nt(11.5f, 700, kitchen.textOnLight) else nt(11.5f, color = Neutrals.muted), Modifier.width(36.dp))
+                Meal.planOrder.forEach { meal ->
                     val row = planned.firstOrNull { it.planDate == date.toString() && Meal.fromApi(it.meal) == meal }
                     PlanCell(row, date, today, Modifier.weight(1f), onEat = onEat, onEmpty = { onEmpty(PlanSlot(date, meal)) })
                 }
@@ -328,20 +337,21 @@ private fun PlanCell(
 ) {
     val kitchen = Domains.kitchen
     val shape = RoundedCornerShape(8.dp)
-    val padded = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+    // Quatre colonnes : le nom tient sur deux lignes plutôt qu'une coupée court.
+    val padded = Modifier.padding(horizontal = 5.dp, vertical = 5.dp)
     val struck = TextStyle(textDecoration = TextDecoration.LineThrough)
     when {
-        row == null && date < today -> Txt("—", nt(12f, color = Neutrals.faint), modifier)
+        row == null && date < today -> Txt("—", nt(11f, color = Neutrals.faint), modifier)
         row == null -> Txt("+", nt(12f, color = kitchen.textOnLight), modifier.dashedBorder(kitchen.seg, 8.dp).tap(onClick = onEmpty).then(padded))
         row.journaledAt != null || date < today -> Txt(
-            row.recipeName, nt(12f, color = Neutrals.faint).merge(struck),
-            modifier.clip(shape).background(Neutrals.chip).then(padded), maxLines = 1,
+            row.recipeName, nt(10.5f, color = Neutrals.faint, line = 1.2f).merge(struck),
+            modifier.clip(shape).background(Neutrals.chip).then(padded), maxLines = 2,
         )
         date == today -> Txt(
-            "${row.recipeName} · manger", nt(12f, 600, kitchen.textOnFill),
-            modifier.clip(shape).background(kitchen.fill).tap { onEat(row) }.then(padded), maxLines = 1,
+            row.recipeName, nt(10.5f, 600, kitchen.textOnFill, line = 1.2f),
+            modifier.clip(shape).background(kitchen.fill).tap { onEat(row) }.then(padded), maxLines = 2,
         )
-        else -> Txt(row.recipeName, nt(12f), modifier.clip(shape).background(kitchen.soft).then(padded), maxLines = 1)
+        else -> Txt(row.recipeName, nt(10.5f, line = 1.2f), modifier.clip(shape).background(kitchen.soft).then(padded), maxLines = 2)
     }
 }
 
@@ -405,11 +415,25 @@ fun StatTile(
 
 /** Les recettes de l'utilisateur ; un toucher ajoute deux parts au panier de la semaine. */
 @Composable
-private fun RecipesSection(model: AppModel, week: String, onNewRecipe: () -> Unit, onImport: () -> Unit, locked: Boolean) {
+private fun RecipesSection(
+    model: AppModel,
+    week: String,
+    onNewRecipe: () -> Unit,
+    onImport: () -> Unit,
+    onCatalogMeal: (CatalogMealRow) -> Unit,
+    locked: Boolean,
+) {
     val kitchen = Domains.kitchen
     val scope = rememberCoroutineScope()
     val recipes = rememberLoaded(model.revision) { model.api.recipes() }
+    val catalog = rememberLoaded(model.revision) { model.api.catalog() }
     var query by remember { mutableStateOf("") }
+    // 0 : tout ; ensuite les moments, dans l'ordre du plan.
+    var moment by rememberSaveable { mutableStateOf(0) }
+    val wanted = if (moment == 0) null else Meal.planOrder[moment - 1]
+    fun matches(name: String, meal: String?) =
+        (query.isBlank() || name.contains(query.trim(), ignoreCase = true)) && (wanted == null || Meal.orNull(meal) == wanted)
+
     NutriField(
         query,
         { query = it },
@@ -421,6 +445,15 @@ private fun RecipesSection(model: AppModel, week: String, onNewRecipe: () -> Uni
         leadingTint = kitchen.textOnLight,
         focusColor = kitchen.textOnLight,
         textSize = 14f,
+    )
+    SegmentedPill(
+        options = listOf("Tout") + Meal.planOrder.map { it.moment },
+        selected = moment,
+        onSelect = { moment = it },
+        track = kitchen.soft,
+        textColor = kitchen.textOnLight,
+        selectedTextColor = kitchen.textOnLight,
+        textStyle = nt(12.5f, 600),
     )
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
@@ -447,56 +480,83 @@ private fun RecipesSection(model: AppModel, week: String, onNewRecipe: () -> Uni
         }
     }
     if (!LoadedGate(recipes)) return
-    val shown = recipes.value?.recipes.orEmpty().filter { query.isBlank() || it.name.contains(query.trim(), ignoreCase = true) }
+    val shown = recipes.value?.recipes.orEmpty().filter { matches(it.name, it.meal) }
+    Txt("Mes recettes", nt(15f, 600), Modifier.padding(horizontal = 4.dp))
     if (shown.isEmpty()) {
         EmptyCard(
-            if (query.isBlank()) "Aucune recette" else "Aucun résultat",
-            if (query.isBlank()) "Crée ta première recette avec le bouton ci-dessus." else "Essaie un autre mot.",
+            if (query.isBlank() && wanted == null) "Aucune recette" else "Aucun résultat",
+            if (query.isBlank() && wanted == null) "Crée ta première recette, ou prends-en une dans le catalogue ci-dessous." else "Essaie un autre mot ou un autre moment.",
         )
-        return
-    }
-    Txt("Touche une recette pour l'ajouter aux plats de la semaine.", Type.secondary, Modifier.padding(horizontal = 4.dp))
-    shown.chunked(2).forEach { pair ->
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            pair.forEach { recipe ->
-                RecipeCard(recipe, Modifier.weight(1f)) {
-                    scope.launch {
-                        val servings = recipe.servings.coerceAtLeast(1.0)
-                        when (val result = model.api.addToBasket(week, recipe.id, servings)) {
-                            is ApiResult.Ok -> {
-                                model.toast("${recipe.name} ajouté aux plats de la semaine")
-                                model.bump()
+    } else {
+        Txt("Touche une recette pour l'ajouter aux plats de la semaine.", Type.secondary, Modifier.padding(horizontal = 4.dp))
+        shown.chunked(2).forEach { pair ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                pair.forEach { recipe ->
+                    RecipeCard(recipe, Modifier.weight(1f)) {
+                        scope.launch {
+                            val servings = recipe.servings.coerceAtLeast(1.0)
+                            when (val result = model.api.addToBasket(week, recipe.id, servings)) {
+                                is ApiResult.Ok -> {
+                                    model.toast("${recipe.name} ajouté aux plats de la semaine")
+                                    model.bump()
+                                }
+                                is ApiResult.Failed -> model.toast(result.message)
                             }
-                            is ApiResult.Failed -> model.toast(result.message)
                         }
                     }
                 }
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+
+    // Le catalogue : les plats de l'objectif que le compte n'a pas encore.
+    if (!LoadedGate(catalog)) return
+    val dishes = catalog.value?.meals.orEmpty().filter { it.recipeId == null && matches(it.name, it.slot) }
+    if (dishes.isEmpty()) return
+    Txt("Catalogue", nt(15f, 600), Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp))
+    Txt("Des plats prêts pour ton objectif. Touche-en un pour le voir.", Type.secondary, Modifier.padding(horizontal = 4.dp))
+    dishes.chunked(2).forEach { pair ->
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            pair.forEach { meal ->
+                DishCard(meal.name, meal.imageUrl, catalogLine(meal), Modifier.weight(1f)) { onCatalogMeal(meal) }
             }
             if (pair.size == 1) Spacer(Modifier.weight(1f))
         }
     }
 }
 
+/** Ce qu'une carte du catalogue dit sous le nom : moment, calories par part, durée. */
+private fun catalogLine(meal: CatalogMealRow): String = listOfNotNull(
+    Meal.orNull(meal.slot)?.moment,
+    if (meal.kcal > 0) "${formatInt(meal.kcal.toDouble())} kcal" else null,
+    meal.prepMinutes?.let { "$it min" },
+).joinToString(" · ")
+
 @Composable
 private fun RecipeCard(recipe: RecipeRow, modifier: Modifier, onClick: () -> Unit) {
+    val line = listOfNotNull(
+        if (recipe.kcalPerServing > 0) "${formatInt(recipe.kcalPerServing)} kcal" else null,
+        recipe.prepMinutes?.let { "$it min" },
+    ).joinToString(" · ").ifEmpty { "${formatServings(recipe.servings)} parts" }
+    DishCard(recipe.name, recipe.imageUrl, line, modifier, onClick)
+}
+
+/** Une carte de plat : photo (ou motif), nom sur deux lignes, une ligne de détail. */
+@Composable
+private fun DishCard(name: String, imageUrl: String?, line: String, modifier: Modifier, onClick: () -> Unit) {
     val kitchen = Domains.kitchen
     Column(modifier.card(Radius.tile).tap(onClick = onClick)) {
         // Le motif reste dessous : il tient lieu de photo pendant le chargement,
         // et pour toute recette qui n'en a pas.
         Box(Modifier.fillMaxWidth().aspectRatio(1.3f).clip(RoundedCornerShape(topStart = Radius.tile, topEnd = Radius.tile)).photoStripes(kitchen.soft, kitchen.seg)) {
-            recipe.imageUrl?.let { url ->
+            imageUrl?.let { url ->
                 AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
             }
         }
         Column(Modifier.padding(10.dp)) {
-            Txt(recipe.name, nt(14f, 600, line = 1.25f), maxLines = 2)
-            Txt(
-                listOfNotNull(
-                    if (recipe.kcalPerServing > 0) "${formatInt(recipe.kcalPerServing)} kcal" else null,
-                    recipe.prepMinutes?.let { "$it min" },
-                ).joinToString(" · ").ifEmpty { "${formatServings(recipe.servings)} parts" },
-                Type.small,
-            )
+            Txt(name, nt(14f, 600, line = 1.25f), maxLines = 2)
+            Txt(line, Type.small)
         }
     }
 }
@@ -587,9 +647,17 @@ fun BoxScope.PlanSlotSheet(
 ) {
     val kitchen = Domains.kitchen
     val scope = rememberCoroutineScope()
-    val title = slot?.let { "${dayLabel(it.date)} · ${if (it.meal == Meal.Lunch) "midi" else "soir"}" } ?: ""
+    val title = slot?.let { "${dayLabel(it.date)} · ${it.meal.moment.lowercase()}" } ?: ""
+    // Les plats de ce moment d'abord, puis ceux sans moment, puis les autres.
+    val ordered = basket.sortedBy { item ->
+        when (Meal.orNull(item.meal)) {
+            slot?.meal -> 0
+            null -> 1
+            else -> 2
+        }
+    }
     NutriSheet(slot != null, title, onDismiss, gap = 10) {
-        basket.forEach { item ->
+        ordered.forEach { item ->
             Row(
                 Modifier.fillMaxWidth().tinted(kitchen.soft, Radius.tile).tap {
                     val target = slot ?: return@tap

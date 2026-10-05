@@ -117,24 +117,29 @@ function buildIngredients(
   return { ingredients, skipped };
 }
 
+export interface InstallReport {
+  /** Recettes créées à cette occasion ; les autres étaient déjà installées. */
+  installed: number;
+  /** Plats qu'aucun ingrédient n'a pu servir, par leur nom. */
+  failed: string[];
+  /** Ingrédients sans fiche, absents des recettes installées. */
+  skippedIngredients: string[];
+  /** La recette de chaque plat demandé et installé, dans l'ordre demandé. */
+  recipes: { slug: string; name: string; recipeId: number; servings: number }[];
+}
+
 /**
- * Installe les plats demandés et les met au panier de la semaine.
+ * Installe les plats demandés parmi les recettes du compte.
  *
  * Les plats déjà installés ne sont pas réécrits : leur recette appartient
  * désormais à l'utilisateur, qui a pu la modifier. La réinstaller au motif
  * qu'il la choisit une seconde fois effacerait ses corrections sans prévenir.
  */
-export async function chooseCatalogMeals(
+export async function installCatalogMeals(
   userId: number,
-  weekStart: string,
   slugs: readonly string[],
-): Promise<ChooseMealsReport> {
-  const report: ChooseMealsReport = {
-    chosen: 0,
-    installed: 0,
-    failed: [],
-    skippedIngredients: [],
-  };
+): Promise<InstallReport> {
+  const report: InstallReport = { installed: 0, failed: [], skippedIngredients: [], recipes: [] };
 
   // Les `slug` sont dédoublonnés avant tout : un même plat demandé deux fois
   // n'occupe qu'une ligne de panier, et le compte rendu doit dire trois plats
@@ -174,6 +179,8 @@ export async function chooseCatalogMeals(
         continue;
       }
 
+      // Le moment reste vide : la recette reprend celui du plat à la lecture,
+      // et l'utilisateur peut en choisir un autre.
       recipeId = await insertRecipe(
         userId,
         {
@@ -190,9 +197,30 @@ export async function chooseCatalogMeals(
       report.installed += 1;
     }
 
-    const basketId = await insertBasketItem(userId, weekStart, recipeId, meal.servings);
+    report.recipes.push({ slug: meal.slug, name: meal.name, recipeId, servings: meal.servings });
+  }
+
+  return report;
+}
+
+/** Installe les plats demandés et les met au panier de la semaine. */
+export async function chooseCatalogMeals(
+  userId: number,
+  weekStart: string,
+  slugs: readonly string[],
+): Promise<ChooseMealsReport> {
+  const installation = await installCatalogMeals(userId, slugs);
+  const report: ChooseMealsReport = {
+    chosen: 0,
+    installed: installation.installed,
+    failed: [...installation.failed],
+    skippedIngredients: installation.skippedIngredients,
+  };
+
+  for (const recipe of installation.recipes) {
+    const basketId = await insertBasketItem(userId, weekStart, recipe.recipeId, recipe.servings);
     if (basketId === null) {
-      report.failed.push(meal.name);
+      report.failed.push(recipe.name);
       continue;
     }
     report.chosen += 1;

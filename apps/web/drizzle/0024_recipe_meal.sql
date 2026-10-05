@@ -1,0 +1,2 @@
+ALTER TABLE "recipes" ADD COLUMN "meal" text;--> statement-breakpoint
+ALTER TABLE "recipes" ADD CONSTRAINT "recipes_meal_check" CHECK ("recipes"."meal" is null or "recipes"."meal" in ('breakfast', 'lunch', 'dinner', 'snack'));

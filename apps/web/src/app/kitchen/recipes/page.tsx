@@ -1,4 +1,4 @@
-import { PlusIcon, UtensilsIcon } from 'lucide-react';
+import { BookOpenIcon, PlusIcon, UtensilsIcon } from 'lucide-react';
 import Link from 'next/link';
 import { DomainHeader } from '@/components/DomainHeader';
 import { Button } from '@/components/ui/button';
@@ -46,6 +46,7 @@ export default async function RecipesPage() {
       kcalPerServing: macros.kcal,
       partial: unresolvedCount > 0,
       imageUrl: recipe.imageUrl,
+      meal: recipe.meal,
     };
   });
 
@@ -75,7 +76,16 @@ export default async function RecipesPage() {
           </Button>
         </div>
       ) : (
-        <RecipeGrid recipes={tiles} />
+        <>
+          {/* Le catalogue reste à portée une fois des recettes installées. */}
+          <Button asChild variant="outline" className="mt-1 h-11 border-cook-mid text-cook-ink">
+            <Link href={`/kitchen/catalog?from=${weekStart}`}>
+              <BookOpenIcon aria-hidden />
+              Catalogue de plats
+            </Link>
+          </Button>
+          <RecipeGrid recipes={tiles} />
+        </>
       )}
 
       <Button

@@ -133,6 +133,11 @@ export interface Recipe {
    * recette écrite à la main, ou un plat encore sans photo.
    */
   imageUrl: string | null;
+  /**
+   * Le moment où elle se mange : celui choisi par l'utilisateur, sinon celui
+   * du plat du catalogue dont elle est la copie, sinon `null`.
+   */
+  meal: Meal | null;
 }
 
 /** Bornes de garde-fou, partagées par le formulaire et la validation serveur. */
@@ -409,6 +414,11 @@ export interface RecipeInput {
   prepMinutes: number | null;
   notes: string | null;
   ingredients: RecipeIngredientInput[];
+  /**
+   * Absent : le moment déjà enregistré ne bouge pas. Une version des apps
+   * antérieure au 05/10/2026 ne l'envoie pas, et ne doit rien effacer.
+   */
+  meal?: Meal | null;
 }
 
 /**

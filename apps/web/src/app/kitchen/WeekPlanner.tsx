@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+import { ChevronLeftIcon, ChevronRightIcon, WandSparklesIcon } from 'lucide-react';
 import { ErrorAlert } from '@/components/ErrorAlert';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,8 +14,8 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
-import { journalMeal, planMeal, reopenMeal, unplanMeal } from '@/lib/client/plan';
-import { MEAL_LABELS, type Meal } from '@/lib/meal';
+import { fillWeek, journalMeal, planMeal, reopenMeal, unplanMeal } from '@/lib/client/plan';
+import { MEALS, MEAL_LABELS, type Meal } from '@/lib/meal';
 import { formatDayMonth, formatDayShort, formatWeekday, shiftDate } from '@/lib/date';
 import { macrosPerServing, type Recipe } from '@/lib/recipe';
 import { formatKcal, scaleMacros } from '@/lib/nutrition';
@@ -136,6 +136,27 @@ export function WeekPlanner({
     setError(outcome.kind === 'refused' ? outcome.message : 'Enregistrement impossible.');
   }
 
+  async function fill() {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    const outcome = await fillWeek(startDate, MEALS);
+    setBusy(false);
+
+    if (outcome.kind === 'filled') {
+      setNotice(
+        outcome.placed === 0
+          ? 'Rien à remplir : chaque repas de la semaine a déjà son plat.'
+          : `${outcome.placed === 1 ? '1 repas posé' : `${outcome.placed} repas posés`}${
+              outcome.added.length === 0 ? '' : `, avec ${outcome.added.join(', ')} ajoutés au panier`
+            }${outcome.empty === 0 ? '.' : `. ${outcome.empty} restent vides, faute de plat.`}`,
+      );
+      router.refresh();
+      return;
+    }
+    setError(outcome.kind === 'refused' ? outcome.message : 'Remplissage impossible.');
+  }
+
   async function reopen(id: number) {
     setBusy(true);
     setError(null);
@@ -152,10 +173,15 @@ export function WeekPlanner({
       ? null
       : scaleMacros(macrosPerServing(selectedRecipe).macros, selected.servings * 100).kcal;
 
-  const columns: { meal: Meal; label: string; holds: readonly Meal[] }[] = [
-    { meal: 'lunch', label: 'Midi', holds: ['breakfast', 'lunch'] },
-    { meal: 'dinner', label: 'Soir', holds: ['dinner', 'snack'] },
+  // Les quatre moments, chacun sa colonne (05/10/2026) : le matin et la
+  // collation ne se cachent plus sous le midi et le soir.
+  const columns: { meal: Meal; label: string }[] = [
+    { meal: 'breakfast', label: 'Matin' },
+    { meal: 'lunch', label: 'Midi' },
+    { meal: 'dinner', label: 'Soir' },
+    { meal: 'snack', label: 'Collation' },
   ];
+  const grid = 'grid grid-cols-[40px_repeat(4,minmax(0,1fr))] gap-1';
 
   return (
     <>
@@ -166,8 +192,19 @@ export function WeekPlanner({
         </p>
       ) : null}
 
+      <Button
+        type="button"
+        variant="outline"
+        className="h-11 border-cook-mid text-cook-ink"
+        onClick={() => void fill()}
+        disabled={busy}
+      >
+        <WandSparklesIcon aria-hidden />
+        Remplir la semaine
+      </Button>
+
       <section aria-label="Le plan de la semaine" className="overflow-hidden rounded-xl border bg-card">
-        <div className="grid grid-cols-[52px_1fr_1fr] items-center gap-1.5 border-b border-divider px-3 py-1.5 text-[11.5px] text-muted-foreground">
+        <div className={cn(grid, 'items-center border-b border-divider px-2 py-1.5 text-[11px] text-muted-foreground')}>
           <span className="-ml-1.5 flex">
             <Link
               href={`/kitchen?from=${shiftDate(startDate, -7)}`}
@@ -197,7 +234,8 @@ export function WeekPlanner({
               aria-label={`${formatWeekday(day)} ${formatDayMonth(day)}`}
               role="group"
               className={cn(
-                'grid grid-cols-[52px_1fr_1fr] items-start gap-1.5 px-3 py-1.5',
+                grid,
+                'items-start px-2 py-1.5',
                 index > 0 && 'border-t border-divider',
                 isToday && 'bg-cook-soft',
               )}
@@ -212,7 +250,7 @@ export function WeekPlanner({
               </span>
               {columns.map((column) => {
                 const meals = planned.filter(
-                  (entry) => entry.planDate === day && column.holds.includes(entry.meal),
+                  (entry) => entry.planDate === day && entry.meal === column.meal,
                 );
                 const past = day < today;
                 return (
@@ -226,7 +264,7 @@ export function WeekPlanner({
                           type="button"
                           onClick={() => setActionId(entry.id)}
                           className={cn(
-                            'truncate rounded-lg px-2 py-1.5 text-left text-xs',
+                            'line-clamp-3 rounded-lg px-1.5 py-1 text-left text-[11px] leading-snug break-words',
                             done && 'bg-muted text-faint line-through',
                             now && 'bg-cook font-semibold text-cook-on',
                             !done && !now && 'bg-cook-soft',
@@ -239,13 +277,13 @@ export function WeekPlanner({
                     })}
                     {meals.length === 0 ? (
                       past ? (
-                        <span className="px-2 py-1.5 text-xs text-faint">—</span>
+                        <span className="px-1.5 py-1 text-xs text-faint">—</span>
                       ) : (
                         <button
                           type="button"
                           onClick={() => setTarget({ planDate: day, meal: column.meal })}
                           aria-label={`Prévoir un plat, ${column.label.toLowerCase()}, ${formatWeekday(day)}`}
-                          className="rounded-lg border border-dashed border-cook-mid px-2 py-1.5 text-left text-xs text-cook-ink"
+                          className="rounded-lg border border-dashed border-cook-mid px-1.5 py-1 text-left text-xs text-cook-ink"
                         >
                           +
                         </button>

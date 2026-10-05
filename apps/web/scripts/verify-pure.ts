@@ -564,6 +564,7 @@ const recette = {
   notes: null,
   ingredients: [riz, oeufs],
   imageUrl: null,
+  meal: null,
 };
 assert.equal(macrosPerServing(recette).macros.kcal, 150, 'kcal par part');
 
@@ -1886,6 +1887,28 @@ assert.equal(
   assert.ok(weekly.size > 1, 'les semaines ne proposent pas toutes les memes plats');
   assert.deepEqual(pickCatalogMeals(catalog, { lunch: 0, dinner: 0 }, new Set(), 4), [], 'rien a couvrir, rien de choisi');
   assert.equal(weekIndexOf('2026-10-12') - weekIndexOf('2026-10-05'), 1, 'semaines consecutives');
+
+  // Quatre repas (05/10/2026) : matin et collation ne prennent que leurs plats.
+  const four = emptySlots(['2026-10-09'], [{ planDate: '2026-10-09', meal: 'lunch' }], ['snack', 'breakfast', 'lunch', 'dinner']);
+  assert.deepEqual(four.map((slot) => slot.meal), ['breakfast', 'dinner', 'snack'], 'dans l\'ordre de la journee, case prise sautee');
+  const strictMorning = assignPortions(four, [{ recipeId: 50, portions: 5, meal: null }, { recipeId: 51, portions: 5, meal: 'dinner' }]);
+  assert.deepEqual(
+    strictMorning.assigned.map((item) => `${item.slot.meal}:${item.recipeId}`),
+    ['dinner:50'],
+    'sans plat du matin ni collation, ces cases restent vides',
+  );
+  assert.deepEqual(strictMorning.unassigned.map((slot) => slot.meal), ['breakfast', 'snack'], 'matin et collation attendent leurs plats');
+  const morning = assignPortions(four, [{ recipeId: 60, portions: 1, meal: 'breakfast' }, { recipeId: 61, portions: 1, meal: 'snack' }, { recipeId: 62, portions: 1, meal: 'lunch' }]);
+  assert.deepEqual(
+    morning.assigned.map((item) => `${item.slot.meal}:${item.recipeId}`),
+    ['breakfast:60', 'snack:61', 'dinner:62'],
+    'chaque plat a son moment, un plat de midi peut aller au soir',
+  );
+  assert.deepEqual(
+    [...pickCatalogMeals(catalog, { breakfast: 1, snack: 1 }, new Set(), 0)],
+    ['b1'],
+    'le catalogue couvre le matin, et ne force rien sans collation',
+  );
 }
 
 console.log('Toutes les verifications pures passent.');

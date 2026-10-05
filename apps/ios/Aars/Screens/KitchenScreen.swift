@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Deux repas par jour, sept jours : ce que le plan peut porter.
-private let slotsPerWeek = 14
+/// Quatre moments par jour (05/10/2026), sept jours : ce que le plan peut porter.
+private let slotsPerWeek = Meal.planOrder.count * 7
 
 /// Une case vide du plan, en attente d'un plat.
 struct PlanSlot: Equatable {
@@ -18,6 +18,7 @@ struct KitchenScreen: View {
     let onAddItem: (String) -> Void
     let onNewRecipe: () -> Void
     let onImportRecipe: () -> Void
+    let onCatalogMeal: (CatalogMealRow, String) -> Void
 
     @State private var section = 0
     @State private var filling = false
@@ -54,7 +55,11 @@ struct KitchenScreen: View {
             )
             switch section {
             case 0: planSection(items: items, bought: bought)
-            case 1: RecipesSection(model: model, week: week, onNewRecipe: onNewRecipe, onImportRecipe: onImportRecipe)
+            case 1:
+                RecipesSection(
+                    model: model, week: week, onNewRecipe: onNewRecipe, onImportRecipe: onImportRecipe,
+                    onCatalogMeal: { onCatalogMeal($0, week) }
+                )
             default: shoppingSection(items: items)
             }
         }
@@ -120,10 +125,10 @@ struct KitchenScreen: View {
         }
     }
 
-    /// Les midis et soirs encore libres, du jour même à dimanche.
+    /// Les repas encore libres, du jour même à dimanche, sur les quatre moments.
     private func openSlots(_ planned: [PlannedRow]) -> Int {
         (0 ..< 7).map { addDays(week, $0) }.filter { $0 >= today }.reduce(0) { count, date in
-            count + [Meal.lunch, Meal.dinner].filter { meal in
+            count + Meal.planOrder.filter { meal in
                 !planned.contains { $0.planDate == date && Meal.fromApi($0.meal) == meal }
             }.count
         }
@@ -137,7 +142,7 @@ struct KitchenScreen: View {
         guard !filling else { return }
         filling = true
         Task {
-            switch await model.api.fillWeek(weekStart: week) {
+            switch await model.api.fillWeek(weekStart: week, meals: Meal.planOrder) {
             case .success(let result):
                 if result.placed == 0 {
                     model.toast(result.empty > 0 ? "Pas assez de plats pour remplir la semaine" : "La semaine est déjà pleine")
@@ -250,7 +255,7 @@ private struct BasketCard: View {
     }
 }
 
-/// Lignes jour × midi / soir. Le passé est barré, le jour même est surligné.
+/// Lignes jour × matin, midi, soir, collation. Le passé est barré, le jour même est surligné.
 private struct PlanGrid: View {
     let monday: String
     let today: String
@@ -261,22 +266,26 @@ private struct PlanGrid: View {
     var body: some View {
         let kitchen = Domains.kitchen
         VStack(spacing: 0) {
-            HStack(spacing: 6) {
-                Color.clear.frame(width: 46, height: 1)
-                Text("Midi").textStyle(nt(11.5, 400, Neutrals.muted)).frame(maxWidth: .infinity, alignment: .leading)
-                Text("Soir").textStyle(nt(11.5, 400, Neutrals.muted)).frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 4) {
+                Color.clear.frame(width: 36, height: 1)
+                ForEach(Meal.planOrder, id: \.self) { meal in
+                    Text(meal.moment)
+                        .textStyle(nt(11, 400, Neutrals.muted))
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 8)
             .padding(.vertical, 8)
             ForEach(0 ..< 7, id: \.self) { offset in
                 let date = addDays(monday, offset)
                 let isToday = date == today
                 Hairline()
-                HStack(spacing: 6) {
+                HStack(spacing: 4) {
                     Text(dayLabel(date))
-                        .textStyle(isToday ? nt(12, 700, kitchen.textOnLight) : nt(12, 400, Neutrals.muted))
-                        .frame(width: 46, alignment: .leading)
-                    ForEach([Meal.lunch, Meal.dinner], id: \.self) { meal in
+                        .textStyle(isToday ? nt(11.5, 700, kitchen.textOnLight) : nt(11.5, 400, Neutrals.muted))
+                        .frame(width: 36, alignment: .leading)
+                    ForEach(Meal.planOrder, id: \.self) { meal in
                         PlanCell(
                             row: planned.first { $0.planDate == date && Meal.fromApi($0.meal) == meal },
                             date: date,
@@ -286,7 +295,7 @@ private struct PlanGrid: View {
                         )
                     }
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 8)
                 .padding(.vertical, 6)
                 .background(isToday ? kitchen.soft : .clear)
             }
@@ -308,20 +317,21 @@ private struct PlanCell: View {
         Group {
             if let row {
                 if row.journaledAt != nil || date < today {
-                    cell(Text(row.recipeName).strikethrough(), nt(12, 400, Neutrals.faint), Neutrals.chip)
+                    cell(Text(row.recipeName).strikethrough(), nt(10.5, 400, Neutrals.faint, line: 1.2), Neutrals.chip)
                 } else if date == today {
-                    cell(Text("\(row.recipeName) · manger"), nt(12, 600, kitchen.textOnFill), kitchen.fill)
+                    cell(Text(row.recipeName), nt(10.5, 600, kitchen.textOnFill, line: 1.2), kitchen.fill)
                         .tap { onEat(row) }
+                        .accessibilityHint("Manger, et l'inscrire au journal")
                 } else {
-                    cell(Text(row.recipeName), nt(12), kitchen.soft)
+                    cell(Text(row.recipeName), nt(10.5, line: 1.2), kitchen.soft)
                 }
             } else if date < today {
-                Text("—").textStyle(nt(12, 400, Neutrals.faint)).frame(maxWidth: .infinity, alignment: .leading)
+                Text("—").textStyle(nt(11, 400, Neutrals.faint)).frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 Text("+")
                     .textStyle(nt(12, 400, kitchen.textOnLight))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 5)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .dashedBorder(kitchen.seg, radius: 8)
                     .tap(onEmpty)
@@ -332,11 +342,12 @@ private struct PlanCell: View {
     }
 
     private func cell(_ text: Text, _ style: NT, _ background: Color) -> some View {
+        // Quatre colonnes : le nom tient sur deux lignes plutôt qu'une coupée court.
         text
             .textStyle(style)
-            .lineLimit(1)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+            .lineLimit(2)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 5)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(background, in: RoundedRectangle(cornerRadius: 8))
     }
@@ -415,10 +426,21 @@ private struct RecipesSection: View {
     let week: String
     let onNewRecipe: () -> Void
     let onImportRecipe: () -> Void
+    let onCatalogMeal: (CatalogMealRow) -> Void
 
     @State private var recipes = Loaded<RecipesResponse>()
+    @State private var catalog = Loaded<CatalogResponse>()
     @State private var query = ""
+    /// 0 : tout ; ensuite les moments, dans l'ordre du plan.
+    @State private var moment = 0
     @State private var reload = 0
+
+    private var wanted: Meal? { moment == 0 ? nil : Meal.planOrder[moment - 1] }
+
+    private func matches(_ name: String, _ meal: String?) -> Bool {
+        let needle = query.trimmingCharacters(in: .whitespaces)
+        return (needle.isEmpty || name.localizedCaseInsensitiveContains(needle)) && (wanted == nil || Meal.orNil(meal) == wanted)
+    }
 
     var body: some View {
         let kitchen = Domains.kitchen
@@ -432,6 +454,15 @@ private struct RecipesSection: View {
             leadingIcon: .search,
             leadingTint: kitchen.textOnLight,
             textSize: 14
+        )
+        SegmentedPill(
+            options: ["Tout"] + Meal.planOrder.map(\.moment),
+            selected: moment,
+            onSelect: { moment = $0 },
+            track: kitchen.soft,
+            textColor: kitchen.textOnLight,
+            selectedTextColor: kitchen.textOnLight,
+            textStyle: nt(12.5, 600)
         )
         HStack(spacing: 8) {
             HStack(spacing: 6) {
@@ -465,16 +496,22 @@ private struct RecipesSection: View {
             list(response.recipes)
         }
         .task(id: "\(model.revision)-\(reload)") { recipes.take(await model.api.recipes()) }
+        // Le catalogue : les plats de l'objectif que le compte n'a pas encore.
+        LoadedGate(loaded: catalog, onRetry: { reload += 1 }) { response in
+            dishes(response.meals.filter { $0.recipeId == nil && matches($0.name, $0.slot) })
+        }
+        .task(id: "catalog-\(model.revision)-\(reload)") { catalog.take(await model.api.catalog()) }
     }
 
     @ViewBuilder
     private func list(_ all: [RecipeRow]) -> some View {
-        let needle = query.trimmingCharacters(in: .whitespaces)
-        let shown = all.filter { needle.isEmpty || $0.name.localizedCaseInsensitiveContains(needle) }
+        let shown = all.filter { matches($0.name, $0.meal) }
+        let filtered = !query.trimmingCharacters(in: .whitespaces).isEmpty || wanted != nil
+        Text("Mes recettes").textStyle(nt(15, 600)).padding(.horizontal, 4)
         if shown.isEmpty {
             EmptyCard(
-                title: needle.isEmpty ? "Aucune recette" : "Aucun résultat",
-                text: needle.isEmpty ? "Crée ta première recette avec le bouton ci-dessus." : "Essaie un autre mot."
+                title: filtered ? "Aucun résultat" : "Aucune recette",
+                text: filtered ? "Essaie un autre mot ou un autre moment." : "Crée ta première recette, ou prends-en une dans le catalogue ci-dessous."
             )
         } else {
             Text("Touche une recette pour l'ajouter aux plats de la semaine.").textStyle(TextStyles.secondary).padding(.horizontal, 4)
@@ -483,6 +520,28 @@ private struct RecipesSection: View {
                     RecipeCard(recipe: shown[start]) { add(shown[start]) }
                     if start + 1 < shown.count {
                         RecipeCard(recipe: shown[start + 1]) { add(shown[start + 1]) }
+                    } else {
+                        Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func dishes(_ shown: [CatalogMealRow]) -> some View {
+        if !shown.isEmpty {
+            Text("Catalogue").textStyle(nt(15, 600)).padding(.horizontal, 4).padding(.top, 8)
+            Text("Des plats prêts pour ton objectif. Touche-en un pour le voir.").textStyle(TextStyles.secondary).padding(.horizontal, 4)
+            ForEach(Array(stride(from: 0, to: shown.count, by: 2)), id: \.self) { start in
+                HStack(alignment: .top, spacing: 10) {
+                    DishCard(name: shown[start].name, imageUrl: shown[start].imageUrl, detail: catalogLine(shown[start])) {
+                        onCatalogMeal(shown[start])
+                    }
+                    if start + 1 < shown.count {
+                        DishCard(name: shown[start + 1].name, imageUrl: shown[start + 1].imageUrl, detail: catalogLine(shown[start + 1])) {
+                            onCatalogMeal(shown[start + 1])
+                        }
                     } else {
                         Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
                     }
@@ -504,8 +563,37 @@ private struct RecipesSection: View {
     }
 }
 
+/// Ce qu'une carte du catalogue dit sous le nom : moment, calories par part, durée.
+private func catalogLine(_ meal: CatalogMealRow) -> String {
+    [
+        Meal.orNil(meal.slot)?.moment,
+        meal.kcal > 0 ? "\(formatInt(Double(meal.kcal))) kcal" : nil,
+        meal.prepMinutes.map { "\($0) min" },
+    ].compactMap { $0 }.joined(separator: " · ")
+}
+
 private struct RecipeCard: View {
     let recipe: RecipeRow
+    let action: () -> Void
+
+    var body: some View {
+        DishCard(name: recipe.name, imageUrl: recipe.imageUrl, detail: detail, action: action)
+    }
+
+    private var detail: String {
+        let parts = [
+            recipe.kcalPerServing > 0 ? "\(formatInt(recipe.kcalPerServing)) kcal" : nil,
+            recipe.prepMinutes.map { "\($0) min" },
+        ].compactMap { $0 }
+        return parts.isEmpty ? "\(servings(recipe.servings)) parts" : parts.joined(separator: " · ")
+    }
+}
+
+/// Une carte de plat : photo (ou motif), nom sur deux lignes, une ligne de détail.
+private struct DishCard: View {
+    let name: String
+    let imageUrl: String?
+    let detail: String
     let action: () -> Void
 
     var body: some View {
@@ -517,7 +605,7 @@ private struct RecipeCard: View {
                 .aspectRatio(1.3, contentMode: .fit)
                 .overlay {
                     PhotoStripes(background: kitchen.soft, stripe: kitchen.seg)
-                    if let url = recipe.imageUrl.flatMap(URL.init(string:)) {
+                    if let url = imageUrl.flatMap(URL.init(string:)) {
                         AsyncImage(url: url) { phase in
                             if let image = phase.image { image.resizable().scaledToFill() }
                         }
@@ -525,7 +613,7 @@ private struct RecipeCard: View {
                 }
                 .clipShape(UnevenRoundedRectangle(topLeadingRadius: Radius.tile, topTrailingRadius: Radius.tile))
             VStack(alignment: .leading, spacing: 0) {
-                Text(recipe.name).textStyle(nt(14, 600, line: 1.25)).lineLimit(2)
+                Text(name).textStyle(nt(14, 600, line: 1.25)).lineLimit(2)
                 Text(detail).textStyle(TextStyles.small)
             }
             .padding(10)
@@ -533,14 +621,6 @@ private struct RecipeCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .card(radius: Radius.tile)
         .tap(action)
-    }
-
-    private var detail: String {
-        let parts = [
-            recipe.kcalPerServing > 0 ? "\(formatInt(recipe.kcalPerServing)) kcal" : nil,
-            recipe.prepMinutes.map { "\($0) min" },
-        ].compactMap { $0 }
-        return parts.isEmpty ? "\(servings(recipe.servings)) parts" : parts.joined(separator: " · ")
     }
 }
 
@@ -650,9 +730,9 @@ struct PlanSlotSheet: View {
 
     var body: some View {
         let kitchen = Domains.kitchen
-        let title = slot.map { "\(dayLabel($0.date)) · \($0.meal == .lunch ? "midi" : "soir")" } ?? ""
+        let title = slot.map { "\(dayLabel($0.date)) · \($0.meal.moment.lowercased())" } ?? ""
         NutriSheet(visible: slot != nil, title: title, onDismiss: onDismiss, gap: 10) {
-            ForEach(basket) { item in
+            ForEach(ordered) { item in
                 HStack {
                     Text(item.recipeName).textStyle(nt(14, 600)).frame(maxWidth: .infinity, alignment: .leading)
                     Text("\(servings(item.plannedServings))/\(servings(item.servings)) parts").textStyle(nt(12.5, 600, kitchen.textOnLight))
@@ -663,6 +743,17 @@ struct PlanSlotSheet: View {
                 .tap { place(item) }
             }
         }
+    }
+
+    /// Les plats de ce moment d'abord, puis ceux sans moment, puis les autres.
+    private var ordered: [BasketRow] {
+        func rank(_ item: BasketRow) -> Int {
+            guard let meal = Meal.orNil(item.meal) else { return 1 }
+            return meal == slot?.meal ? 0 : 2
+        }
+        return basket.enumerated()
+            .sorted { (rank($0.element), $0.offset) < (rank($1.element), $1.offset) }
+            .map(\.element)
     }
 
     private func place(_ item: BasketRow) {

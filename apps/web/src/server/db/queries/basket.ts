@@ -1,5 +1,6 @@
 import 'server-only';
 import { and, asc, eq, gte, lte, sql } from 'drizzle-orm';
+import { isMeal, type Meal } from '@/lib/meal';
 import { db, schema } from '../client';
 import { findRecipe } from './recipes';
 
@@ -26,6 +27,8 @@ export interface BasketItem {
    * demandé d'y descendre tout le plan de la semaine.
    */
   plannedServings: number;
+  /** Le moment de la recette, choisi ou repris de son plat (voir `Recipe.meal`). */
+  meal: Meal | null;
 }
 
 function toItem(row: {
@@ -34,13 +37,17 @@ function toItem(row: {
   recipeName: string;
   servings: string;
   plannedServings: string | null;
+  meal: string | null;
+  catalogSlot: string | null;
 }): BasketItem {
+  const meal = row.meal ?? row.catalogSlot;
   return {
     id: row.id,
     recipeId: row.recipeId,
     recipeName: row.recipeName,
     servings: Number(row.servings),
     plannedServings: row.plannedServings === null ? 0 : Number(row.plannedServings),
+    meal: isMeal(meal) ? meal : null,
   };
 }
 
@@ -62,6 +69,8 @@ export async function listBasket(userId: number, weekStart: string): Promise<Bas
       id: schema.mealBasket.id,
       recipeId: schema.mealBasket.recipeId,
       recipeName: schema.recipes.name,
+      meal: schema.recipes.meal,
+      catalogSlot: schema.catalogMeals.slot,
       servings: schema.mealBasket.servings,
       plannedServings: sql<string | null>`(
         select sum(${schema.mealPlanEntries.servings})
@@ -74,6 +83,7 @@ export async function listBasket(userId: number, weekStart: string): Promise<Bas
     })
     .from(schema.mealBasket)
     .innerJoin(schema.recipes, eq(schema.recipes.id, schema.mealBasket.recipeId))
+    .leftJoin(schema.catalogMeals, eq(schema.catalogMeals.slug, schema.recipes.catalogSlug))
     .where(
       and(eq(schema.mealBasket.userId, userId), eq(schema.mealBasket.weekStart, weekStart)),
     )

@@ -8,6 +8,7 @@ import { recipesFor } from '@/server/services/recipes';
 import { listForWeek } from '@/server/services/shopping';
 import { identityFor } from '@/server/services/social';
 import { formatShortWeekRange, isJournalDate, startOfWeek, todayInParis } from '@/lib/date';
+import { MEALS } from '@/lib/meal';
 import { initialsOf } from '@/lib/social';
 import { KitchenTabs } from './KitchenTabs';
 import { WeekBasket } from './WeekBasket';
@@ -17,7 +18,8 @@ import { WeekPlanner } from './WeekPlanner';
 export const dynamic = 'force-dynamic';
 
 /** Deux repas par jour, sept jours : ce que le plan peut porter. */
-const SLOTS_PER_WEEK = 14;
+// Quatre moments par jour depuis le 05/10/2026 : matin, midi, soir, collation.
+const SLOTS_PER_WEEK = MEALS.length * 7;
 
 function Stat({
   label,

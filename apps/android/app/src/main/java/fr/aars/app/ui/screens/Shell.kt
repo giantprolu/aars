@@ -62,6 +62,7 @@ import fr.aars.app.data.ApiResult
 import fr.aars.app.data.QuickSession
 import fr.aars.app.data.SearchHit
 import fr.aars.app.ui.kitchen.AddItemScreen
+import fr.aars.app.ui.kitchen.CatalogMealScreen
 import fr.aars.app.ui.kitchen.ImportRecipeScreen
 import fr.aars.app.ui.kitchen.RecipeEditorScreen
 import fr.aars.app.ui.kitchen.ScanCheckScreen
@@ -210,6 +211,7 @@ fun MainShell(model: AppModel) {
                     onAddItem = { week -> kitchenFlow = KitchenFlow.AddItem(week) },
                     onNewRecipe = { kitchenFlow = KitchenFlow.NewRecipe },
                     onImportRecipe = { kitchenFlow = KitchenFlow.ImportRecipe },
+                    onCatalogMeal = { meal, week -> kitchenFlow = KitchenFlow.CatalogMeal(meal, week) },
                 )
                 Tab.Training -> TrainingScreen(model, onMe = openMe, onStart = { pick(AddSheet.Session) })
                 Tab.Community -> CommunityScreen(
@@ -317,6 +319,7 @@ fun MainShell(model: AppModel) {
             is KitchenFlow.AddItem -> AddItemScreen(model, current.week, onClose = { kitchenFlow = null })
             KitchenFlow.NewRecipe -> RecipeEditorScreen(model, onClose = { kitchenFlow = null })
             KitchenFlow.ImportRecipe -> ImportRecipeScreen(model, onClose = { kitchenFlow = null })
+            is KitchenFlow.CatalogMeal -> CatalogMealScreen(model, current.meal, current.week, onClose = { kitchenFlow = null })
             null -> Unit
         }
 
@@ -356,6 +359,7 @@ sealed interface KitchenFlow {
     data class AddItem(val week: String) : KitchenFlow
     data object NewRecipe : KitchenFlow
     data object ImportRecipe : KitchenFlow
+    data class CatalogMeal(val meal: fr.aars.app.data.CatalogMealRow, val week: String) : KitchenFlow
 }
 
 /** La barre d'onglets : 58 de haut, fond crème à 96 %, filet en haut, place vide au centre pour le +. */

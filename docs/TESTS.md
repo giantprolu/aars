@@ -27,7 +27,7 @@ reconnaissance photo, qui coûte. Dernier passage : 05/10/2026, 92 sur 92.
 | Public | `/unlock`, pages légales, `/recover`, manifeste au nom Aars, sur les deux adresses ; API fermée sans session |
 | Compte | inscription, profil, code de secours, export (`aars-export-1`), déconnexion, reconnexion, suppression |
 | Journal | recherche CIQUAL, ajout, journal du jour, historique, raccourcis, ajout rapide, favori, suppression, pesée |
-| Cuisine | recette créée et lue, panier, plan, « Remplir la semaine », liste de courses, import de recette par lien |
+| Cuisine | recette créée avec un moment et relue, catalogue sur 4 moments, plat ajouté aux recettes, panier, plan, « Remplir la semaine » sur 4 moments, liste de courses, import de recette par lien |
 | Achats | vente fermée (`salesOpen: false`) et tout ouvert (`premium: true`) |
 | Sport | accueil, exercices, préférences, progression, séance libre ouverte puis supprimée |
 | Communauté | accueil et fil, en lecture seule |
@@ -57,8 +57,12 @@ production qui touche l'écran concerné.
 - [ ] Pesée, puis la courbe dans Progression
 
 **Cuisine** (tout est gratuit tant que la vente est fermée)
+- [ ] Plan : quatre colonnes Matin, Midi, Soir, Collation, noms lisibles sur un téléphone
+- [ ] « Remplir la semaine » sur le Plan : matins et collations reçoivent des plats du matin
+      et des collations, jamais un plat du soir ; sans badge ni offre Cuisine+
+- [ ] Recettes : filtre par moment, bouton « Catalogue de plats »
+- [ ] Éditeur de recette : choisir un moment, le retrouver après enregistrement
 - [ ] Catalogue : filtrer par moment, choisir des plats pour la semaine
-- [ ] « Remplir la semaine » sur le Plan, sans badge ni offre Cuisine+
 - [ ] Importer une recette par lien, la relire, l'enregistrer
 - [ ] Plus de 10 recettes et 10 favoris sans blocage
 - [ ] Mode cuisine pas à pas, avec minuteur
@@ -104,4 +108,6 @@ production. À vérifier le jour où elles partent en test :
 - [ ] Connexion, Aujourd'hui, ajout d'un repas, pesée
 - [ ] Scanner (caméra), Santé (Health Connect, HealthKit), rappel du déjeuner
 - [ ] Moi : pas de ligne Abonnement tant que la vente est fermée
-- [ ] Cuisine : « Remplir la semaine », import de recette
+- [ ] Cuisine : « Remplir la semaine » sur 4 moments, import de recette
+- [ ] Recettes : filtre par moment, catalogue (fiche d'un plat, ajout aux recettes ou à la semaine)
+- [ ] Nouvelle recette : choisir un moment

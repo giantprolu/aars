@@ -1,12 +1,13 @@
 import 'server-only';
 import { todayInParis } from '@/lib/date';
+import { MEALS, type Meal } from '@/lib/meal';
 import {
+  PLAN_MEALS,
   assignPortions,
   emptySlots,
   pickCatalogMeals,
   weekIndexOf,
   type PlanAssignment,
-  type PlanMeal,
 } from '@/lib/plan-auto';
 import { MAX_CHOSEN_MEALS, catalogFor, chooseCatalogMeals } from './catalog';
 import { insertPlannedMeals } from '../db/queries/meal-plan';
@@ -18,7 +19,8 @@ import { hasKitchenPlus } from './premium';
 /**
  * Plan automatique de la semaine (Cuisine+) : « Remplir la semaine ».
  *
- * Remplit les midis et soirs libres, du jour même à dimanche, dans cet
+ * Remplit les repas libres demandés (midi et soir par défaut, matin et
+ * collation en plus si l'app les demande), du jour même à dimanche, dans cet
  * ordre de préférence :
  *
  * 1. les parts qui restent des plats déjà choisis pour la semaine : ce qui est
@@ -45,6 +47,7 @@ export type FillWeekResult =
 export async function fillWeek(
   userId: number,
   weekStart: string,
+  meals: readonly Meal[] = PLAN_MEALS,
   today: string = todayInParis(),
 ): Promise<FillWeekResult> {
   if (!(await hasKitchenPlus(userId))) {
@@ -52,7 +55,7 @@ export async function fillWeek(
   }
 
   const days = weekDays(weekStart).filter((day) => day >= today);
-  const slots = emptySlots(days, await planForWeek(userId, weekStart));
+  const slots = emptySlots(days, await planForWeek(userId, weekStart), meals);
   if (slots.length === 0) {
     return { kind: 'filled', placed: 0, added: [], empty: 0 };
   }
@@ -64,7 +67,7 @@ export async function fillWeek(
     basket.map((item) => ({
       recipeId: item.recipeId,
       portions: item.servings - item.plannedServings,
-      meal: null,
+      meal: item.meal,
     })),
   );
   const assignments: PlanAssignment[] = [...fromBasket.assigned];
@@ -79,10 +82,9 @@ export async function fillWeek(
     const exclude = new Set(
       [...installed].filter(([, recipeId]) => inBasket.has(recipeId)).map(([slug]) => slug),
     );
-    const need: Record<PlanMeal, number> = {
-      lunch: unassigned.filter((slot) => slot.meal === 'lunch').length,
-      dinner: unassigned.filter((slot) => slot.meal === 'dinner').length,
-    };
+    const need: Partial<Record<Meal, number>> = Object.fromEntries(
+      MEALS.map((meal) => [meal, unassigned.filter((slot) => slot.meal === meal).length]),
+    );
     const slugs = pickCatalogMeals(catalog, need, exclude, weekIndexOf(weekStart)).slice(0, MAX_CHOSEN_MEALS);
 
     if (slugs.length > 0) {
@@ -93,14 +95,11 @@ export async function fillWeek(
       const fresh = after.filter((item) => !inBasket.has(item.recipeId));
       const fromCatalog = assignPortions(
         unassigned,
-        fresh.map((item) => {
-          const slot = mealOf.get(slugOf.get(item.recipeId) ?? '');
-          return {
-            recipeId: item.recipeId,
-            portions: item.servings - item.plannedServings,
-            meal: slot === 'lunch' || slot === 'dinner' ? slot : null,
-          };
-        }),
+        fresh.map((item) => ({
+          recipeId: item.recipeId,
+          portions: item.servings - item.plannedServings,
+          meal: mealOf.get(slugOf.get(item.recipeId) ?? '') ?? null,
+        })),
       );
       assignments.push(...fromCatalog.assigned);
       unassigned = fromCatalog.unassigned;

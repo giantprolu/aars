@@ -205,19 +205,36 @@ async function authenticatedChecks(email: string, password: string): Promise<voi
     steps: ['Couper', 'Servir'],
     prepMinutes: 5,
     notes: null,
+    meal: 'dinner',
     ingredients: [{ refKind: 'ciqual', refValue: ref, label: foodName, quantityG: 200, unitName: null, unitGrams: null }],
   });
   const recipeId = field(recipe.body, 'id');
   await expectOk('recettes', 'GET', '/api/recipes');
   if (typeof recipeId === 'number') {
-    await expectOk('recette lue', 'GET', `/api/recipes/${recipeId}`);
+    const read = await expectOk('recette lue', 'GET', `/api/recipes/${recipeId}`);
+    const readMeal = field(read.body, 'recipe', 'meal') ?? field(read.body, 'meal');
+    record(readMeal === 'dinner' ? 'ok' : 'échec', 'moment de la recette relu', String(readMeal));
     await expectOk('recette au panier', 'POST', '/api/basket', { source: 'recipe', weekStart: monday, recipeId, servings: 2 });
     await expectOk('recette au plan', 'POST', '/api/plan', { planDate: today, meal: 'dinner', recipeId, servings: 1 });
   }
   await expectOk('panier', 'GET', `/api/basket?weekStart=${monday}`);
   await expectOk('plan', 'GET', `/api/plan?from=${monday}`);
-  const auto = await call('POST', '/api/plan/auto', { weekStart: monday });
-  record(auto.status < 300 ? 'ok' : 'échec', 'Remplir la semaine (gratuit, vente fermée)', `${auto.status} ${auto.text.slice(0, 120)}`);
+  // Catalogue : les plats de l'objectif sur les quatre moments, un plat installé.
+  const catalog = await expectOk('catalogue', 'GET', '/api/catalog');
+  const dishes = field(catalog.body, 'meals');
+  const slots = new Set(Array.isArray(dishes) ? dishes.map((dish) => field(dish, 'slot')) : []);
+  record(slots.size === 4 ? 'ok' : 'échec', 'catalogue sur les quatre moments', [...slots].join(', '));
+  const firstSlug = Array.isArray(dishes) ? field(dishes[0], 'slug') : undefined;
+  if (typeof firstSlug === 'string') {
+    await expectOk('plat du catalogue ajouté aux recettes', 'POST', '/api/catalog', { slugs: [firstSlug] });
+  }
+  const auto = await call('POST', '/api/plan/auto', { weekStart: monday, meals: ['breakfast', 'lunch', 'dinner', 'snack'] });
+  record(auto.status < 300 ? 'ok' : 'échec', 'Remplir la semaine sur 4 moments (gratuit, vente fermée)', `${auto.status} ${auto.text.slice(0, 120)}`);
+  const filled = await call('GET', `/api/plan?from=${monday}`);
+  const moments = new Set(
+    (Array.isArray(field(filled.body, 'planned')) ? (field(filled.body, 'planned') as unknown[]) : []).map((row) => field(row, 'meal')),
+  );
+  record(moments.has('breakfast') || moments.has('snack') ? 'ok' : 'attention', 'matin ou collation posés au plan', [...moments].join(', '));
   await expectOk('liste de courses générée', 'POST', '/api/shopping', { from: monday });
   await expectOk('liste de courses', 'GET', `/api/shopping?from=${monday}`);
   const billing = await expectOk('achats', 'GET', '/api/billing');

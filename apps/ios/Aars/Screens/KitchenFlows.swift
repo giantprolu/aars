@@ -280,6 +280,86 @@ private struct Ingredient: Identifiable {
 
 /// Écrire une recette : nom, parts, ingrédients trouvés par la recherche, étapes.
 /// Avec un brouillon (import de Cuisine+), tout arrive rempli, à relire.
+/// Un plat du catalogue : photo, moment, ingrédients et étapes. On le prend
+/// pour la semaine (installé puis mis au panier), ou seulement dans ses recettes.
+struct CatalogMealScreen: View {
+    let model: AppModel
+    let meal: CatalogMealRow
+    let weekStart: String
+    let onClose: () -> Void
+
+    @State private var busy = false
+
+    var body: some View {
+        let kitchen = Domains.kitchen
+        FlowScaffold(title: meal.name, onClose: onClose) {
+            Color.clear
+                .aspectRatio(1.6, contentMode: .fit)
+                .overlay {
+                    PhotoStripes(background: kitchen.soft, stripe: kitchen.seg)
+                    if let url = meal.imageUrl.flatMap(URL.init(string:)) {
+                        AsyncImage(url: url) { phase in
+                            if let image = phase.image { image.resizable().scaledToFill() }
+                        }
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: Radius.tile))
+            Text(summary).textStyle(TextStyles.secondary)
+            Text("Ingrédients pour \(formatServings(meal.servings)) parts").textStyle(nt(13, 500))
+            VStack(spacing: 0) {
+                ForEach(Array(meal.ingredients.enumerated()), id: \.offset) { _, ingredient in
+                    HStack {
+                        Text(ingredient.label).textStyle(nt(14)).frame(maxWidth: .infinity, alignment: .leading)
+                        Text("\(formatInt(ingredient.quantityG)) g").textStyle(nt(13, 600, Neutrals.muted))
+                    }
+                    .padding(.vertical, 6)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .card(radius: Radius.tile)
+            if !meal.steps.isEmpty {
+                Text("Étapes").textStyle(nt(13, 500))
+                ForEach(Array(meal.steps.enumerated()), id: \.offset) { index, step in
+                    Text("\(index + 1). \(step)").textStyle(nt(14)).frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        } footer: {
+            PrimaryButton(text: "Ajouter aux plats de la semaine", colors: kitchen, height: 52, busy: busy) {
+                run({ await model.api.chooseCatalog(weekStart: weekStart, slug: meal.slug) }, done: "\(meal.name) ajouté aux plats de la semaine")
+            }
+            GhostButton(text: "Seulement l'ajouter à mes recettes") {
+                run({ await model.api.installCatalog(slug: meal.slug) }, done: "\(meal.name) ajouté à tes recettes")
+            }
+        }
+    }
+
+    private var summary: String {
+        [
+            Meal.orNil(meal.slot)?.label,
+            meal.kcal > 0 ? "\(formatInt(Double(meal.kcal))) kcal par part" : nil,
+            meal.proteinG > 0 ? "\(meal.proteinG) g de protéines" : nil,
+            meal.prepMinutes.map { "\($0) min" },
+        ].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    private func run(_ call: @escaping @MainActor () async -> ApiResult<Void>, done: String) {
+        guard !busy else { return }
+        busy = true
+        Task {
+            switch await call() {
+            case .success:
+                model.toast(done)
+                model.bump()
+                onClose()
+            case .failure(let failure):
+                model.toast(failure.message)
+            }
+            busy = false
+        }
+    }
+}
+
 struct RecipeEditorScreen: View {
     let model: AppModel
     let draft: RecipeDraft?
@@ -290,6 +370,8 @@ struct RecipeEditorScreen: View {
     @State private var minutes: String
     @State private var steps: String
     @State private var notes = ""
+    /// 0 : aucun moment ; ensuite matin, midi, soir, collation.
+    @State private var moment = 0
     @State private var ingredients: [Ingredient]
     @State private var error: String?
     @State private var busy = false
@@ -314,6 +396,17 @@ struct RecipeEditorScreen: View {
             }
             Labeled(label: "Nom") {
                 NutriField(text: $name, placeholder: "Curry de lentilles", focusColor: kitchen.textOnLight).filtered($name, maxLength(80))
+            }
+            Labeled(label: "Moment") {
+                SegmentedPill(
+                    options: ["Aucun"] + Meal.planOrder.map(\.moment),
+                    selected: moment,
+                    onSelect: { moment = $0 },
+                    track: kitchen.soft,
+                    textColor: kitchen.textOnLight,
+                    selectedTextColor: kitchen.textOnLight,
+                    textStyle: nt(12.5, 600)
+                )
             }
             HStack(alignment: .top, spacing: 12) {
                 Labeled(label: "Parts") {
@@ -399,6 +492,7 @@ struct RecipeEditorScreen: View {
             ingredients: zip(ingredients, quantities).map { item, grams in
                 IngredientBody(refKind: item.hit.kind, refValue: item.hit.ref, label: String(item.hit.name.prefix(120)), quantityG: grams ?? 0)
             },
+            meal: moment == 0 ? nil : Meal.planOrder[moment - 1].rawValue,
             imported: draft == nil ? nil : true
         )
         busy = true

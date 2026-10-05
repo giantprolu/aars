@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -38,14 +39,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import coil3.compose.AsyncImage
 import fr.aars.app.AppModel
+import fr.aars.app.Meal
 import fr.aars.app.R
 import fr.aars.app.data.ApiResult
+import fr.aars.app.data.CatalogMealRow
 import fr.aars.app.data.DraftIngredient
 import fr.aars.app.data.IngredientBody
 import fr.aars.app.data.RecipeCreateBody
@@ -60,6 +65,8 @@ import fr.aars.app.ui.components.Icon
 import fr.aars.app.ui.components.Labeled
 import fr.aars.app.ui.components.NutriField
 import fr.aars.app.ui.components.PrimaryButton
+import fr.aars.app.ui.components.SegmentedPill
+import fr.aars.app.ui.components.photoStripes
 import fr.aars.app.ui.components.Txt
 import fr.aars.app.ui.components.card
 import fr.aars.app.ui.components.formatInt
@@ -330,6 +337,74 @@ private fun formatParts(value: Double): String =
  * Écrire une recette : nom, parts, ingrédients trouvés par la recherche, étapes.
  * Avec un brouillon (import de Cuisine+), tout arrive rempli, à relire.
  */
+/**
+ * Un plat du catalogue : photo, moment, ingrédients et étapes. On le prend
+ * pour la semaine (installé puis mis au panier), ou seulement dans ses recettes.
+ */
+@Composable
+fun CatalogMealScreen(model: AppModel, meal: CatalogMealRow, week: String, onClose: () -> Unit) {
+    val kitchen = Domains.kitchen
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+
+    fun run(call: suspend () -> ApiResult<Unit>, done: String) {
+        if (busy) return
+        busy = true
+        scope.launch {
+            when (val result = call()) {
+                is ApiResult.Ok -> {
+                    model.toast(done)
+                    model.bump()
+                    onClose()
+                }
+                is ApiResult.Failed -> model.toast(result.message)
+            }
+            busy = false
+        }
+    }
+
+    Screen(meal.name, onClose, footer = {
+        PrimaryButton(
+            "Ajouter aux plats de la semaine", kitchen,
+            { run({ model.api.chooseCatalog(week, meal.slug) }, "${meal.name} ajouté aux plats de la semaine") },
+            height = 52.dp, busy = busy,
+        )
+        GhostButton("Seulement l'ajouter à mes recettes", {
+            run({ model.api.installCatalog(meal.slug) }, "${meal.name} ajouté à tes recettes")
+        })
+    }) {
+        Box(Modifier.fillMaxWidth().aspectRatio(1.6f).clip(RoundedCornerShape(Radius.tile)).photoStripes(kitchen.soft, kitchen.seg)) {
+            meal.imageUrl?.let { url ->
+                AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
+            }
+        }
+        Txt(
+            listOfNotNull(
+                Meal.orNull(meal.slot)?.label,
+                if (meal.kcal > 0) "${formatInt(meal.kcal.toDouble())} kcal par part" else null,
+                if (meal.proteinG > 0) "${meal.proteinG} g de protéines" else null,
+                meal.prepMinutes?.let { "$it min" },
+            ).joinToString(" · "),
+            Type.secondary,
+        )
+        Txt("Ingrédients pour ${formatParts(meal.servings)} parts", nt(13f, 500))
+        Column(Modifier.fillMaxWidth().card(Radius.tile).padding(horizontal = 14.dp, vertical = 6.dp)) {
+            meal.ingredients.forEach { ingredient ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Txt(ingredient.label, nt(14f), Modifier.weight(1f))
+                    Txt("${formatInt(ingredient.quantityG)} g", nt(13f, 600, Neutrals.muted))
+                }
+            }
+        }
+        if (meal.steps.isNotEmpty()) {
+            Txt("Étapes", nt(13f, 500))
+            meal.steps.forEachIndexed { index, step ->
+                Txt("${index + 1}. $step", nt(14f))
+            }
+        }
+    }
+}
+
 @Composable
 fun RecipeEditorScreen(model: AppModel, onClose: () -> Unit, draft: RecipeDraft? = null) {
     val scope = rememberCoroutineScope()
@@ -338,6 +413,8 @@ fun RecipeEditorScreen(model: AppModel, onClose: () -> Unit, draft: RecipeDraft?
     var minutes by remember { mutableStateOf(draft?.prepMinutes?.toString() ?: "") }
     var steps by remember { mutableStateOf(draft?.steps?.joinToString("\n") ?: "") }
     var notes by remember { mutableStateOf("") }
+    // 0 : aucun moment ; ensuite matin, midi, soir, collation.
+    var moment by remember { mutableStateOf(0) }
     val ingredients = remember { mutableStateListOf<Ingredient>().apply { draft?.ingredients?.forEach { add(Ingredient(it)) } } }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -362,6 +439,7 @@ fun RecipeEditorScreen(model: AppModel, onClose: () -> Unit, draft: RecipeDraft?
             ingredients = ingredients.mapIndexed { index, item ->
                 IngredientBody(item.hit.kind, item.hit.ref, item.hit.name.take(120), quantities[index] ?: 0)
             },
+            meal = if (moment == 0) null else Meal.planOrder[moment - 1].api,
             imported = if (draft == null) null else true,
         )
         busy = true
@@ -391,6 +469,17 @@ fun RecipeEditorScreen(model: AppModel, onClose: () -> Unit, draft: RecipeDraft?
             )
         }
         Labeled("Nom") { NutriField(name, { name = it.take(80) }, placeholder = "Curry de lentilles", focusColor = Domains.kitchen.textOnLight) }
+        Labeled("Moment") {
+            SegmentedPill(
+                options = listOf("Aucun") + Meal.planOrder.map { it.moment },
+                selected = moment,
+                onSelect = { moment = it },
+                track = Domains.kitchen.soft,
+                textColor = Domains.kitchen.textOnLight,
+                selectedTextColor = Domains.kitchen.textOnLight,
+                textStyle = nt(12.5f, 600),
+            )
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(Modifier.weight(1f)) {
                 Labeled("Parts") { NutriField(servings, { servings = it.take(4) }, keyboardType = KeyboardType.Decimal, focusColor = Domains.kitchen.textOnLight) }

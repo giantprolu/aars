@@ -75,9 +75,11 @@ Branché :
   code à la main, produit inconnu ou incomplet complété et mis au cache ;
 - feuille Séance, séance en cours plein écran (séries, repos, records, fin,
   visibilité, favori, ajout d'exercice), Composer, Déjà faite ;
-- Cuisine : plan de la semaine (placer un plat, manger), plats choisis,
-  recettes (photo, ajout au panier, création), courses par rayon cochables,
-  un article, scanner pour cocher en rayon ;
+- Cuisine : plan de la semaine sur quatre moments (matin, midi, soir,
+  collation ; placer un plat, manger), plats choisis, recettes (photo, ajout
+  au panier, création avec un moment) filtrables par moment, catalogue de
+  plats de l'objectif (fiche, ajout aux recettes ou à la semaine), courses par
+  rayon cochables, un article, scanner pour cocher en rayon ;
 - Cuisine+ : « Remplir la semaine » sur le Plan, « Importer » une recette
   depuis un lien dans Recettes (brouillon relu dans l'éditeur) ;
 - Sport : semaine, séance du jour, programme, dernières séances ;

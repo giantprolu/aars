@@ -401,6 +401,15 @@ export const recipes = pgTable(
      * appartient à l'utilisateur, et rien ne justifierait de la lui reprendre.
      */
     catalogSlug: text('catalog_slug'),
+    /**
+     * Le moment où la recette se mange (`breakfast`, `lunch`, `dinner`,
+     * `snack`), choisi par l'utilisateur ; `null` s'il n'en a pas dit.
+     *
+     * Ajoutée le 05/10/2026 sans rien réécrire : une recette installée depuis
+     * le catalogue reprend à la lecture le moment de son plat tant que cette
+     * colonne est vide.
+     */
+    meal: text('meal'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -408,6 +417,10 @@ export const recipes = pgTable(
     // L'utilisateur est en tête, comme partout ailleurs : aucune lecture ne
     // balaie les recettes des autres.
     index('recipes_user_name_idx').on(table.userId, table.name),
+    check(
+      'recipes_meal_check',
+      sql`${table.meal} is null or ${table.meal} in ('breakfast', 'lunch', 'dinner', 'snack')`,
+    ),
     // Un plat du catalogue ne s'installe qu'une fois par compte. La contrainte
     // est en base et pas seulement dans le service : c'est elle qui tient
     // quand deux requêtes arrivent en même temps. Postgres traite les `null`

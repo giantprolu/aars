@@ -278,6 +278,7 @@ data class BasketRow(
     val recipeName: String,
     val servings: Double,
     val plannedServings: Double,
+    val meal: String? = null,
 )
 
 @Serializable
@@ -310,6 +311,8 @@ data class RecipeRow(
     val kcalPerServing: Double = 0.0,
     /** Photo du plat du catalogue ; absente pour une recette écrite à la main. */
     val imageUrl: String? = null,
+    /** Moment de la recette (`breakfast`…), choisi ou repris de son plat ; absent sinon. */
+    val meal: String? = null,
 )
 
 @Serializable
@@ -692,6 +695,8 @@ data class RecipeCreateBody(
     val prepMinutes: Int?,
     val notes: String?,
     val ingredients: List<IngredientBody>,
+    /** Le moment choisi (`breakfast`…), ou `null`. */
+    val meal: String? = null,
     /** Vrai pour une recette venue de l'import (Cuisine+) : elle ne compte pas dans la limite gratuite. */
     val imported: Boolean? = null,
 )
@@ -699,11 +704,47 @@ data class RecipeCreateBody(
 // Cuisine+.
 
 @Serializable
-data class FillWeekBody(val weekStart: String)
+data class FillWeekBody(val weekStart: String, val meals: List<String>)
 
 /** « Remplir la semaine » : ce qui a été posé, et ce qui a rejoint le panier pour y parvenir. */
 @Serializable
 data class FillWeekResponse(val placed: Int, val added: List<String> = emptyList(), val empty: Int = 0)
+
+// Catalogue de plats.
+
+@Serializable
+data class CatalogIngredientRow(
+    val label: String,
+    val quantityG: Double,
+    val unitName: String? = null,
+    val unitGrams: Double? = null,
+)
+
+@Serializable
+data class CatalogMealRow(
+    val slug: String,
+    val name: String,
+    val slot: String,
+    val servings: Double,
+    val prepMinutes: Int? = null,
+    val steps: List<String> = emptyList(),
+    val ingredients: List<CatalogIngredientRow> = emptyList(),
+    val imageUrl: String? = null,
+    /** Ordre de grandeur pour une part. */
+    val kcal: Int = 0,
+    val proteinG: Int = 0,
+    /** La recette du compte qui en est la copie, absente s'il n'est pas installé. */
+    val recipeId: Long? = null,
+)
+
+@Serializable
+data class CatalogResponse(val goal: String = "maintain", val meals: List<CatalogMealRow> = emptyList())
+
+@Serializable
+data class CatalogSlugsBody(val slugs: List<String>)
+
+@Serializable
+data class BasketCatalogBody(val source: String = "catalog", val weekStart: String, val slugs: List<String>)
 
 @Serializable
 data class ImportRecipeBody(val url: String)

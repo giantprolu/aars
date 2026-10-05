@@ -211,8 +211,24 @@ final class Api {
     }
 
     /// « Remplir la semaine » (Cuisine+).
-    func fillWeek(weekStart: String) async -> ApiResult<FillWeekResponse> {
-        decode(await raw("POST", "/api/plan/auto", body: encode(FillWeekBody(weekStart: weekStart))), as: FillWeekResponse.self)
+    func fillWeek(weekStart: String, meals: [Meal]) async -> ApiResult<FillWeekResponse> {
+        decode(
+            await raw("POST", "/api/plan/auto", body: encode(FillWeekBody(weekStart: weekStart, meals: meals.map(\.rawValue)))),
+            as: FillWeekResponse.self
+        )
+    }
+
+    /// Les plats du catalogue pour l'objectif du compte.
+    func catalog() async -> ApiResult<CatalogResponse> { await get("/api/catalog") }
+
+    /// Ajoute un plat du catalogue aux recettes, sans le mettre au panier.
+    func installCatalog(slug: String) async -> ApiResult<Void> {
+        await send("POST", "/api/catalog", CatalogSlugsBody(slugs: [slug]))
+    }
+
+    /// Choisit un plat du catalogue pour la semaine : installé s'il ne l'est pas, puis mis au panier.
+    func chooseCatalog(weekStart: String, slug: String) async -> ApiResult<Void> {
+        await send("POST", "/api/basket", BasketCatalogBody(weekStart: weekStart, slugs: [slug]))
     }
 
     /// Lit une page de recette et rend un brouillon (Cuisine+). Rien n'est enregistré.

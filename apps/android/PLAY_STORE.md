@@ -84,7 +84,7 @@ Aars tient ton journal alimentaire et calcule ta cible calorique à partir de to
 
 • Aujourd'hui : calories et macros du jour, repas dépliables, pesée en un geste.
 • Ajouter un repas : recherche dans la table CIQUAL et Open Food Facts, scanner de code-barres, repas récents et favoris.
-• Cuisine : plan de la semaine midi et soir, recettes dont les parts suivent ta cible, liste de courses générée et cochable au scanner.
+• Cuisine : plan de la semaine matin, midi, soir et collation, catalogue de plats pour ton objectif, recettes dont les parts suivent ta cible, liste de courses générée et cochable au scanner.
 • Sport : programme de la semaine, séance en cours plein écran, records et progression.
 • Communauté : suis tes amis, partage tes séances, classement de la semaine.
 • Santé : avec ton accord, l'app lit ta dépense active dans Health Connect pour ajuster ta cible.
