@@ -4,8 +4,9 @@ App de suivi alimentaire. Comptes distincts, inscription libre.
 Cible : les apps natives iOS et Android seules (décision du 04/10/2026, qui
 suit celle du 01/10/2026 levant l'ancien « Pas d'App Store »). Le front web
 (les pages de `apps/web`) sera supprimé plus tard ; l'API Next.js reste, c'est
-le serveur des deux apps. D'ici là, une fonction nouvelle se fait dans l'API
-et dans les deux apps natives, pas dans les pages web.
+le serveur des deux apps. Mais tant que les testeurs utilisent la PWA
+(décision du 05/10/2026), une fonction nouvelle se fait dans l'API, dans les
+deux apps natives et dans la PWA.
 
 ## Organisation du dépôt (monorepo npm workspaces)
 - `apps/web` : l'app Next.js, PWA et API. Tout ce qui suit sur la stack la
@@ -37,12 +38,15 @@ commit dans `apps/web/src/app/legal/privacy/page.tsx` et dans
   par courriel via Resend seulement si `RESEND_API_KEY`, `MAIL_FROM` et `APP_URL`
   sont posées
 
-## Definition of Done (obligatoire, chaque story)
+## Definition of Done (obligatoire, chaque fonctionnalité)
+Une fonctionnalité, une branche (`feat/<nom>`), partie de la tête de `main`
+ou de la branche de travail en cours si `main` est en retard. Plus de BMAD
+(décision du 05/10/2026).
 1. `npm run build` passe sans erreur ni warning TypeScript
 2. `npm run lint` passe
-3. `git add -A && git commit -m "feat(story-<id>): <résumé>"`
-4. `git push origin bmad/dev`
-5. Marquer la story comme terminée dans le sprint status BMAD
+3. `git add -A && git commit -m "feat(<nom>): <résumé>"`
+4. `git push origin feat/<nom>`
+5. Attendre la validation de l'utilisateur avant de reporter `main` dessus
 
 Pour `apps/android`, le point 1 devient : `assembleDebug` passe sans erreur
 ni avertissement Kotlin (SDK et JDK installés sur ce poste depuis le
@@ -50,10 +54,11 @@ ni avertissement Kotlin (SDK et JDK installés sur ce poste depuis le
 Pour `apps/ios`, le point 1 devient : `xcodebuild … build` vers un simulateur
 passe sans erreur ni avertissement (commande dans `apps/ios/README.md`).
 
-Ne jamais passer à la story suivante si le build échoue.
-Le travail se committe sur `bmad/dev`. Reporter ensuite `main` dessus est
-autorisé, en avance rapide uniquement : c'est le même historique, pas une
-fusion. Si l'avance rapide n'est pas possible, s'arrêter et le dire.
+Ne jamais passer à la fonctionnalité suivante si le build échoue.
+Une fois validée par l'utilisateur, `main` se reporte sur la branche en avance
+rapide uniquement : c'est le même historique, pas une fusion. Si l'avance
+rapide n'est pas possible, s'arrêter et le dire. Le push de `main` est fait
+par l'utilisateur (permission refusée à l'agent).
 Si une commande échoue deux fois de suite, s'arrêter et écrire le blocage
 dans `BLOCKERS.md` plutôt que de contourner.
 
