@@ -43,3 +43,6 @@ apps/android/keystore.properties
 *.jks
 *.keystore
 apps/android/app/release/
+
+# Documents de travail et papiers personnels : jamais dans le dépôt (public).
+Annexe/
