@@ -100,7 +100,19 @@ production qui touche l'écran concerné.
 - [ ] Les points de la section 2 qui touchent ce qui a changé
 - Problème : Vercel › Deployments › le déploiement précédent › *Instant Rollback*
 
-## 5. Apps natives (pas encore distribuées)
+## 5. Tableau de bord (`apps/admin`)
+
+Ses routes demandent la clé admin : le test automatique ne les voit pas. À la
+main, après un déploiement qui le touche :
+- [ ] Sans session, toute page renvoie à `/login` ; le mot de passe seul n'ouvre rien
+- [ ] Mot de passe puis passkey : le tableau de bord s'ouvre
+- [ ] Vue d'ensemble et Usage : chiffres et courbes cohérents avec l'app
+- [ ] Recettes sans photo : poser une photo, la voir dans l'app de la personne, la retirer
+- [ ] Catalogue : poser la photo du plat qui n'en a pas
+- [ ] Modération : clore un signalement de test
+- [ ] Sécurité : la dernière passkey ne se révoque pas ; déconnexion
+
+## 6. Apps natives (pas encore distribuées)
 
 Elles se construisent (commandes dans `apps/android/README.md` et
 `apps/ios/README.md`) mais n'ont jamais tourné sur un vrai téléphone contre la

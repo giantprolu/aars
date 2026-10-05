@@ -195,6 +195,10 @@ L'import de recette fait lire au serveur la page dont on donne le lien ;
 l'adresse n'est pas conservée et rien n'est enregistré avant validation dans
 l'éditeur : rien à déclarer de plus dans la Sécurité des données.
 
+Les photos que l'équipe pose sur une recette depuis le tableau de bord
+(`apps/admin`) viennent de l'éditeur, pas de l'utilisateur, et le tableau de
+bord ne dit pas à qui est la recette : rien à déclarer de plus non plus.
+
 1. **Profil de paiement** : Play Console › *Paramètres* › *Profil de
    paiement*, avec le SIRET. Sans lui, aucun produit payant ne se crée.
 2. **Produits** : *Monétiser* › *Abonnements* › créer `aars_premium`,

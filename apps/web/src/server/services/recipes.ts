@@ -17,9 +17,11 @@ import {
   insertRecipe,
   listRecipes,
   missingReferences,
+  recipePhotoUrl,
   updateRecipe,
 } from '../db/queries/recipes';
 import { basketWeeksForRecipe, listBasket } from '../db/queries/basket';
+import { forgetPhoto } from './photos';
 import { syncListsForRecipe, syncListsForWeeks } from './shopping';
 
 /**
@@ -204,10 +206,13 @@ export async function saveRecipe(
  */
 export async function removeRecipe(userId: number, id: number): Promise<boolean> {
   const weeks = await basketWeeksForRecipe(userId, id);
+  const photo = await recipePhotoUrl(userId, id);
   if (!(await deleteRecipe(userId, id))) {
     return false;
   }
 
+  // La photo posée depuis le tableau de bord part avec la recette.
+  await forgetPhoto(photo);
   await syncListsForWeeks(userId, weeks);
   return true;
 }

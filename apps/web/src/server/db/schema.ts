@@ -410,6 +410,12 @@ export const recipes = pgTable(
      * colonne est vide.
      */
     meal: text('meal'),
+    /**
+     * Photo posée sur la recette depuis le tableau de bord (05/10/2026), dans
+     * Vercel Blob. Elle l'emporte sur celle du plat du catalogue ; `null`
+     * laisse cette dernière, ou le motif.
+     */
+    imageUrl: text('image_url'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1398,3 +1404,24 @@ export const usageDays = pgTable(
     ),
   ],
 );
+
+/**
+ * Les passkeys du tableau de bord (`apps/admin`), deuxième facteur après le
+ * mot de passe admin. Rien d'un utilisateur de l'app : seulement la clé
+ * publique de chaque appareil de l'administrateur, et son compteur, qui
+ * trahit une clé clonée s'il recule.
+ */
+export const adminPasskeys = pgTable('admin_passkeys', {
+  /** Identifiant de la clé, en base64url, tel que WebAuthn le donne. */
+  id: text('id').primaryKey(),
+  /** Clé publique COSE, en base64url. */
+  publicKey: text('public_key').notNull(),
+  counter: bigint('counter', { mode: 'number' }).notNull().default(0),
+  transports: text('transports').array().notNull().default(sql`'{}'::text[]`),
+  /** Le nom donné à l'appareil, pour s'y retrouver et révoquer le bon. */
+  name: text('name').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+});
+
+export type AdminPasskeyRow = typeof adminPasskeys.$inferSelect;

@@ -11,6 +11,8 @@ import {
 import { isMailConfigured, sendMail } from '../clients/mail';
 import { env } from '../env';
 import { exportUserData } from '../db/queries/account';
+import { recipePhotoUrls } from '../db/queries/recipes';
+import { forgetPhoto } from './photos';
 import {
   consumeResetToken,
   deleteUser,
@@ -169,6 +171,10 @@ export async function deleteAccount(userId: number, password: string): Promise<D
   if (user === null || !(await verifyPassword(password, user.passwordHash))) {
     return { kind: 'wrong_password' };
   }
+  // Les photos posées sur ses recettes vivent hors de la base : on les relève
+  // avant que la cascade n'efface les recettes, puis on les efface aussi.
+  const photos = await recipePhotoUrls(userId);
   await deleteUser(userId);
+  await Promise.all(photos.map((url) => forgetPhoto(url)));
   return { kind: 'deleted' };
 }

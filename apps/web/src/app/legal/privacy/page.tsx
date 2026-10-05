@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: 'Confidentialité · Aars' };
 export default function PrivacyPage() {
   const contact = env.legalContactEmail;
   return (
-    <LegalPage title="Politique de confidentialité" updated="4 octobre 2026">
+    <LegalPage title="Politique de confidentialité" updated="5 octobre 2026">
       <p>
         Aars est un journal alimentaire et sportif. Cette page dit quelles données
         l&apos;application (web, Android et iOS) conserve, pourquoi, avec qui elles sont partagées et
@@ -28,6 +28,7 @@ export default function PrivacyPage() {
         <li>Compte : adresse électronique, empreinte du mot de passe (PBKDF2, jamais le mot de passe lui-même), empreinte du code de secours.</li>
         <li>Profil corporel : sexe, date de naissance, taille, poids, taux de masse grasse s&apos;il est saisi, niveau d&apos;activité et objectif, pour calculer ta cible calorique.</li>
         <li>Journal : repas, aliments, quantités, plats planifiés, recettes, liste de courses, pesées.</li>
+        <li>Photos de recettes : l&apos;équipe peut ajouter une photo à une recette que tu as écrite ou importée, pour qu&apos;elle ait une image comme celles du catalogue. Elle voit alors le nom du plat et ses ingrédients, jamais à qui il appartient. La photo est rangée chez Vercel (Blob) et s&apos;efface avec la recette.</li>
         <li>Sport : programmes, séances, séries, charges et répétitions.</li>
         <li>Activité physique : l&apos;énergie active dépensée par jour (kilocalories), lue avec ton accord dans Health Connect sur Android ou dans Santé sur iPhone, ou envoyée par un raccourci iOS.</li>
         <li>Communauté : pseudonyme, nom affiché, abonnements, les séances que tu choisis de partager, les comptes que tu bloques et les signalements que tu fais (motif, note facultative). Un signalement est lu par l&apos;équipe qui modère, qui peut rendre une séance privée ou supprimer un compte qui enfreint les règles ; la personne signalée ne sait pas qui l&apos;a signalée.</li>

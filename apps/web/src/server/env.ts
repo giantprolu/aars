@@ -94,6 +94,14 @@ const schema = z.object({
   APPLE_IAP_KEY_ID: z.string().min(1).optional(),
   APPLE_IAP_PRIVATE_KEY: z.string().min(1).optional(),
   APPLE_NOTIFY_SECRET: z.string().min(16).optional(),
+  /**
+   * Clé que le tableau de bord (`apps/admin`) présente à `/api/admin/*`.
+   * Absente, ces routes n'existent pas (404). 32 caractères au moins :
+   * `openssl rand -hex 32`.
+   */
+  ADMIN_API_KEY: z.string().min(32).optional(),
+  /** Jeton du magasin Vercel Blob, pour les photos posées depuis le tableau de bord. */
+  BLOB_READ_WRITE_TOKEN: z.string().min(1).optional(),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   OFF_USER_AGENT: z
     .string()
@@ -196,6 +204,12 @@ export const env = {
   },
   get appleNotifySecret(): string | undefined {
     return read().APPLE_NOTIFY_SECRET;
+  },
+  get adminApiKey(): string | undefined {
+    return read().ADMIN_API_KEY;
+  },
+  get blobToken(): string | undefined {
+    return read().BLOB_READ_WRITE_TOKEN;
   },
   /** Vrai sur Vercel, faux sous `next dev`. Sert aux attributs du cookie. */
   get isProduction(): boolean {

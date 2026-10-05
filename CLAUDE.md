@@ -13,6 +13,12 @@ deux apps natives et dans la PWA.
   concerne. Les commandes `npm run …` se lancent à la racine et lui délèguent
 - `apps/ios` : SwiftUI, `apps/android` : Kotlin + Compose. Aucun code partagé
   avec le web : elles consomment l'API HTTP
+- `apps/admin` : le tableau de bord de l'équipe (Next.js + shadcn/ui, projet
+  Vercel à part). Mot de passe admin puis passkey ; il ne lit pas la base,
+  il passe par `/api/admin/*` du serveur avec `ADMIN_API_KEY` (README du
+  dossier). Les requêtes qui traversent les comptes vivent toutes dans
+  `apps/web/src/server/db/queries/admin.ts`, et jamais sur `entries`,
+  `food_aliases` ni `profiles`
 - `packages/api-contract` : contrat OpenAPI de l'API, seul point commun entre
   la PWA et les apps natives
 
@@ -53,6 +59,8 @@ ni avertissement Kotlin (SDK et JDK installés sur ce poste depuis le
 05/10/2026, commande dans `apps/android/README.md`).
 Pour `apps/ios`, le point 1 devient : `xcodebuild … build` vers un simulateur
 passe sans erreur ni avertissement (commande dans `apps/ios/README.md`).
+Pour `apps/admin`, les points 1 et 2 deviennent `npm run admin:build` et
+`npm run admin:lint`.
 
 Ne jamais passer à la fonctionnalité suivante si le build échoue.
 Une fois validée par l'utilisateur, `main` se reporte sur la branche en avance

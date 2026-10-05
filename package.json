@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": [
     "apps/web",
+    "apps/admin",
     "packages/*"
   ],
   "scripts": {
@@ -12,7 +13,10 @@
     "lint": "npm run lint -w @nutri/web",
     "typecheck": "npm run typecheck -w @nutri/web",
     "db:generate": "npm run db:generate -w @nutri/web",
-    "db:migrate": "npm run db:migrate -w @nutri/web"
+    "db:migrate": "npm run db:migrate -w @nutri/web",
+    "admin:dev": "npm run dev -w @nutri/admin",
+    "admin:build": "npm run build -w @nutri/admin",
+    "admin:lint": "npm run lint -w @nutri/admin"
   },
   "engines": {
     "node": ">=22"

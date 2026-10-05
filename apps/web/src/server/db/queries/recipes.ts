@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { db, schema } from '../client';
 import type { Macros } from '@/lib/types';
 import { isMeal } from '@/lib/meal';
@@ -170,7 +170,8 @@ function toRecipe(
     prepMinutes: row.prepMinutes,
     notes: row.notes,
     ingredients,
-    imageUrl,
+    // La photo posée sur la recette (tableau de bord) l'emporte sur celle du plat.
+    imageUrl: row.imageUrl ?? imageUrl,
     meal: isMeal(meal) ? meal : null,
   };
 }
@@ -319,6 +320,25 @@ export async function updateRecipe(
     await db().insert(schema.recipeIngredients).values(toIngredientRows(id, input.ingredients));
   }
   return true;
+}
+
+/** La photo posée sur une recette (tableau de bord), à effacer avec elle. */
+export async function recipePhotoUrl(userId: number, id: number): Promise<string | null> {
+  const [row] = await db()
+    .select({ imageUrl: schema.recipes.imageUrl })
+    .from(schema.recipes)
+    .where(and(eq(schema.recipes.userId, userId), eq(schema.recipes.id, id)))
+    .limit(1);
+  return row?.imageUrl ?? null;
+}
+
+/** Les photos posées sur les recettes d'un compte, à effacer avec lui. */
+export async function recipePhotoUrls(userId: number): Promise<string[]> {
+  const rows = await db()
+    .select({ imageUrl: schema.recipes.imageUrl })
+    .from(schema.recipes)
+    .where(and(eq(schema.recipes.userId, userId), isNotNull(schema.recipes.imageUrl)));
+  return rows.flatMap((row) => (row.imageUrl === null ? [] : [row.imageUrl]));
 }
 
 /** Supprime une recette. Les ingrédients suivent par cascade. */
