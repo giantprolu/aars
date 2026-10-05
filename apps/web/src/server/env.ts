@@ -98,7 +98,7 @@ const schema = z.object({
   OFF_USER_AGENT: z
     .string()
     .min(1)
-    .default('Aars/0.1 (usage personnel; https://github.com/giantprolu/nutri)'),
+    .default('Aars/0.1 (usage personnel; https://github.com/giantprolu/aars)'),
 });
 
 type Env = z.infer<typeof schema>;

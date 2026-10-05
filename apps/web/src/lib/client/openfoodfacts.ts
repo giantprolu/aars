@@ -43,7 +43,7 @@ const TIMEOUT_MS = 8000;
  * serveur, et ce n'est pas un secret.
  */
 const USER_AGENT_COMMENT =
-  'Aars/0.1 (usage personnel; https://github.com/giantprolu/nutri)';
+  'Aars/0.1 (usage personnel; https://github.com/giantprolu/aars)';
 
 interface OffNutriments {
   'energy-kcal_100g'?: number;
