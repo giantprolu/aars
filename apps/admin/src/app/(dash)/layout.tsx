@@ -16,7 +16,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const badges = {
     recipes: overview.recipes.ownWithoutPhoto,
     catalog: catalog.meals.filter((meal) => meal.imageUrl === null).length,
-    reports: overview.openReports,
+    // Avant le déploiement du serveur qui les compte, les dossiers manquent : on retombe sur les signalements.
+    reports: overview.openCases ?? overview.openReports,
   };
 
   return (

@@ -29,7 +29,12 @@ export default async function OverviewPage() {
         <Stat label="Comptes" value={overview.accounts.total} hint={`+${overview.accounts.new7} sur 7 jours, +${overview.accounts.new30} sur 30`} />
         <Stat label="Actifs aujourd'hui" value={overview.active.today} hint={`${overview.active.d7} sur 7 jours, ${overview.active.d30} sur 30`} href="/usage" />
         <Stat label="Recettes sans photo" value={overview.recipes.ownWithoutPhoto} hint={`sur ${overview.recipes.own} écrites ou importées`} href="/recettes" />
-        <Stat label="Signalements ouverts" value={overview.openReports} href="/moderation" />
+        <Stat
+          label="Dossiers de modération"
+          value={overview.openCases ?? overview.openReports}
+          hint={overview.urgentCases ? `${overview.urgentCases} urgent(s), P0 ou P1` : 'aucun urgent'}
+          href="/moderation"
+        />
         <Stat label="Recettes" value={overview.recipes.total} hint={`${overview.recipes.fromCatalog} venues du catalogue`} />
         <Stat label="Repas au plan cette semaine" value={overview.plannedThisWeek} />
         <Stat label="Abonnés actifs" value={overview.subscriptions.active} hint={overview.salesOpen ? 'vente ouverte' : 'vente fermée'} href="/abonnements" />

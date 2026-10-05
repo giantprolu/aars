@@ -1,8 +1,8 @@
 # Modération de la Communauté
 
-État au 06/10/2026, branche `feat/moderation-core` (première des étapes
-validées le 05/10/2026). Ce document dit ce qui est fait, et ce qui ne l'est
-pas encore.
+État au 06/10/2026 : `feat/moderation-core` (en production) et
+`feat/moderation-admin`, les deux premières étapes validées le 05/10/2026. Ce
+document dit ce qui est fait, et ce qui ne l'est pas encore.
 
 ## Décisions
 
@@ -185,7 +185,9 @@ falsification, sans l'empêcher. Événements : `CASE_OPENED`,
 `CONTENT_REMOVED`, `STRIKE_RECORDED`, `WARNING_ISSUED`, `USER_RESTRICTED`,
 `SANCTION_RECOMMENDED`, `REPORT_CREATED`, `REPORT_RATE_LIMITED`,
 `COORDINATED_REPORTING_FLAGGED`, `REPORT_RESOLVED`, `RETENTION_PURGED`,
-`ACCOUNT_DELETED_BY_MODERATION`. Jamais de texte, de jeton ni d'adresse.
+`ACCOUNT_DELETED_BY_MODERATION`, et pour les décisions humaines `CASE_TAKEN`,
+`CASE_RESOLVED`, `CASE_DISMISSED`, `REPORT_DISMISSED`, `CONTENT_RESTORED`,
+`IDENTITY_RESET`, `ACCOUNT_SUSPENDED`, `ACCOUNT_BANNED`, `SANCTION_LIFTED`. Jamais de texte, de jeton ni d'adresse.
 
 Journaux Vercel : une ligne JSON `{"scope":"moderation",…}` par décision
 (numéro de dossier, politique, niveau, action), sans contenu.
@@ -200,16 +202,19 @@ valider par un juriste.
 
 ## Tests
 
-- `npm run verify:moderation -w @nutri/web` : 39 vérifications unitaires et
+- `npm run verify:moderation -w @nutri/web` : 41 vérifications unitaires et
   130 cas étiquetés (SAFE, AMBIGUOUS, HARASSMENT, HATE, THREAT, SPAM, SCAM,
   SEXUAL, MINOR_SAFETY, SELF_HARM, ILLEGAL) plus 7 vagues de signalements
   (COORDINATED_ABUSE). Deux limites connues, affichées : une moquerie sans
   mot-clé, un propos haineux sans terme injurieux.
-- `npm run verify:moderation-db -w @nutri/web` : 21 vérifications de bout en
+- `npm run verify:moderation-db -w @nutri/web` : 30 vérifications de bout en
   bout sur Postgres en mémoire (PGlite, migrations du dépôt) : refus,
   dossier, audit, strikes, restriction, exclusion, vague de 20 comptes,
   rejeu, limites, import, audit inviolable et falsification détectée, accès
-  admin, rétention, export.
+  admin, rétention, export ; et les décisions du tableau de bord : version
+  périmée et double clic refusés, classement qui rétablit et annule,
+  confirmation, suspension puis levée, permissions par rôle, identité
+  réinitialisée, indicateurs.
 
 ## Déploiement
 
@@ -220,22 +225,62 @@ valider par un juriste.
 3. `npm run moderation:scan -w @nutri/web` (aperçu, n'écrit rien), puis
    `-- --apply` pour ouvrir les dossiers des textes déjà en ligne, sans
    sanction.
-4. `npm run moderation -w @nutri/web -- cases` pour la file.
+4. La file : tableau de bord › Modération, ou `npm run moderation -w @nutri/web -- cases`.
 
 Aucune variable d'environnement nouvelle. `SESSION_SECRET` sert aussi de
 clé à l'empreinte IP ; sans lui, la limite d'inscriptions ne s'applique pas.
 
+## Tableau de bord (`apps/admin` › Modération)
+
+- **File** : dossiers ouverts par priorité puis ancienneté, drapeaux (vague
+  coordonnée, récidive, contournement, sécurité critique), action proposée.
+- **Dossier** : texte en cause (replié derrière un clic pour la sécurité
+  critique), état actuel de la cible, personne et toutes ses sanctions avec
+  le total amorti, justification (politique, décomposition du score,
+  détections), signalements avec le poids de chacun, historique d'audit.
+- **Gestes** : prendre en charge ; masquer ou rétablir un nom ; rendre une
+  séance privée ; réinitialiser une identité (`membre_<numéro>`) ; avertir,
+  restreindre 1 ou 7 jours, suspendre 30 jours, bannir ; lever une sanction
+  ou annuler un strike ; confirmer et clore (les signalements comptent pour
+  la confiance de leurs auteurs) ; classer sans suite (contenu rétabli,
+  strikes annulés, restrictions automatiques levées, signalements rejetés).
+- **Versions** : chaque décision renvoie la version du dossier lue à
+  l'affichage ; si le dossier a bougé entre-temps (autre décision, nouveau
+  signalement, double clic), le serveur répond 409 et rien n'est écrit.
+- **Auteur** : la session du tableau de bord retient le nom de la passkey
+  qui l'a ouverte, transmis en `x-admin-actor` et inscrit dans l'audit
+  (`admin:Macbook`). Une session ouverte avant ce changement signe `admin`.
+- **Indicateurs** (7, 30, 90 jours) : dossiers ouverts et part d'urgents,
+  actions automatiques, faux positifs connus (action automatique puis
+  classement sans suite), délai moyen de décision, confirmés et classés,
+  signalements suivis d'effet ou rejetés, vagues et refus de fréquence,
+  sanctions automatiques et humaines, sanctions en cours.
+
+Routes : `GET /api/admin/moderation/queue`, `GET /api/admin/moderation/metrics`,
+`GET|POST /api/admin/moderation/cases/:id`, `POST /api/admin/moderation/sanctions/:id`.
+Les anciennes routes `/api/admin/reports` sont retirées : seul le tableau de
+bord les lisait, et il est déployé avec le serveur.
+
+## Rôles (`src/lib/moderation/rbac.ts`)
+
+| Rôle | Peut |
+|---|---|
+| `moderator` | lire la file et les dossiers, voir le texte, décider, avertir, restreindre |
+| `senior_moderator` | en plus : suspendre, réinitialiser une identité, lever une sanction |
+| `admin` | en plus : bannir ; la politique, par un commit |
+| `trust_and_safety_admin` | tout |
+
+Chaque route vérifie la permission du geste. Aujourd'hui, une seule clé et
+un seul rôle (`admin`) : ajouter un modérateur demandera de lui donner une
+identité propre et un rôle, sans toucher aux routes.
+
 ## Pas encore fait
 
-- **Tableau de bord** (`feat/moderation-admin`) : file, dossier, décisions,
-  levée, restauration, identité de l'administrateur dans l'audit (aujourd'hui
-  `admin` sans nom), métriques (faux positifs, appels gagnés, délais).
-  En attendant : `npm run moderation -- cases`.
 - **Appels** (`feat/moderation-appeals`) : avis de sanction et appel dans
   l'API, iOS, Android et la PWA. En attendant, la politique de
   confidentialité renvoie vers l'adresse de contact.
-- **Rôles** : un seul administrateur ; les permissions par rôle viendront
-  avec les comptes de modérateurs.
+- **Comptes de modérateurs** : une seule identité d'administration (mot de
+  passe et passkeys) ; les rôles sont prêts, pas les comptes.
 - **Exercices importés** visibles de tous (`feat/exercise-ownership`) : la
   modération masque les noms injurieux, mais un nom anodin et personnel
   (« rééduc genou ») reste exposé à tout le monde.

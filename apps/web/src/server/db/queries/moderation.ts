@@ -159,8 +159,8 @@ export interface CaseWrite {
  * Ouvre le dossier d'une cible, ou complète celui qui est déjà ouvert.
  *
  * Un dossier ne s'adoucit pas : la priorité ne descend pas, le score ne
- * baisse pas, et la justification gardée est celle de la décision la plus
- * grave. Les drapeaux s'additionnent.
+ * baisse pas, et la justification comme le texte gardés sont ceux de la
+ * décision la plus grave. Les drapeaux s'additionnent.
  */
 export async function upsertCase(write: CaseWrite): Promise<{ id: number; created: boolean }> {
   const graver = sql`excluded.risk_score >= ${schema.moderationCases.riskScore}`;
@@ -195,7 +195,11 @@ export async function upsertCase(write: CaseWrite): Promise<{ id: number; create
         riskScore: sql`greatest(excluded.risk_score, ${schema.moderationCases.riskScore})`,
         priority: sql`least(excluded.priority, ${schema.moderationCases.priority})`,
         flags: sql`array(select distinct unnest(${schema.moderationCases.flags} || excluded.flags))`,
-        contentSnapshot: sql`coalesce(excluded.content_snapshot, ${schema.moderationCases.contentSnapshot})`,
+        // Le texte suit la décision la plus grave : un signalement venu après
+        // un refus ne doit pas remplacer la preuve par le nom d'aujourd'hui.
+        contentSnapshot: sql`case when ${graver}
+          then coalesce(excluded.content_snapshot, ${schema.moderationCases.contentSnapshot})
+          else coalesce(${schema.moderationCases.contentSnapshot}, excluded.content_snapshot) end`,
         // Un dossier encore ouvert passe « trié » quand l'automatique a agi ;
         // un dossier qu'un humain a déjà pris en main garde son statut.
         status: sql`case when ${schema.moderationCases.status} = 'open' then excluded.status else ${schema.moderationCases.status} end`,

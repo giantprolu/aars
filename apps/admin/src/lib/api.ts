@@ -1,5 +1,7 @@
 import 'server-only';
+import { cookies } from 'next/headers';
 import { env } from './env';
+import { cookieName, unseal } from './session';
 
 /**
  * Le client du serveur Aars (`/api/admin/*`). La clé ne quitte jamais le
@@ -14,14 +16,34 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * L'appareil qui a ouvert la session (le nom de sa passkey), transmis au
+ * serveur pour signer les décisions dans l'audit. Vide hors session, ou pour
+ * une session ouverte avant que la session ne le retienne.
+ */
+async function actor(): Promise<string> {
+  try {
+    const session = await unseal((await cookies()).get(cookieName('session'))?.value, 'session');
+    return session?.device ?? '';
+  } catch {
+    return '';
+  }
+}
+
 async function call(method: string, path: string, init: { body?: BodyInit; contentType?: string } = {}): Promise<Response> {
   const key = env.apiKey;
   if (!key) {
     throw new ApiError(500, 'ADMIN_API_KEY manque.');
   }
+  const device = await actor();
   const response = await fetch(`${env.apiUrl}/api/admin${path}`, {
     method,
-    headers: { 'x-admin-key': key, ...(init.contentType ? { 'content-type': init.contentType } : {}) },
+    headers: {
+      'x-admin-key': key,
+      // En-tête HTTP : seulement de l'ASCII ; le serveur nettoie le reste.
+      ...(device ? { 'x-admin-actor': encodeURIComponent(device) } : {}),
+      ...(init.contentType ? { 'content-type': init.contentType } : {}),
+    },
     body: init.body,
     cache: 'no-store',
   });

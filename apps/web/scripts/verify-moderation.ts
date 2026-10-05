@@ -12,6 +12,7 @@
 import assert from 'node:assert/strict';
 import { POLICY_VERSION, RATE_LIMITS, RISK_MODIFIERS, STRIKE_HALF_LIFE_DAYS } from '../src/lib/moderation/config';
 import { normalizeText } from '../src/lib/moderation/normalize';
+import { GRANTS, PERMISSIONS, can } from '../src/lib/moderation/rbac';
 import { decide, type PolicyContext } from '../src/lib/moderation/policy';
 import {
   credibleWeight,
@@ -224,7 +225,22 @@ check('un strike perd la moitié de son poids à chaque demi-vie', () => {
   assert.equal(decayedWeight(2, 0), 2);
 });
 check('un incident d’il y a six mois pèse moins qu’une série récente', () => {
-  const now = new Date('2026-10-06T12:00:00Z');
+  // 7. Rôles et permissions.
+
+check('rôles : modérateur, senior, admin, chacun ses gestes', () => {
+  assert.equal(can('moderator', 'case.decide'), true);
+  assert.equal(can('moderator', 'sanction.restrict'), true);
+  assert.equal(can('moderator', 'sanction.suspend'), false);
+  assert.equal(can('moderator', 'sanction.ban'), false);
+  assert.equal(can('senior_moderator', 'sanction.suspend'), true);
+  assert.equal(can('senior_moderator', 'sanction.ban'), false);
+  assert.equal(can('admin', 'sanction.ban'), true);
+  assert.equal(can('user', 'queue.read'), false);
+  assert.equal(can('trusted_user', 'case.read'), false);
+  assert.deepEqual([...GRANTS.trust_and_safety_admin].sort(), [...PERMISSIONS].sort());
+});
+
+const now = new Date('2026-10-06T12:00:00Z');
   const old = strikeTotal([{ weight: 1, at: new Date('2026-04-06T12:00:00Z'), voided: false }], now);
   const recent = strikeTotal(
     [
@@ -299,6 +315,21 @@ check('limites de fréquence configurées', () => {
   }
 });
 
+// 7. Rôles et permissions.
+
+check('rôles : modérateur, senior, admin, chacun ses gestes', () => {
+  assert.equal(can('moderator', 'case.decide'), true);
+  assert.equal(can('moderator', 'sanction.restrict'), true);
+  assert.equal(can('moderator', 'sanction.suspend'), false);
+  assert.equal(can('moderator', 'sanction.ban'), false);
+  assert.equal(can('senior_moderator', 'sanction.suspend'), true);
+  assert.equal(can('senior_moderator', 'sanction.ban'), false);
+  assert.equal(can('admin', 'sanction.ban'), true);
+  assert.equal(can('user', 'queue.read'), false);
+  assert.equal(can('trusted_user', 'case.read'), false);
+  assert.deepEqual([...GRANTS.trust_and_safety_admin].sort(), [...PERMISSIONS].sort());
+});
+
 const now = new Date('2026-10-06T12:00:00Z');
 for (const scenario of COORDINATED_CASES) {
   check(`vague : ${scenario.name}`, () => {
@@ -316,7 +347,7 @@ for (const scenario of COORDINATED_CASES) {
   });
 }
 
-// 7. Le jeu de cas, de bout en bout.
+// 8. Le jeu de cas, de bout en bout.
 
 function verdict(entry: DatasetCase): 'allow' | 'review' | 'block' {
   const { detections } = classifyLocally(entry.text, entry.field);

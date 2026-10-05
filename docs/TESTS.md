@@ -123,7 +123,13 @@ main, après un déploiement qui le touche :
 - [ ] Vue d'ensemble et Usage : chiffres et courbes cohérents avec l'app
 - [ ] Recettes sans photo : poser une photo, la voir dans l'app de la personne, la retirer
 - [ ] Catalogue : poser la photo du plat qui n'en a pas
-- [ ] Modération : clore un signalement de test
+- [ ] Modération : la file s'ouvre, un dossier de test aussi (texte en cause,
+      signaux, historique) ; « Prendre en charge » puis « Classer sans suite »
+      rétablit le contenu et lève la restriction automatique ; l'historique
+      montre `admin:<ton appareil>`
+- [ ] Recharger deux fois le même dossier et décider dans le premier onglet
+      puis dans le second : le second est refusé (« Le dossier a changé »)
+- [ ] Indicateurs : la page s'ouvre sur 7, 30 et 90 jours
 - [ ] Sécurité : la dernière passkey ne se révoque pas ; déconnexion
 
 ## 6. Apps natives (pas encore distribuées)

@@ -19,6 +19,8 @@ const MESSAGES: Record<ApiErrorCode, string> = {
   content_rejected: 'Ce texte ne respecte pas les règles de la Communauté.',
   community_restricted: 'Ton accès à la Communauté est limité.',
   rate_limited: 'Trop de demandes en peu de temps. Réessaie un peu plus tard.',
+  forbidden: 'Ce geste demande une permission que ce rôle n’a pas.',
+  conflict: 'Le dossier a changé depuis son ouverture : recharge-le avant de décider.',
   internal: 'Erreur interne.',
 };
 
@@ -41,6 +43,8 @@ const STATUS: Record<ApiErrorCode, number> = {
   content_rejected: 422,
   community_restricted: 403,
   rate_limited: 429,
+  forbidden: 403,
+  conflict: 409,
   internal: 500,
 };
 

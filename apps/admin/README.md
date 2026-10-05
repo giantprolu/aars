@@ -6,15 +6,15 @@ touche pas à la base : elle parle au serveur Aars par `/api/admin/*`.
 
 | Écran | Ce qu'il fait |
 |---|---|
-| Vue d'ensemble | comptes, actifs du jour / 7 j / 30 j, recettes, repas planifiés, signalements, abonnés, courbe des actifs |
+| Vue d'ensemble | comptes, actifs du jour / 7 j / 30 j, recettes, repas planifiés, dossiers de modération, abonnés, courbe des actifs |
 | Usage | compteurs par jour (ouvertures, objectifs, Santé, repas par méthode), sur 7, 30 ou 90 jours |
 | Abonnés | abonnés actifs, part des comptes, Cuisine+ (zéro tant que la vente est fermée) |
 | Recettes sans photo | les recettes écrites ou importées, sans dire à qui ; leur prompt Gemini à copier ; ajouter, changer ou retirer une photo |
 | Catalogue | les 120 plats, ceux sans photo d'abord ; prompt Gemini à copier ; poser une photo |
-| Modération | signalements à traiter et clos ; clore, rendre une séance privée |
+| Modération | file des dossiers par priorité (P0 à P4) ; un dossier : texte en cause, détections, signalements, sanctions, historique ; prendre en charge, masquer ou rétablir, réinitialiser une identité, avertir, restreindre, suspendre, bannir, lever, confirmer, classer sans suite ; indicateurs |
 | Sécurité | passkeys (ajouter, révoquer), déconnexion |
 
-Supprimer un compte reste à `npm run moderation`, avec sa confirmation.
+Supprimer un compte reste à `npm run moderation`, avec sa confirmation. Chaque décision est signée dans l'audit du serveur du nom de la passkey qui a ouvert la session (`admin:<appareil>`) ; une décision sur un dossier qui a changé depuis son affichage est refusée. Détail : `docs/MODERATION.md`.
 
 Les prompts suivent `docs/prompts-photos-plats.md` (`src/lib/prompts.ts`) :
 style commun puis le plat, en un seul texte à coller dans Gemini (Nano

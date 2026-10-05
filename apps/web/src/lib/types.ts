@@ -89,6 +89,8 @@ export type ApiErrorCode =
   | 'content_rejected'
   | 'community_restricted'
   | 'rate_limited'
+  | 'forbidden'
+  | 'conflict'
   | 'internal';
 
 /**

@@ -153,6 +153,9 @@ export async function finishPasskey(
     return 'La demande a expiré : recommence depuis le mot de passe.';
   }
 
+  // Le nom de l'appareil entre dans la session : il signe chaque décision de
+  // modération dans le journal d'audit du serveur.
+  let device = name.trim().slice(0, 60) || 'Appareil';
   if (purpose === 'login') {
     const stored = passkeys.find((key) => key.id === response.id);
     if (!stored) {
@@ -176,6 +179,7 @@ export async function finishPasskey(
         return 'Passkey refusée.';
       }
       await apiSend('PATCH', `/passkeys/${encodeURIComponent(stored.id)}`, { counter: result.authenticationInfo.newCounter });
+      device = stored.name;
     } catch {
       return 'Passkey refusée.';
     }
@@ -206,7 +210,7 @@ export async function finishPasskey(
 
   if (purpose !== 'add') {
     await clearToken('pending');
-    await setToken('session');
+    await setToken('session', { device });
   }
   return null;
 }

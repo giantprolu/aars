@@ -21,6 +21,9 @@ import { communityStanding } from '../src/server/moderation/standing';
 import { withinLimit } from '../src/server/moderation/rate-limit';
 import { purgeModeration } from '../src/server/moderation/retention';
 import { RATE_LIMITS } from '../src/lib/moderation/config';
+import { adminActor, type AdminActor } from '../src/server/admin';
+import { moderationMetrics, moderationQueue } from '../src/server/db/queries/admin';
+import { caseView, decideCase, liftSanctionAs } from '../src/server/moderation/decisions';
 
 let passed = 0;
 async function check(name: string, run: () => Promise<void>): Promise<void> {
@@ -285,6 +288,122 @@ async function main(): Promise<void> {
     assert.ok(!(await pickableExerciseCatalog()).some((exercise) => exercise.id === Number(hidden.id)));
     assert.ok((await fullExerciseCatalog()).some((exercise) => exercise.id === Number(hidden.id)));
     assert.ok((await pickableExerciseCatalog()).some((exercise) => exercise.name === 'Tirage poitrine prise serrée'));
+  });
+
+  // Le tableau de bord : décisions humaines.
+  const admin: AdminActor = { name: 'admin:Macbook', role: 'admin' };
+  const moderator: AdminActor = { name: 'admin:Stagiaire', role: 'moderator' };
+  const caseOf = async (userId: number, kind: string) =>
+    one<{ id: number }>(`select id::int as id from moderation_cases where subject_user_id = $1 and target_kind = $2`, [userId, kind]);
+
+  await check('la file est triée par priorité, chaque dossier porte sa version', async () => {
+    const queue = await moderationQueue('open');
+    assert.ok(queue.length >= 5);
+    const priorities = queue.map((entry) => entry.priority);
+    assert.deepEqual(priorities, [...priorities].sort((a, b) => a - b));
+    assert.ok(queue.every((entry) => !Number.isNaN(Date.parse(entry.version)) && !Number.isNaN(Date.parse(entry.createdAt))));
+  });
+
+  await check('le nom de l’appareil passe dans l’audit, nettoyé', async () => {
+    const actor = adminActor(new Request('http://x', { headers: { 'x-admin-actor': 'Macbook <script>' } }));
+    assert.equal(actor.name, 'admin:Macbook script');
+    assert.equal(adminActor(new Request('http://x')).name, 'admin');
+    const accented = adminActor(new Request('http://x', { headers: { 'x-admin-actor': encodeURIComponent('iPhone de Léa') } }));
+    assert.equal(accented.name, 'admin:iPhone de Léa');
+  });
+
+  await check('une décision sur une version périmée est refusée, un double clic aussi', async () => {
+    const target = await caseOf(dave, 'user');
+    const view = await caseView(admin, target.id);
+    assert.ok(view !== null);
+    assert.equal((await decideCase(admin, target.id, '2020-01-01T00:00:00+00:00', { action: 'take' })).kind, 'conflict');
+    assert.equal((await decideCase(admin, target.id, view.version, { action: 'take' })).kind, 'done');
+    assert.equal((await decideCase(admin, target.id, view.version, { action: 'take' })).kind, 'conflict');
+    const after = await caseView(admin, target.id);
+    assert.equal(after?.status, 'under_review');
+    assert.equal(after?.assignedTo, 'admin:Macbook');
+  });
+
+  await check('classer sans suite : nom rendu, strike annulé, restriction levée, signalements rejetés', async () => {
+    const gusId = (await one<{ id: number }>(`select id::int as id from users where handle = 'gus'`)).id;
+    const target = await caseOf(gusId, 'session');
+    const view = await caseView(admin, target.id);
+    assert.ok(view !== null && view.strikeTotal > 0);
+    // Le nom est masqué depuis le signalement ; le classement le rend.
+    await pglite.query(`update moderation_cases set target_kind = 'template_name', target_id = (
+      select template_id from workout_sessions where id = $1) where id = $2`, [view.targetId, target.id]);
+    const fresh = await caseView(admin, target.id);
+    assert.equal((await decideCase(admin, target.id, fresh?.version ?? '', { action: 'dismiss', note: 'citation historique' })).kind, 'done');
+    const template = await one<{ name_hidden_at: Date | null }>('select name_hidden_at from workout_templates where id = $1', [fresh?.targetId ?? 0]);
+    assert.equal(template.name_hidden_at, null);
+    const closed = await caseView(admin, target.id);
+    assert.equal(closed?.status, 'dismissed');
+    assert.equal(closed?.strikeTotal, 0);
+    assert.ok(closed?.reportList.every((report) => report.status === 'dismissed'));
+    assert.equal((await communityStanding(gusId)).kind, 'good');
+    const events = closed?.audit.filter((entry) => entry.actor === 'admin:Macbook').map((entry) => entry.event) ?? [];
+    assert.deepEqual(events, ['CASE_DISMISSED', 'REPORT_DISMISSED', 'CONTENT_RESTORED']);
+    assert.equal((await decideCase(admin, target.id, closed?.version ?? '', { action: 'take' })).kind, 'invalid');
+  });
+
+  await check('confirmer : les signalements comptent pour la confiance de leurs auteurs', async () => {
+    const target = await caseOf(erin, 'user');
+    const view = await caseView(admin, target.id);
+    assert.equal((await decideCase(admin, target.id, view?.version ?? '', { action: 'confirm', note: null })).kind, 'done');
+    const confirmed = await count(`select count(*) as n from social_reports where reporter_id = $1 and status = 'action_taken'`, [established[0] ?? 0]);
+    assert.equal(confirmed, 1);
+  });
+
+  await check('suspendre par décision humaine : invisible, durée bornée, rôle vérifié', async () => {
+    const target = await caseOf(dave, 'user');
+    let view = await caseView(admin, target.id);
+    assert.equal((await decideCase(admin, target.id, view?.version ?? '', { action: 'sanction', sanction: 'suspension', days: 400 })).kind, 'invalid');
+    assert.equal((await decideCase(moderator, target.id, view?.version ?? '', { action: 'sanction', sanction: 'ban', days: null })).kind, 'forbidden');
+    assert.equal((await decideCase(moderator, target.id, view?.version ?? '', { action: 'sanction', sanction: 'suspension', days: 30 })).kind, 'forbidden');
+    assert.equal((await decideCase(admin, target.id, view?.version ?? '', { action: 'sanction', sanction: 'suspension', days: 30 })).kind, 'done');
+    assert.equal((await communityStanding(dave)).kind, 'suspended');
+    assert.ok(!(await findPeople(carol, 'dave')).some((person) => person.id === dave));
+    view = await caseView(admin, target.id);
+    const suspension = view?.sanctions.find((entry) => entry.kind === 'suspension' && entry.active);
+    assert.equal(suspension?.decidedBy, 'admin:Macbook');
+    assert.ok(view?.audit.some((entry) => entry.event === 'ACCOUNT_SUSPENDED' && entry.actor === 'admin:Macbook'));
+
+    assert.equal((await liftSanctionAs(moderator, suspension?.id ?? 0, null, false)).kind, 'forbidden');
+    assert.equal((await liftSanctionAs(admin, suspension?.id ?? 0, 'erreur de cible', true)).kind, 'done');
+    assert.equal((await liftSanctionAs(admin, suspension?.id ?? 0, null, false)).kind, 'not_found');
+    assert.equal((await communityStanding(dave)).kind, 'good');
+  });
+
+  await check('réinitialiser une identité : pseudo neutre, nom effacé, tracé', async () => {
+    const aliceCase = await caseOf(alice, 'user');
+    const view = await caseView(admin, aliceCase.id);
+    assert.equal((await decideCase(admin, aliceCase.id, view?.version ?? '', { action: 'reset_identity' })).kind, 'done');
+    const identity = await one<{ handle: string; display_name: string | null }>('select handle, display_name from users where id = $1', [alice]);
+    assert.equal(identity.handle, `membre_${alice}`);
+    assert.equal(identity.display_name, null);
+    const fresh = await caseView(admin, aliceCase.id);
+    assert.equal((await decideCase(admin, aliceCase.id, fresh?.version ?? '', { action: 'hide' })).kind, 'invalid');
+  });
+
+  await check('un rôle sans droit ne voit pas le texte en cause', async () => {
+    const aliceCase = await caseOf(alice, 'user');
+    const reader = await caseView({ name: 'x', role: 'trusted_user' }, aliceCase.id);
+    assert.equal(reader?.contentSnapshot, null);
+    assert.deepEqual(reader?.allowed, []);
+    // Le texte gardé est celui de la tentative la plus grave (déguisée, en récidive).
+    assert.equal((await caseView(admin, aliceCase.id))?.contentSnapshot, 'c0nn4rd');
+  });
+
+  await check('indicateurs : décisions, faux positifs, sanctions par origine', async () => {
+    const metrics = await moderationMetrics(30);
+    assert.ok(metrics.opened >= 5);
+    assert.equal(metrics.dismissed, 1);
+    assert.equal(metrics.confirmed, 1);
+    assert.equal(metrics.autoReversed, 1);
+    assert.ok(metrics.autoActions >= 3);
+    assert.ok(metrics.reports.coordinated >= 1 && metrics.reports.rateLimited >= 1);
+    assert.ok(metrics.sanctions.some((entry) => entry.kind === 'suspension' && entry.human >= 1));
+    assert.ok(metrics.sanctions.some((entry) => entry.kind === 'restriction' && entry.system >= 1));
   });
 
   await check('le journal d’audit refuse modification, suppression récente et vidage', async () => {
