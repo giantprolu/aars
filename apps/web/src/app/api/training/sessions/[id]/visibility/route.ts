@@ -35,6 +35,13 @@ export async function PATCH(
     return apiError('invalid_input');
   }
 
-  const saved = await shareSession(userId, id, parsed.data.visibility);
-  return saved ? Response.json({ ok: true }) : apiError('not_found');
+  const result = await shareSession(userId, id, parsed.data.visibility);
+  switch (result.kind) {
+    case 'done':
+      return Response.json({ ok: true });
+    case 'not_found':
+      return apiError('not_found');
+    case 'restricted':
+      return apiError('community_restricted', result.message);
+  }
 }

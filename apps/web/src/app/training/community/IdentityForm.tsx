@@ -58,7 +58,7 @@ export function IdentityForm({
     setMessage(
       outcome.kind === 'taken'
         ? `@${normalized} est déjà pris.`
-        : 'L’identifiant n’a pas pu être enregistré.',
+        : (outcome.message ?? 'L’identifiant n’a pas pu être enregistré.'),
     );
   }
 

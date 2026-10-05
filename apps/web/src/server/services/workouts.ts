@@ -78,6 +78,8 @@ import {
   upsertPreferences,
   upsertSet,
 } from '../db/queries/workouts';
+import { hideExercise, markTemplateName, templateExposure } from '../db/queries/moderation';
+import { checkContent } from '../moderation/pipeline';
 
 /**
  * Service des séances.
@@ -165,6 +167,15 @@ export async function exerciseCatalog(userId: number): Promise<Exercise[]> {
  * que celle choisie aujourd'hui doit garder le nom de son exercice.
  */
 export async function fullExerciseCatalog(): Promise<Exercise[]> {
+  await ensureCatalog();
+  return listExercises(null, { includeHidden: true });
+}
+
+/**
+ * Le catalogue qu'on propose au choix : tout, sauf ce que la modération a
+ * masqué. C'est lui qui sort vers les écrans, chez tout le monde.
+ */
+export async function pickableExerciseCatalog(): Promise<Exercise[]> {
   await ensureCatalog();
   return listExercises(null);
 }
@@ -523,7 +534,7 @@ export async function saveWrittenSession(
       // Créé sans groupe musculaire ni rang : le module ne sait pas ce que
       // travaille une machine dont il apprend le nom, et l'inventer le ferait
       // apparaître dans un programme généré sous une étiquette fausse.
-      exercise = await findOrCreateExercise({
+      const found = await findOrCreateExercise({
         slug: slugFromName(name),
         name,
         kind: line.sets.some((set) => set.seconds !== null) ? 'hold' : 'strength',
@@ -531,6 +542,23 @@ export async function saveWrittenSession(
         region: 'full',
         equipment: 'machine',
       });
+      exercise = found.exercise;
+      // Le catalogue est commun : un nom nouveau y devient visible de tous.
+      // Refusé, il est créé quand même, mais masqué — la séance a eu lieu,
+      // elle s'enregistre entière.
+      if (found.created) {
+        const verdict = await checkContent({
+          subjectUserId: userId,
+          targetKind: 'exercise_name',
+          targetId: exercise.id,
+          text: name,
+          field: 'exercise_name',
+          preExposure: true,
+        });
+        if (!verdict.allowed) {
+          await hideExercise(exercise.id);
+        }
+      }
     }
 
     for (const [index, set] of line.sets.entries()) {
@@ -841,19 +869,40 @@ export async function addExerciseToSession(
   return added === null ? { kind: 'not_found' } : { kind: 'added' };
 }
 
-/** Met une séance modèle en favori, ou l'en sort. */
-export function favoriteTemplate(
+/**
+ * Met une séance modèle en favori, ou l'en sort.
+ *
+ * Renommer un modèle dont une séance est déjà partagée change ce que voient
+ * les abonnés : le nouveau nom passe aussitôt par la modération.
+ */
+export async function favoriteTemplate(
   userId: number,
   templateId: number,
   favorite: boolean,
   name: string | null,
 ): Promise<boolean> {
-  return setTemplateFavorite(
+  const saved = await setTemplateFavorite(
     userId,
     templateId,
     favorite,
     name === null ? null : cleanName(name, DEFAULT_COMPOSED_NAME),
   );
+  if (saved && favorite && name !== null) {
+    const exposure = await templateExposure(userId, templateId);
+    if (exposure !== null && exposure.shared && exposure.kind !== 'program') {
+      const verdict = await checkContent({
+        subjectUserId: userId,
+        targetKind: 'template_name',
+        targetId: templateId,
+        text: exposure.name,
+        field: 'template_name',
+        // Vérifié dans la foulée de l'écriture, avant que le fil ne le relise.
+        preExposure: true,
+      });
+      await markTemplateName(userId, templateId, !verdict.allowed);
+    }
+  }
+  return saved;
 }
 
 export type FavoriteSessionResult =

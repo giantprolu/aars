@@ -34,20 +34,31 @@ async function outcomeOf(response: Response | null): Promise<SocialOutcome> {
   }
 }
 
-export type SaveIdentityOutcome = { kind: 'saved' } | { kind: 'taken' } | { kind: 'error' };
+export type SaveIdentityOutcome =
+  | { kind: 'saved' }
+  | { kind: 'taken' }
+  | { kind: 'error'; message: string | null };
 
+/**
+ * Le message d'erreur vient du serveur quand il en donne un : un nom refusé
+ * par la modération dit pourquoi, ce qu'un message figé ici ne saurait pas.
+ */
 export async function saveIdentity(
   handle: string,
   displayName: string | null,
 ): Promise<SaveIdentityOutcome> {
   const response = await send('/api/social/identity', 'PUT', { handle, displayName });
   if (response === null) {
-    return { kind: 'error' };
+    return { kind: 'error', message: null };
   }
   if (response.status === 409) {
     return { kind: 'taken' };
   }
-  return response.ok ? { kind: 'saved' } : { kind: 'error' };
+  if (response.ok) {
+    return { kind: 'saved' };
+  }
+  const outcome = await outcomeOf(response);
+  return { kind: 'error', message: outcome.kind === 'error' ? outcome.message : null };
 }
 
 export async function searchPeople(

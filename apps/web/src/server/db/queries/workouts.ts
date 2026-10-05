@@ -96,9 +96,15 @@ export async function ensureSeedExercises(seed: readonly SeedExercise[]): Promis
  * `gymId` à `null` rend tout le catalogue : ne pas savoir où l'on s'entraîne
  * doit ouvrir les possibilités, pas les fermer.
  */
-export async function listExercises(gymId: number | null): Promise<Exercise[]> {
+export async function listExercises(
+  gymId: number | null,
+  options: { includeHidden: boolean } = { includeHidden: false },
+): Promise<Exercise[]> {
+  // Un exercice masqué par la modération ne se propose plus à personne ; il
+  // reste lisible là où il nomme une séance déjà faite (`includeHidden`).
+  const visible = options.includeHidden ? undefined : isNull(schema.exercises.hiddenAt);
   if (gymId === null) {
-    const rows = await db().select().from(schema.exercises).orderBy(asc(schema.exercises.name));
+    const rows = await db().select().from(schema.exercises).where(visible).orderBy(asc(schema.exercises.name));
     return rows.map(toExercise);
   }
 
@@ -109,7 +115,7 @@ export async function listExercises(gymId: number | null): Promise<Exercise[]> {
       schema.gymExercises,
       eq(schema.gymExercises.exerciseId, schema.exercises.id),
     )
-    .where(eq(schema.gymExercises.gymId, gymId))
+    .where(and(eq(schema.gymExercises.gymId, gymId), visible))
     .orderBy(asc(schema.exercises.name));
   return rows.map((row) => toExercise(row.exercise));
 }
@@ -215,6 +221,7 @@ export async function upsertPreferences(
 
 /**
  * Crée un exercice saisi à la main, ou rend celui qui porte déjà ce slug.
+ * `created` dit lequel : seul un nom nouveau passe par la modération.
  *
  * `rank` reste nul : l'exercice entre au catalogue pour que la séance importée
  * puisse le référencer, mais il n'entrera jamais dans un programme généré. Le
@@ -228,7 +235,7 @@ export async function findOrCreateExercise(input: {
   muscleGroup: string | null;
   region: Exercise['region'];
   equipment: Exercise['equipment'];
-}): Promise<Exercise> {
+}): Promise<{ exercise: Exercise; created: boolean }> {
   const [existing] = await db()
     .select()
     .from(schema.exercises)
@@ -236,7 +243,7 @@ export async function findOrCreateExercise(input: {
     .limit(1);
 
   if (existing) {
-    return toExercise(existing);
+    return { exercise: toExercise(existing), created: false };
   }
 
   const [created] = await db()
@@ -246,7 +253,7 @@ export async function findOrCreateExercise(input: {
     .returning();
 
   if (created) {
-    return toExercise(created);
+    return { exercise: toExercise(created), created: true };
   }
 
   // Une écriture concurrente a gagné la course : la ligne existe désormais.
@@ -258,7 +265,7 @@ export async function findOrCreateExercise(input: {
   if (!raced) {
     throw new Error("L'exercice n'a pas pu être créé.");
   }
-  return toExercise(raced);
+  return { exercise: toExercise(raced), created: false };
 }
 
 /** Les exercices demandés, indexés par leur slug. */
@@ -496,6 +503,9 @@ export async function setTemplateFavorite(
   }
   if (favorite && name !== null) {
     change.name = name;
+    // Un nouveau nom se revérifie avant d'être revu dans le fil.
+    change.nameReviewedAt = null;
+    change.nameHiddenAt = null;
   }
   if (!favorite && row.kind === 'custom') {
     change.archivedAt = new Date();

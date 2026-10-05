@@ -2,6 +2,12 @@ import 'server-only';
 import { sessionVolume } from '@/lib/workout';
 import { env } from '../env';
 import { sendMail } from '../clients/mail';
+import { RATE_LIMITS } from '@/lib/moderation/config';
+import { checkContent } from '../moderation/pipeline';
+import { communityRefusal } from '../moderation/standing';
+import { withinLimit } from '../moderation/rate-limit';
+import { intakeReport, reportAllowed } from '../moderation/reports';
+import { markTemplateName, templateOfSession } from '../db/queries/moderation';
 import {
   REPORT_REASON_LABELS,
   cleanDisplayName,
@@ -56,9 +62,21 @@ export function identityFor(
   return findIdentity(userId);
 }
 
-export type SaveIdentityResult = { kind: 'saved' } | { kind: 'invalid' } | { kind: 'taken' };
+export type SaveIdentityResult =
+  | { kind: 'saved' }
+  | { kind: 'invalid' }
+  | { kind: 'taken' }
+  | { kind: 'rejected'; message: string }
+  | { kind: 'rate_limited' };
 
-/** Choisit son identifiant et son nom. */
+/**
+ * Choisit son identifiant et son nom.
+ *
+ * Ils sont vus de tous les comptes, par la recherche : ils passent par la
+ * modération avant d'être enregistrés, et un nom refusé n'est pas écrit. Un
+ * compte restreint peut toujours changer de nom — c'est souvent ce qu'on
+ * attend de lui.
+ */
 export async function saveIdentity(
   userId: number,
   rawHandle: string,
@@ -68,7 +86,27 @@ export async function saveIdentity(
   if (!isValidHandle(handle)) {
     return { kind: 'invalid' };
   }
-  const outcome = await updateIdentity(userId, handle, cleanDisplayName(rawDisplayName));
+  const displayName = cleanDisplayName(rawDisplayName);
+  const current = await findIdentity(userId);
+  if (current.handle === handle && current.displayName === displayName) {
+    return { kind: 'saved' };
+  }
+  if (!(await withinLimit(`identity:u:${userId}`, RATE_LIMITS.identityPerUser))) {
+    return { kind: 'rate_limited' };
+  }
+  const verdict = await checkContent({
+    subjectUserId: userId,
+    targetKind: 'user',
+    targetId: userId,
+    text: `${handle} ${displayName ?? ''}`.trim(),
+    field: 'identity',
+    preExposure: true,
+    handle,
+  });
+  if (!verdict.allowed) {
+    return { kind: 'rejected', message: verdict.message ?? 'Ce nom ne respecte pas les règles de la Communauté.' };
+  }
+  const outcome = await updateIdentity(userId, handle, displayName);
   return outcome === 'saved' ? { kind: 'saved' } : { kind: 'taken' };
 }
 
@@ -83,19 +121,39 @@ export async function findPeople(
   return searchPeople(viewerId, query, SEARCH_LIMIT);
 }
 
-export type FollowResult = 'requested' | 'no_identity' | 'unavailable';
+export type FollowResult =
+  | { kind: 'requested' }
+  | { kind: 'no_identity' }
+  | { kind: 'unavailable' }
+  | { kind: 'restricted'; message: string }
+  | { kind: 'rate_limited' };
 
 /**
  * Demande à suivre. Refusé tant que le demandeur ne s'est pas présenté : une
  * demande venue d'un compte sans nom ne dirait pas qui la fait. Un compte
- * absent et un blocage répondent pareil : `unavailable`, sans plus de détail.
+ * absent, un blocage ou un compte écarté de la Communauté répondent pareil :
+ * `unavailable`, sans plus de détail.
+ *
+ * Refuser une demande l'efface, ce qui permettrait de la renvoyer sans fin :
+ * la limite par personne visée borne cette insistance.
  */
 export async function follow(viewerId: number, followeeId: number): Promise<FollowResult> {
   const me = await findIdentity(viewerId);
   if (me.handle === null) {
-    return 'no_identity';
+    return { kind: 'no_identity' };
   }
-  return (await insertFollowRequest(viewerId, followeeId)) ? 'requested' : 'unavailable';
+  const refusal = await communityRefusal(viewerId);
+  if (refusal !== null) {
+    return { kind: 'restricted', message: refusal };
+  }
+  const [perUser, perTarget] = await Promise.all([
+    withinLimit(`follow:u:${viewerId}`, RATE_LIMITS.followsPerUser),
+    withinLimit(`follow:p:${viewerId}:${followeeId}`, RATE_LIMITS.followsPerTarget),
+  ]);
+  if (!perUser || !perTarget) {
+    return { kind: 'rate_limited' };
+  }
+  return (await insertFollowRequest(viewerId, followeeId)) ? { kind: 'requested' } : { kind: 'unavailable' };
 }
 
 /** Bloque un compte : voir `user_blocks` dans le schéma pour ce que cela coupe. */
@@ -119,25 +177,55 @@ export function blockedBy(viewerId: number): Promise<PublicPerson[]> {
  * d'envoi est configuré, et son échec n'annule rien. Il ne contient que des
  * identifiants publics, jamais une adresse.
  */
+export type ReportResult = 'created' | 'not_found' | 'rate_limited';
+
+/**
+ * Signale une personne, ou une de ses séances, à l'équipe qui modère.
+ *
+ * Le signalement est d'abord écrit en base, la seule trace qui compte, puis
+ * remis à la modération, qui le pèse et le range dans le dossier de sa cible
+ * (`server/moderation/reports.ts`). Le courriel à l'adresse de contact n'est
+ * qu'une alerte, envoyée si le service d'envoi est configuré, et son échec
+ * n'annule rien. Il ne contient que des identifiants publics, jamais une
+ * adresse.
+ */
 export async function report(
   viewerId: number,
   input: { userId: number; sessionId: number | null; reason: ReportReason; note: string | null },
-): Promise<boolean> {
+): Promise<ReportResult> {
+  if (viewerId === input.userId) {
+    return 'not_found';
+  }
+  if (!(await reportAllowed(viewerId, input.userId))) {
+    return 'rate_limited';
+  }
+  const note = cleanReportNote(input.note);
   const context = await insertReport(viewerId, {
     reportedUserId: input.userId,
     sessionId: input.sessionId,
     reason: input.reason,
-    note: cleanReportNote(input.note),
+    note,
   });
   if (context === null) {
-    return false;
+    return 'not_found';
   }
+  // Rejoué alors qu'il est encore ouvert : déjà pesé et rangé, rien à refaire.
+  if (!context.fresh) {
+    return 'created';
+  }
+  const intake = await intakeReport(
+    context.id,
+    viewerId,
+    { userId: input.userId, sessionId: context.session === null ? null : context.session.id },
+    note,
+  );
   const contact = env.legalContactEmail;
   if (contact !== undefined) {
     const name = (who: { id: number; handle: string | null }) => `@${who.handle ?? '?'} (compte ${who.id})`;
+    const urgent = intake.priority <= 1 ? '[URGENT] ' : '';
     await sendMail({
       to: contact,
-      subject: `Signalement n° ${context.id} : ${name(context.reported)}`,
+      subject: `${urgent}Signalement n° ${context.id}, P${intake.priority} : ${name(context.reported)}`,
       text: [
         `Signalé : ${name(context.reported)}`,
         `Par : ${name(context.reporter)}`,
@@ -145,13 +233,14 @@ export async function report(
         context.session === null
           ? 'Sur : la personne'
           : `Sur : la séance « ${context.session.name ?? 'Séance'} » (n° ${context.session.id})`,
-        `Note : ${cleanReportNote(input.note) ?? '—'}`,
+        `Note : ${note ?? '—'}`,
+        `Dossier : n° ${intake.caseId}, priorité P${intake.priority}${intake.coordinated ? ', vague de signalements coordonnée' : ''}`,
         '',
-        'À traiter sous 24 h : npm run moderation -- list',
+        'À traiter sous 24 h : npm run moderation -- cases',
       ].join('\n'),
     });
   }
-  return true;
+  return 'created';
 }
 
 export function unfollow(viewerId: number, followeeId: number): Promise<void> {
@@ -187,16 +276,51 @@ export function pendingRequestCount(viewerId: number): Promise<number> {
   return countIncomingRequests(viewerId);
 }
 
-export function shareSession(
+export type CommunityGesture = { kind: 'done' } | { kind: 'not_found' } | { kind: 'restricted'; message: string };
+
+/**
+ * Règle ce que mes abonnés voient d'une de mes séances.
+ *
+ * Rendre une séance privée est toujours possible. La partager demande d'être
+ * en règle avec la Communauté, et c'est à ce moment que son nom, s'il a été
+ * écrit à la main, passe par la modération : avant, personne ne le voyait.
+ * Un nom refusé n'empêche pas le partage, il est remplacé par « Séance ».
+ */
+export async function shareSession(
   userId: number,
   sessionId: number,
   visibility: SessionVisibility,
-): Promise<boolean> {
-  return updateSessionVisibility(userId, sessionId, visibility);
+): Promise<CommunityGesture> {
+  if (visibility !== 'private') {
+    const refusal = await communityRefusal(userId);
+    if (refusal !== null) {
+      return { kind: 'restricted', message: refusal };
+    }
+    const template = await templateOfSession(userId, sessionId);
+    if (template !== null && template.kind !== 'program' && template.reviewedAt === null) {
+      const verdict = await checkContent({
+        subjectUserId: userId,
+        targetKind: 'template_name',
+        targetId: template.id,
+        text: template.name,
+        field: 'template_name',
+        preExposure: true,
+      });
+      await markTemplateName(userId, template.id, !verdict.allowed);
+    }
+  }
+  return (await updateSessionVisibility(userId, sessionId, visibility)) ? { kind: 'done' } : { kind: 'not_found' };
 }
 
-export function giveKudos(viewerId: number, sessionId: number, given: boolean): Promise<boolean> {
-  return setKudos(viewerId, sessionId, given);
+/** Un bravo se donne si l'on est en règle avec la Communauté ; il se retire toujours. */
+export async function giveKudos(viewerId: number, sessionId: number, given: boolean): Promise<CommunityGesture> {
+  if (given) {
+    const refusal = await communityRefusal(viewerId);
+    if (refusal !== null) {
+      return { kind: 'restricted', message: refusal };
+    }
+  }
+  return (await setKudos(viewerId, sessionId, given)) ? { kind: 'done' } : { kind: 'not_found' };
 }
 
 /**

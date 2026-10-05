@@ -76,6 +76,13 @@ production qui touche l'écran concerné.
 - [ ] Créer son identifiant, suivre l'autre compte, voir son fil
 - [ ] Partager une séance, réagir (kudos)
 - [ ] Signaler et bloquer : le compte bloqué disparaît
+- [ ] Choisir un nom affiché insultant (ex. « connard ») : refusé, avec le
+      message « Ce nom ne respecte pas les règles de la Communauté »
+- [ ] Partager une séance nommée « Je vais te tuer » : partage fait, l'autre
+      compte voit « Séance » ; le premier compte ne peut plus suivre ni
+      partager pendant 7 jours (le journal reste ouvert). Lever ensuite la
+      restriction du compte de test (`moderation_sanctions.lifted_at`)
+- [ ] `npm run moderation -w @nutri/web -- cases` : les dossiers ci-dessus en P1/P2
 
 **Compte**
 - [ ] Mot de passe oublié avec le code de secours
@@ -86,6 +93,8 @@ production qui touche l'écran concerné.
 ## 3. Avant de pousser `main`
 
 - [ ] Builds verts : web (`npm run build`, `npm run lint`), Android, iOS
+- [ ] Modération : `npm run verify:moderation -w @nutri/web` et
+      `npm run verify:moderation-db -w @nutri/web` (base en mémoire, jamais Neon)
 - [ ] Migrations nouvelles appliquées sur Neon (`npm run db:migrate`), additives seulement
 - [ ] Rien de retiré ni renommé dans l'API ou les cookies
 - [ ] Déploiement de test de `bmad/dev` prêt sur Vercel
@@ -98,6 +107,7 @@ production qui touche l'écran concerné.
       (la lecture des erreurs par le connecteur Vercel a expiré le 05/10/2026,
       d'où la vérification à la main)
 - [ ] Les points de la section 2 qui touchent ce qui a changé
+- [ ] `npm run moderation -w @nutri/web -- verify-audit` : « Journal d'audit intact »
 - Problème : Vercel › Deployments › le déploiement précédent › *Instant Rollback*
 
 ## 5. Tableau de bord (`apps/admin`)

@@ -106,7 +106,9 @@ la même que `LEGAL_CONTACT_EMAIL` côté serveur.
   utilisateurs » (la Communauté). Google demande, pour ce contenu, de quoi
   signaler et bloquer depuis l'app : « … » sur une séance du fil ou une
   personne (Signaler, Bloquer), Communauté › Personnes › Bloqués pour
-  débloquer, et `npm run moderation` côté équipe.
+  débloquer, et `npm run moderation` côté équipe. Les textes publics
+  (pseudonyme, nom affiché, nom d'une séance partagée, exercice importé) sont
+  vérifiés automatiquement par des règles locales, sans IA ni tiers.
 - **Public cible** : 16 ans et plus (aligné sur la politique). Pas destinée
   aux enfants.
 - **Applications de santé** (déclaration obligatoire depuis 2025) : cocher
@@ -132,7 +134,8 @@ agissant pour notre compte ne comptent pas comme un partage).
 | Infos personnelles | Autres (date de naissance, sexe) | Oui | Oui | Fonctionnalités de l'app (cible calorique) |
 | Santé et remise en forme | Informations sur la santé (poids, taille, masse grasse, repas) | Oui | Oui | Fonctionnalités de l'app |
 | Santé et remise en forme | Informations sur la remise en forme (séances, énergie active) | Oui | Non | Fonctionnalités de l'app |
-| Activité dans l'app | Autre contenu généré (recettes, listes de courses, signalements et leur note) | Oui | Non | Fonctionnalités de l'app, sécurité et conformité (modération) |
+| Activité dans l'app | Autre contenu généré (recettes, listes de courses, signalements et leur note, dossiers de modération sur les textes publics) | Oui | Non | Fonctionnalités de l'app, prévention des fraudes, sécurité et conformité (modération) |
+| Identifiants de l'appareil ou autres | Empreinte (HMAC) de l'adresse IP à l'inscription, effacée sous deux jours | Oui | Oui | Prévention des fraudes, sécurité et conformité (limite d'inscriptions) |
 | Activité dans l'app | Interactions avec l'appli (compteurs par jour : ouvertures, repas ajoutés et leur moyen de saisie, limites gratuites atteintes) | Oui | Oui | Analyses |
 | Infos financières | Historique des achats (offre, état, échéance de l'abonnement ou de l'achat unique Cuisine+) | Oui | Non | Fonctionnalités de l'app, gestion du compte |
 

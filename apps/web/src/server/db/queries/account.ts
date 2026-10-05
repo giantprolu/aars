@@ -43,6 +43,7 @@ export async function exportUserData(userId: number) {
     kudos,
     blocks,
     reports,
+    sanctions,
     subscriptions,
     storeSubscriptions,
     storePurchases,
@@ -127,6 +128,20 @@ export async function exportUserData(userId: number) {
       })
       .from(schema.socialReports)
       .where(eq(schema.socialReports.reporterId, userId)),
+    // Les décisions de modération qui me concernent, en termes généraux : le
+    // dossier lui-même n'est pas rendu, il contient les signalements des autres.
+    database
+      .select({
+        kind: schema.moderationSanctions.kind,
+        action: schema.moderationSanctions.action,
+        category: schema.moderationSanctions.category,
+        startsAt: schema.moderationSanctions.startsAt,
+        endsAt: schema.moderationSanctions.endsAt,
+        liftedAt: schema.moderationSanctions.liftedAt,
+        voided: schema.moderationSanctions.voided,
+      })
+      .from(schema.moderationSanctions)
+      .where(eq(schema.moderationSanctions.userId, userId)),
     database
       .select({ createdAt: schema.pushSubscriptions.createdAt })
       .from(schema.pushSubscriptions)
@@ -199,7 +214,7 @@ export async function exportUserData(userId: number) {
       sets,
       favoriteExercises,
     },
-    community: { follows, kudosGiven: kudos, blocks, reportsMade: reports },
+    community: { follows, kudosGiven: kudos, blocks, reportsMade: reports, moderation: sanctions },
     notifications: { devices: subscriptions.length },
     billing: { subscriptions: storeSubscriptions, purchases: storePurchases },
     usage,

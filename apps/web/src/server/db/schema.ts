@@ -13,10 +13,18 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { USAGE_EVENTS } from '../../lib/usage';
 import { REPORT_REASONS } from '../../lib/social';
+import {
+  CASE_STATUSES,
+  OPEN_CASE_STATUSES,
+  REPORT_STATUSES,
+  SANCTION_KINDS,
+  TARGET_KINDS,
+} from '../../lib/moderation/types';
 import { PURCHASE_STATES, STORES } from '../../lib/premium';
 import type { CatalogIngredient } from '../../lib/meal-catalog';
 
@@ -795,6 +803,12 @@ export const exercises = pgTable(
     aliases: text('aliases').array().notNull().default(sql`'{}'::text[]`),
     /** `seed` ou `manual` : d'où vient la ligne. */
     source: text('source').notNull().default('seed'),
+    /**
+     * Posée quand la modération masque un exercice saisi à l'import : il sort
+     * du catalogue commun, que tout le monde parcourt, et son nom ne paraît
+     * plus dans le fil. Les séances qui le référencent restent intactes.
+     */
+    hiddenAt: timestamp('hidden_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -943,6 +957,14 @@ export const workoutTemplates = pgTable(
      */
     sourceSessionId: bigint('source_session_id', { mode: 'number' }),
     archivedAt: timestamp('archived_at', { withTimezone: true }),
+    /**
+     * Le nom n'est vu des autres que lorsqu'une séance faite sur ce modèle est
+     * partagée : il est vérifié à ce moment-là, et pas avant. `nameReviewedAt`
+     * évite de le revérifier à chaque partage ; renommer l'efface.
+     */
+    nameReviewedAt: timestamp('name_reviewed_at', { withTimezone: true }),
+    /** Posée quand la modération masque le nom : le fil affiche « Séance » à la place. */
+    nameHiddenAt: timestamp('name_hidden_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -1143,6 +1165,15 @@ export const socialReports = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     /** Posée par la modération une fois le signalement traité. */
     resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+    /**
+     * `ReportStatus`. Nul pour les signalements antérieurs à la migration
+     * 0026, dont le statut se lit sur `resolvedAt` (`reportStatus`).
+     */
+    status: text('status'),
+    /** Le dossier qui regroupe ce signalement avec les autres sur la même cible. */
+    caseId: bigint('case_id', { mode: 'number' }).references(() => moderationCases.id, { onDelete: 'set null' }),
+    /** Le poids du signalement (0 à 1), selon la confiance accordée à son auteur. */
+    weight: numeric('weight', { precision: 4, scale: 3 }),
   },
   (table) => [
     unique('social_reports_once').on(table.reporterId, table.reportedUserId, table.sessionId),
@@ -1152,6 +1183,11 @@ export const socialReports = pgTable(
       sql`${table.reason} in (${sql.raw(REPORT_REASONS.map((reason) => `'${reason}'`).join(', '))})`,
     ),
     check('social_reports_not_self_check', sql`${table.reporterId} <> ${table.reportedUserId}`),
+    check(
+      'social_reports_status_check',
+      sql`${table.status} is null or ${table.status} in (${sql.raw(REPORT_STATUSES.map((status) => `'${status}'`).join(', '))})`,
+    ),
+    index('social_reports_target_idx').on(table.reportedUserId, table.createdAt),
   ],
 );
 
@@ -1425,3 +1461,201 @@ export const adminPasskeys = pgTable('admin_passkeys', {
 });
 
 export type AdminPasskeyRow = typeof adminPasskeys.$inferSelect;
+
+/**
+ * Le dossier de modération : tout ce qui concerne une même cible, réuni.
+ *
+ * Une cible n'a qu'un dossier ouvert à la fois (index unique partiel) : les
+ * signalements et les détections suivantes s'y ajoutent au lieu d'en ouvrir
+ * d'autres. Le dossier porte la justification interne de la dernière
+ * décision (`explanation`) et la version de la politique qui l'a prise.
+ *
+ * `contentSnapshot` garde le texte en cause, pour la revue et l'appel, même
+ * si l'auteur l'a changé depuis. Il est effacé après la durée de
+ * conservation (`RETENTION_DAYS.caseSnapshot`) et ne figure dans aucun journal.
+ *
+ * Le dossier part avec le compte qu'il vise : seul l'audit, réduit à des
+ * numéros, survit à la suppression d'un compte.
+ */
+export const moderationCases = pgTable(
+  'moderation_cases',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    subjectUserId: bigint('subject_user_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** `TargetKind`. */
+    targetKind: text('target_kind').notNull(),
+    targetId: bigint('target_id', { mode: 'number' }).notNull(),
+    category: text('category'),
+    severity: text('severity'),
+    riskScore: numeric('risk_score', { precision: 4, scale: 3 }).notNull().default('0'),
+    level: text('level').notNull().default('safe'),
+    /** 0 (P0, critique) à 4 (P4). */
+    priority: integer('priority').notNull().default(4),
+    status: text('status').notNull().default('open'),
+    flags: text('flags').array().notNull().default(sql`'{}'::text[]`),
+    explanation: jsonb('explanation').notNull().default({}),
+    /** L'action que l'automatique propose sans pouvoir l'appliquer (suspension, bannissement). */
+    recommendedAction: text('recommended_action'),
+    contentSnapshot: text('content_snapshot'),
+    policyVersion: text('policy_version').notNull(),
+    assignedTo: text('assigned_to'),
+    resolution: text('resolution'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('moderation_cases_queue_idx').on(table.status, table.priority, table.createdAt),
+    index('moderation_cases_subject_idx').on(table.subjectUserId, table.createdAt),
+    uniqueIndex('moderation_cases_open_target_idx')
+      .on(table.targetKind, table.targetId)
+      .where(sql`status in (${sql.raw(OPEN_CASE_STATUSES.map((status) => `'${status}'`).join(', '))})`),
+    check(
+      'moderation_cases_target_kind_check',
+      sql`${table.targetKind} in (${sql.raw(TARGET_KINDS.map((kind) => `'${kind}'`).join(', '))})`,
+    ),
+    check(
+      'moderation_cases_status_check',
+      sql`${table.status} in (${sql.raw(CASE_STATUSES.map((status) => `'${status}'`).join(', '))})`,
+    ),
+    check('moderation_cases_priority_check', sql`${table.priority} between 0 and 4`),
+  ],
+);
+
+export type ModerationCaseRow = typeof moderationCases.$inferSelect;
+
+/**
+ * Une détection versée à un dossier : quelle source, quelle catégorie, quelle
+ * confiance, quels signaux. Jamais le texte.
+ */
+export const moderationSignals = pgTable(
+  'moderation_signals',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    caseId: bigint('case_id', { mode: 'number' })
+      .notNull()
+      .references(() => moderationCases.id, { onDelete: 'cascade' }),
+    /** `DetectionSource`, ou `reports` pour le poids des signalements. */
+    source: text('source').notNull(),
+    /** Version des règles ou de la politique qui a produit la détection. */
+    sourceVersion: text('source_version').notNull(),
+    category: text('category'),
+    severity: text('severity'),
+    confidence: numeric('confidence', { precision: 4, scale: 3 }).notNull().default('0'),
+    signals: text('signals').array().notNull().default(sql`'{}'::text[]`),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('moderation_signals_case_idx').on(table.caseId)],
+);
+
+/**
+ * Strikes et sanctions. Les sanctions ne portent que sur la Communauté : le
+ * journal, les pesées, les séances et l'export restent ouverts quoi qu'il
+ * arrive (décision du 05/10/2026).
+ *
+ * - `strike` : compte dans le total, sans rien restreindre ;
+ * - `warning` : avertissement, sans restriction ;
+ * - `restriction` : plus de partage, de demande de suivi ni de bravo ;
+ * - `suspension`, `ban` : en plus, invisible de la recherche et du fil des autres.
+ *
+ * `voided` annule le strike (appel gagné) ; `liftedAt` lève la restriction
+ * sans effacer l'historique.
+ */
+export const moderationSanctions = pgTable(
+  'moderation_sanctions',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    userId: bigint('user_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    caseId: bigint('case_id', { mode: 'number' }).references(() => moderationCases.id, { onDelete: 'set null' }),
+    /** `SanctionKind`. */
+    kind: text('kind').notNull(),
+    /** L'action de l'échelle qui l'a posée (`temporary_restriction`…). */
+    action: text('action').notNull(),
+    category: text('category'),
+    severity: text('severity'),
+    strikeWeight: numeric('strike_weight', { precision: 5, scale: 2 }).notNull().default('0'),
+    startsAt: timestamp('starts_at', { withTimezone: true }).notNull().defaultNow(),
+    /** Nulle : sans fin (bannissement), ou sans durée (strike, avertissement). */
+    endsAt: timestamp('ends_at', { withTimezone: true }),
+    liftedAt: timestamp('lifted_at', { withTimezone: true }),
+    liftedBy: text('lifted_by'),
+    liftReason: text('lift_reason'),
+    voided: boolean('voided').notNull().default(false),
+    /** `system` ou `admin:<nom>` : qui l'a posée. */
+    decidedBy: text('decided_by').notNull(),
+    policyVersion: text('policy_version').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('moderation_sanctions_user_idx').on(table.userId, table.startsAt),
+    index('moderation_sanctions_case_idx').on(table.caseId),
+    check(
+      'moderation_sanctions_kind_check',
+      sql`${table.kind} in (${sql.raw(SANCTION_KINDS.map((kind) => `'${kind}'`).join(', '))})`,
+    ),
+  ],
+);
+
+export type ModerationSanctionRow = typeof moderationSanctions.$inferSelect;
+
+/**
+ * Le journal d'audit de la modération, en ajout seul.
+ *
+ * La migration 0026 pose trois déclencheurs : l'un numérote chaque ligne et
+ * la chaîne à la précédente par une empreinte SHA-256 (`prevHash`, `hash`),
+ * sous verrou, pour qu'une ligne effacée ou modifiée en douce se voie ; les
+ * deux autres refusent toute modification, toute suppression d'une ligne de
+ * moins d'un an et tout `truncate`. Le propriétaire de la base peut toujours
+ * retirer ces déclencheurs : c'est la limite de l'immuabilité qu'on peut
+ * offrir sans service tiers, et l'empreinte en garde la trace.
+ *
+ * Aucune clé étrangère : l'audit survit à la suppression d'un compte ou d'un
+ * dossier, réduit à des numéros. Jamais de texte, de jeton ni d'adresse dans
+ * `details`.
+ */
+export const moderationAudit = pgTable(
+  'moderation_audit',
+  {
+    /** Posé par le déclencheur, dans l'ordre de la chaîne. */
+    id: bigint('id', { mode: 'number' }).primaryKey().default(sql`0`),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+    /** `system`, `cli`, `admin` ou `admin:<nom>`. */
+    actor: text('actor').notNull(),
+    event: text('event').notNull(),
+    caseId: bigint('case_id', { mode: 'number' }),
+    userId: bigint('user_id', { mode: 'number' }),
+    details: jsonb('details').notNull().default({}),
+    prevHash: text('prev_hash'),
+    hash: text('hash').notNull().default(''),
+  },
+  (table) => [
+    index('moderation_audit_case_idx').on(table.caseId),
+    index('moderation_audit_user_idx').on(table.userId, table.at),
+  ],
+);
+
+/**
+ * Compteurs des limites de fréquence, par fenêtre fixe.
+ *
+ * `key` nomme le geste et son auteur (`report:u:42`). Pour une inscription,
+ * l'auteur est une empreinte HMAC de l'adresse IP, jamais l'adresse : elle
+ * suffit à compter, et ne se retourne pas. Les lignes expirées sont purgées
+ * par la tâche quotidienne.
+ */
+export const rateLimitHits = pgTable(
+  'rate_limit_hits',
+  {
+    key: text('key').notNull(),
+    windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
+    count: integer('count').notNull().default(1),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.key, table.windowStart] }),
+    index('rate_limit_hits_expires_idx').on(table.expiresAt),
+  ],
+);

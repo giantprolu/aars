@@ -1,6 +1,6 @@
 import { apiError } from '@/server/errors';
 import { currentUserId } from '@/server/guard';
-import { favoriteExerciseIdsFor, fullExerciseCatalog } from '@/server/services/workouts';
+import { favoriteExerciseIdsFor, pickableExerciseCatalog } from '@/server/services/workouts';
 
 export const runtime = 'nodejs';
 
@@ -13,7 +13,7 @@ export async function GET(): Promise<Response> {
   if (userId === null) {
     return apiError('unauthorized');
   }
-  const [catalog, favorites] = await Promise.all([fullExerciseCatalog(), favoriteExerciseIdsFor(userId)]);
+  const [catalog, favorites] = await Promise.all([pickableExerciseCatalog(), favoriteExerciseIdsFor(userId)]);
   return Response.json({
     exercises: catalog.map((exercise) => ({
       id: exercise.id,

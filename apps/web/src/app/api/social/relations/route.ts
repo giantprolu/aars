@@ -39,15 +39,22 @@ export async function POST(request: Request): Promise<Response> {
   const { action, userId } = parsed.data;
   switch (action) {
     case 'follow':
-      switch (await follow(viewerId, userId)) {
+    {
+      const result = await follow(viewerId, userId);
+      switch (result.kind) {
         case 'requested':
           return Response.json({ ok: true });
         case 'no_identity':
           return apiError('invalid_input', 'Choisis d’abord ton identifiant.');
         case 'unavailable':
           return apiError('not_found');
+        case 'restricted':
+          return apiError('community_restricted', result.message);
+        case 'rate_limited':
+          return apiError('rate_limited');
       }
       break;
+    }
     case 'unfollow':
       await unfollow(viewerId, userId);
       return Response.json({ ok: true });

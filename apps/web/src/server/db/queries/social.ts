@@ -2,6 +2,7 @@ import 'server-only';
 import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, lt, ne, or, sql, type SQL } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { db, schema } from '../client';
+import { communityExcluded } from './moderation';
 import type { FollowState, PublicPerson, ReportReason, SessionVisibility } from '@/lib/social';
 
 /**
@@ -134,6 +135,7 @@ export async function searchPeople(
         ne(schema.users.id, viewerId),
         isNotNull(schema.users.handle),
         sql`not ${blockedWith(viewerId, schema.users.id)}`,
+        sql`not ${communityExcluded(schema.users.id)}`,
         or(
           ilike(schema.users.handle, `${escaped}%`),
           ilike(schema.users.displayName, `%${escaped}%`),
@@ -168,6 +170,7 @@ export async function insertFollowRequest(viewerId: number, followeeId: number):
         eq(schema.users.id, followeeId),
         isNotNull(schema.users.handle),
         sql`not ${blockedWith(viewerId, schema.users.id)}`,
+        sql`not ${communityExcluded(schema.users.id)}`,
       ),
     )
     .limit(1);
@@ -225,7 +228,14 @@ export async function listIncomingRequests(viewerId: number): Promise<PublicPers
     .select(person)
     .from(schema.follows)
     .innerJoin(schema.users, eq(schema.users.id, schema.follows.followerId))
-    .where(and(eq(schema.follows.followeeId, viewerId), eq(schema.follows.status, 'pending')))
+    .where(
+      and(
+        eq(schema.follows.followeeId, viewerId),
+        eq(schema.follows.status, 'pending'),
+        // Une demande envoyée avant une suspension attend qu'elle soit levée.
+        sql`not ${communityExcluded(schema.follows.followerId)}`,
+      ),
+    )
     .orderBy(desc(schema.follows.createdAt));
   return people(rows);
 }
@@ -290,7 +300,8 @@ function visibleTo(viewerId: number) {
         where ${schema.follows.followerId} = ${viewerId}
           and ${schema.follows.followeeId} = ${schema.workoutSessions.userId}
           and ${schema.follows.status} = 'accepted'
-      ) and not ${blockedWith(viewerId, schema.workoutSessions.userId)})`,
+      ) and not ${blockedWith(viewerId, schema.workoutSessions.userId)}
+        and not ${communityExcluded(schema.workoutSessions.userId)})`,
     ),
   );
 }
@@ -323,7 +334,10 @@ export async function listFeed(
       userId: schema.workoutSessions.userId,
       handle: schema.users.handle,
       displayName: schema.users.displayName,
-      name: schema.workoutTemplates.name,
+      // Un nom masqué par la modération ne se lit plus que chez son auteur.
+      name: sql<string | null>`case
+        when ${schema.workoutTemplates.nameHiddenAt} is not null and ${schema.workoutSessions.userId} <> ${viewerId}
+        then null else ${schema.workoutTemplates.name} end`,
       sessionDate: schema.workoutSessions.sessionDate,
       startedAt: schema.workoutSessions.startedAt,
       finishedAt: schema.workoutSessions.finishedAt,
@@ -394,7 +408,7 @@ export async function setsForSessions(sessionIds: readonly number[]): Promise<
       sessionId: schema.workoutSets.sessionId,
       position: schema.workoutSets.position,
       setIndex: schema.workoutSets.setIndex,
-      exerciseName: schema.exercises.name,
+      exerciseName: sql<string>`case when ${schema.exercises.hiddenAt} is not null then 'Exercice' else ${schema.exercises.name} end`,
       weightKg: schema.workoutSets.weightKg,
       reps: schema.workoutSets.reps,
       seconds: schema.workoutSets.seconds,
@@ -551,6 +565,8 @@ export interface ReportContext {
   reporter: { id: number; handle: string | null };
   reported: { id: number; handle: string | null };
   session: { id: number; name: string | null } | null;
+  /** Faux quand le même signalement, encore ouvert, est simplement rejoué. */
+  fresh: boolean;
 }
 
 /**
@@ -612,14 +628,15 @@ export async function insertReport(viewerId: number, report: NewReport): Promise
     .from(schema.users)
     .where(eq(schema.users.id, viewerId))
     .limit(1);
-  const context = (id: number): ReportContext => ({
+  const context = (id: number, fresh: boolean): ReportContext => ({
     id,
     reporter: reporter ?? { id: viewerId, handle: null },
     reported,
     session,
+    fresh,
   });
   if (open) {
-    return context(open.id);
+    return context(open.id, false);
   }
 
   const [inserted] = await db()
@@ -638,10 +655,10 @@ export async function insertReport(viewerId: number, report: NewReport): Promise
   if (!inserted) {
     const [reopened] = await db()
       .update(schema.socialReports)
-      .set({ resolvedAt: null, reason: report.reason, note: report.note, createdAt: new Date() })
+      .set({ resolvedAt: null, status: 'open', caseId: null, reason: report.reason, note: report.note, createdAt: new Date() })
       .where(sameTarget)
       .returning({ id: schema.socialReports.id });
-    return reopened ? context(reopened.id) : null;
+    return reopened ? context(reopened.id, true) : null;
   }
-  return context(inserted.id);
+  return context(inserted.id, true);
 }

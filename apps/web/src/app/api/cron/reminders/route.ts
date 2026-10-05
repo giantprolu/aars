@@ -2,6 +2,7 @@ import { apiError } from '@/server/errors';
 import { env } from '@/server/env';
 import { REMINDER_HOUR, sendLunchReminders } from '@/server/services/reminders';
 import { purgeOldUsage } from '@/server/services/usage';
+import { purgeModeration } from '@/server/moderation/retention';
 import { hourInParis } from '@/lib/date';
 
 export const runtime = 'nodejs';
@@ -31,7 +32,9 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   // Le passage quotidien sert aussi à tenir la durée de conservation des
-  // compteurs d'usage : une tâche de plus pour une ligne n'en vaudrait pas la peine.
+  // compteurs d'usage et des données de modération : une tâche de plus pour
+  // une ligne n'en vaudrait pas la peine.
   await purgeOldUsage();
+  await purgeModeration();
   return Response.json(await sendLunchReminders());
 }

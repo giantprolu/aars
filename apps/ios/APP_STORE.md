@@ -73,7 +73,9 @@ qui donne l'adresse `LEGAL_CONTACT_EMAIL`. **URL de confidentialité** :
   Moi › Santé. Suppression du compte : Moi › Compte et données.
   Communauté : on ne voit que les personnes qu'on suit, avec leur accord.
   « … » sur une séance du fil ou une personne permet de la signaler ou de la
-  bloquer ; les signalements sont traités sous 24 heures.
+  bloquer ; les signalements sont traités sous 24 heures. Les textes publics
+  (identifiant, nom affiché, nom de séance partagée) sont filtrés
+  automatiquement par des règles locales.
   Abonnement : Moi › Abonnement, ou dès qu'on dépasse 10 recettes ou
   10 favoris. »
 - **Classification par âge** : répondre au questionnaire. Contenu généré par
@@ -94,7 +96,8 @@ marche pas.
 | Identifiants | Identifiant utilisateur | pseudonyme (`@identifiant`) | Fonctionnalités de l'app |
 | Santé et forme | Santé | poids, taille, masse grasse, repas, énergie active lue dans Santé | Fonctionnalités de l'app |
 | Santé et forme | Forme | séances, séries, charges | Fonctionnalités de l'app |
-| Contenu utilisateur | Autre contenu | recettes, plans, listes de courses, signalements et leur note | Fonctionnalités de l'app |
+| Contenu utilisateur | Autre contenu | recettes, plans, listes de courses, signalements et leur note, dossiers de modération sur les textes publics | Fonctionnalités de l'app |
+| Autres données | Autres types de données | empreinte (HMAC) de l'adresse IP à l'inscription, effacée sous deux jours | Fonctionnalités de l'app (sécurité, prévention des abus) |
 | Données d'utilisation | Interactions avec le produit | compteurs par jour (ouvertures, repas ajoutés et leur moyen, limites atteintes), effacés après treize mois | Analyses |
 | Autres données | Autres types de données | date de naissance, sexe (calcul de la cible) | Fonctionnalités de l'app |
 | Achats | Historique des achats | abonnement ou Cuisine+ : offre, état, échéance | Fonctionnalités de l'app |

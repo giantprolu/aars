@@ -39,5 +39,9 @@ export async function PUT(request: Request): Promise<Response> {
       return apiError('invalid_input', 'Identifiant invalide.');
     case 'taken':
       return Response.json({ taken: true }, { status: 409 });
+    case 'rejected':
+      return apiError('content_rejected', result.message);
+    case 'rate_limited':
+      return apiError('rate_limited');
   }
 }

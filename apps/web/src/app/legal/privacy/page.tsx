@@ -31,7 +31,7 @@ export default function PrivacyPage() {
         <li>Photos de recettes : l&apos;équipe peut ajouter une photo à une recette que tu as écrite ou importée, pour qu&apos;elle ait une image comme celles du catalogue. Elle voit alors le nom du plat et ses ingrédients, jamais à qui il appartient. La photo est rangée chez Vercel (Blob) et s&apos;efface avec la recette.</li>
         <li>Sport : programmes, séances, séries, charges et répétitions.</li>
         <li>Activité physique : l&apos;énergie active dépensée par jour (kilocalories), lue avec ton accord dans Health Connect sur Android ou dans Santé sur iPhone, ou envoyée par un raccourci iOS.</li>
-        <li>Communauté : pseudonyme, nom affiché, abonnements, les séances que tu choisis de partager, les comptes que tu bloques et les signalements que tu fais (motif, note facultative). Un signalement est lu par l&apos;équipe qui modère, qui peut rendre une séance privée ou supprimer un compte qui enfreint les règles ; la personne signalée ne sait pas qui l&apos;a signalée.</li>
+        <li>Communauté : pseudonyme, nom affiché, abonnements, les séances que tu choisis de partager, les comptes que tu bloques et les signalements que tu fais (motif, note facultative). Un signalement est lu par l&apos;équipe qui modère, qui peut rendre une séance privée ou supprimer un compte qui enfreint les règles ; la personne signalée ne sait pas qui l&apos;a signalée. Voir aussi « Modération de la Communauté ».</li>
         <li>Notifications : l&apos;adresse d&apos;abonnement du navigateur si tu actives le rappel du déjeuner sur le web. Sur Android et iPhone, le rappel est programmé sur le téléphone : rien n&apos;est envoyé au serveur ni conservé par lui.</li>
         <li>Mesure d&apos;usage : pour chaque jour, combien de fois tu as ouvert l&apos;accueil, ajouté un repas (et par quel moyen : recherche, scan, favori…), enregistré ton profil, synchronisé ta dépense ou atteint une limite de la version gratuite. Rien sur ce que tu manges. Ces compteurs servent seulement à savoir ce qui est utilisé et ce qui ne l&apos;est pas, restent dans notre base (aucun outil d&apos;analyse externe), et sont effacés au bout de treize mois.</li>
         <li>Abonnement et achats, si tu en fais : l&apos;offre choisie (abonnement mensuel ou achat unique), son état, sa date d&apos;échéance et la référence d&apos;achat de Google Play ou de l&apos;App Store. Aucune donnée de paiement : la carte et l&apos;adresse de facturation restent chez Google ou chez Apple.</li>
@@ -77,6 +77,38 @@ export default function PrivacyPage() {
         l&apos;éditeur, comme une recette écrite à la main.
       </p>
 
+      <h2>Modération de la Communauté</h2>
+      <p>
+        Les textes que les autres peuvent voir — ton pseudonyme, ton nom affiché, le nom d&apos;une
+        séance que tu partages et le nom d&apos;un exercice que tu ajoutes en important une séance
+        — sont vérifiés automatiquement au moment où ils deviennent visibles, pour écarter
+        insultes, propos haineux, menaces, contenus sexuels, arnaques et publicité. La vérification
+        se fait sur notre serveur, avec des règles et des listes de mots : aucune intelligence
+        artificielle, aucun service tiers. Ton journal, tes pesées, tes repas et tes séances privées
+        ne sont jamais examinés.
+      </p>
+      <p>
+        Un texte refusé n&apos;est pas affiché, et l&apos;équipe peut le revoir. Nous conservons
+        alors un dossier : le texte en cause, ce qui a été détecté, la décision et les
+        signalements qui s&apos;y rapportent. Les sanctions ne portent que sur la Communauté
+        (partage, demandes de suivi, bravos, visibilité) : ton journal et tes données restent
+        accessibles et exportables. Une suspension ou une exclusion de la Communauté est
+        toujours décidée par une personne de l&apos;équipe, jamais par l&apos;automatisme seul.
+        Tu peux contester une décision en écrivant à <Contact email={contact} />.
+      </p>
+      <p>
+        Pour freiner les créations de comptes en série, le serveur compte les inscriptions par
+        connexion à partir d&apos;une empreinte de l&apos;adresse IP (un condensat chiffré qui ne
+        permet pas de la retrouver), effacée sous deux jours. L&apos;adresse elle-même n&apos;est
+        pas conservée.
+      </p>
+      <p>
+        Durées : le texte d&apos;un dossier est effacé six mois après sa clôture, le dossier
+        deux ans après, un signalement clos un an après. Un journal des décisions, réduit à des
+        numéros (jamais de texte), est gardé deux ans pour pouvoir rendre compte de chaque
+        décision, y compris après la suppression d&apos;un compte.
+      </p>
+
       <h2>Sous-traitants</h2>
       <ul>
         <li>Vercel (hébergement de l&apos;application et de l&apos;API).</li>
@@ -100,7 +132,8 @@ export default function PrivacyPage() {
       <p>
         Les données sont gardées tant que le compte existe. Tu peux les exporter (format JSON)
         et supprimer ton compte depuis l&apos;application, rubrique Compte et données : la
-        suppression efface immédiatement et définitivement toutes les données listées ici. Voir
+        suppression efface immédiatement et définitivement toutes les données listées ici, à
+        l&apos;exception du journal des décisions de modération, réduit à des numéros. Voir
         aussi <a href="/legal/account-deletion">la page de suppression du compte</a>.
       </p>
 

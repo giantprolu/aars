@@ -29,8 +29,15 @@ export async function PUT(request: Request): Promise<Response> {
     return apiError('invalid_input');
   }
 
-  const saved = await giveKudos(viewerId, parsed.data.sessionId, parsed.data.given);
+  const result = await giveKudos(viewerId, parsed.data.sessionId, parsed.data.given);
   // Une séance invisible répond comme une séance inexistante : rien ne doit
   // permettre de sonder ce qu'un autre a fait.
-  return saved ? Response.json({ ok: true }) : apiError('not_found');
+  switch (result.kind) {
+    case 'done':
+      return Response.json({ ok: true });
+    case 'not_found':
+      return apiError('not_found');
+    case 'restricted':
+      return apiError('community_restricted', result.message);
+  }
 }

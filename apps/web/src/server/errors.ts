@@ -16,6 +16,9 @@ const MESSAGES: Record<ApiErrorCode, string> = {
   upstream_unavailable: 'Service indisponible.',
   premium_required: 'Réservé aux abonnés.',
   purchase_invalid: 'Achat introuvable ou déjà rattaché à un autre compte.',
+  content_rejected: 'Ce texte ne respecte pas les règles de la Communauté.',
+  community_restricted: 'Ton accès à la Communauté est limité.',
+  rate_limited: 'Trop de demandes en peu de temps. Réessaie un peu plus tard.',
   internal: 'Erreur interne.',
 };
 
@@ -33,6 +36,11 @@ const STATUS: Record<ApiErrorCode, number> = {
   // manque un droit. Les apps l'affichent comme une invitation à s'abonner.
   premium_required: 403,
   purchase_invalid: 409,
+  // 422 et non 400 : la requête est bien formée, c'est son contenu que les
+  // règles de la Communauté refusent. Le message dit quoi faire.
+  content_rejected: 422,
+  community_restricted: 403,
+  rate_limited: 429,
   internal: 500,
 };
 

@@ -86,6 +86,9 @@ export type ApiErrorCode =
   | 'upstream_unavailable'
   | 'premium_required'
   | 'purchase_invalid'
+  | 'content_rejected'
+  | 'community_restricted'
+  | 'rate_limited'
   | 'internal';
 
 /**

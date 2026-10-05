@@ -293,7 +293,9 @@ fun OnboardingFlow(model: AppModel, editGoal: Boolean = false, onClose: () -> Un
                     go(Step.Sessions)
                 }
                 is ApiResult.Failed -> error =
-                    if (saved.status == 409) "Cet identifiant est déjà pris." else "L'identifiant n'a pas pu être enregistré."
+                    if (saved.status == 409) "Cet identifiant est déjà pris."
+                    else if (saved.code != null) saved.message
+                    else "L'identifiant n'a pas pu être enregistré."
             }
             busy = false
         }

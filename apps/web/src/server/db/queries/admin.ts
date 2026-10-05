@@ -2,6 +2,7 @@ import 'server-only';
 import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import { KITCHEN_PLUS_PRODUCT } from '@/lib/premium';
 import { db, schema } from '../client';
+import { insertAudit } from './moderation';
 
 /**
  * Lectures et écritures du tableau de bord (`apps/admin`, routes
@@ -285,19 +286,30 @@ export async function adminReports(status: 'open' | 'resolved'): Promise<AdminRe
   }));
 }
 
+/**
+ * Clôt un signalement. Le geste est tracé dans l'audit de la modération,
+ * au nom du tableau de bord (son identité précise viendra avec les écrans
+ * de modération).
+ */
 export async function resolveReport(id: number): Promise<boolean> {
   const rows = await db()
     .update(schema.socialReports)
-    .set({ resolvedAt: new Date() })
+    .set({ resolvedAt: new Date(), status: 'resolved' })
     .where(and(eq(schema.socialReports.id, id), isNull(schema.socialReports.resolvedAt)))
-    .returning({ id: schema.socialReports.id });
+    .returning({ id: schema.socialReports.id, caseId: schema.socialReports.caseId, userId: schema.socialReports.reportedUserId });
+  const [row] = rows;
+  if (row) {
+    await insertAudit([
+      { actor: 'admin', event: 'REPORT_RESOLVED', caseId: row.caseId, userId: row.userId, details: { reportId: id } },
+    ]);
+  }
   return rows.length > 0;
 }
 
 /** Rend privée la séance d'un signalement : plus personne d'autre ne la voit. */
 export async function hideReportedSession(reportId: number): Promise<boolean> {
   const [report] = await db()
-    .select({ sessionId: schema.socialReports.sessionId })
+    .select({ sessionId: schema.socialReports.sessionId, caseId: schema.socialReports.caseId })
     .from(schema.socialReports)
     .where(eq(schema.socialReports.id, reportId))
     .limit(1);
@@ -308,7 +320,19 @@ export async function hideReportedSession(reportId: number): Promise<boolean> {
     .update(schema.workoutSessions)
     .set({ visibility: 'private' })
     .where(eq(schema.workoutSessions.id, report.sessionId))
-    .returning({ id: schema.workoutSessions.id });
+    .returning({ id: schema.workoutSessions.id, userId: schema.workoutSessions.userId });
+  const [row] = rows;
+  if (row) {
+    await insertAudit([
+      {
+        actor: 'admin',
+        event: 'CONTENT_HIDDEN',
+        caseId: report.caseId,
+        userId: row.userId,
+        details: { targetKind: 'session', targetId: row.id, reportId },
+      },
+    ]);
+  }
   return rows.length > 0;
 }
 

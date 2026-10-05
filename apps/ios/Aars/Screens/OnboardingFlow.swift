@@ -493,7 +493,10 @@ struct OnboardingFlow: View {
             case .success:
                 go(.sessions)
             case .failure(let failure):
-                error = failure.status == 409 ? "Cet identifiant est déjà pris." : "L'identifiant n'a pas pu être enregistré."
+                // Un refus de la modération arrive avec son code et son message : on le montre tel quel.
+                error = failure.status == 409
+                    ? "Cet identifiant est déjà pris."
+                    : (failure.code != nil ? failure.message : "L'identifiant n'a pas pu être enregistré.")
             }
             busy = false
         }

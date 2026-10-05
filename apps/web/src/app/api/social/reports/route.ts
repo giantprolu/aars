@@ -37,6 +37,12 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const { userId, sessionId, reason, note } = parsed.data;
-  const done = await report(viewerId, { userId, sessionId: sessionId ?? null, reason, note: note ?? null });
-  return done ? Response.json({ ok: true }, { status: 201 }) : apiError('not_found');
+  switch (await report(viewerId, { userId, sessionId: sessionId ?? null, reason, note: note ?? null })) {
+    case 'created':
+      return Response.json({ ok: true }, { status: 201 });
+    case 'not_found':
+      return apiError('not_found');
+    case 'rate_limited':
+      return apiError('rate_limited', 'Tu as fait beaucoup de signalements récemment. Réessaie plus tard.');
+  }
 }

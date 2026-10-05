@@ -11,6 +11,8 @@ import {
 import { apiError } from '@/server/errors';
 import { isMobileClient } from '@/server/guard';
 import { createUser } from '@/server/db/queries/users';
+import { RATE_LIMITS } from '@/lib/moderation/config';
+import { ipFingerprint, withinLimit } from '@/server/moderation/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -43,6 +45,19 @@ export async function POST(request: Request): Promise<Response> {
       'invalid_input',
       `Adresse invalide ou mot de passe de moins de ${MIN_PASSWORD_LENGTH} caractères.`,
     );
+  }
+
+  // Les inscriptions en rafale depuis une même adresse : des comptes jetables
+  // pour signaler en meute, ou pour revenir après un bannissement.
+  const fingerprint = ipFingerprint(request);
+  if (fingerprint !== null) {
+    const [hour, day] = await Promise.all([
+      withinLimit(`signup:ip:${fingerprint}:h`, RATE_LIMITS.signupsPerIpHour),
+      withinLimit(`signup:ip:${fingerprint}:d`, RATE_LIMITS.signupsPerIpDay),
+    ]);
+    if (!hour || !day) {
+      return apiError('rate_limited', 'Trop de comptes créés depuis cette connexion. Réessaie plus tard.');
+    }
   }
 
   let result: Awaited<ReturnType<typeof createUser>>;
