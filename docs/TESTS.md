@@ -79,9 +79,13 @@ production qui touche l'écran concerné.
 - [ ] Choisir un nom affiché insultant (ex. « connard ») : refusé, avec le
       message « Ce nom ne respecte pas les règles de la Communauté »
 - [ ] Partager une séance nommée « Je vais te tuer » : partage fait, l'autre
-      compte voit « Séance » ; le premier compte ne peut plus suivre ni
-      partager pendant 7 jours (le journal reste ouvert). Lever ensuite la
-      restriction du compte de test (`moderation_sanctions.lifted_at`)
+      compte voit « Séance » ; un avertissement, pas de restriction (menace
+      sans détail : revue humaine en P1)
+- [ ] Partager une séance nommée « Je vais te retrouver demain et te tuer »
+      (menace crédible) : en plus, le compte ne peut plus suivre, donner de
+      bravo ni partager pendant 7 jours ; le journal reste ouvert. Supprimer
+      ensuite le compte de test, ou lever la restriction
+      (`moderation_sanctions.lifted_at`)
 - [ ] `npm run moderation -w @nutri/web -- cases` : les dossiers ci-dessus en P1/P2
 
 **Compte**
