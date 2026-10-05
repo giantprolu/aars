@@ -56,7 +56,7 @@ Branché :
 - onboarding O0 à O4 ;
 - Aujourd'hui, bouton + (Repas, Séance, Pesée), scanner caméra, Moi, Progression ;
 - historique et détail d'un jour ;
-- Cuisine : plan sur quatre moments (matin, midi, soir, collation), recettes
+- Cuisine : plan sur quatre repas (petit-déj, déjeuner, dîner, collation), recettes
   (création comprise, moment au choix) filtrables par moment, catalogue de
   plats de l'objectif (fiche, ajout aux recettes ou à la semaine), courses
   générées, cochables au scanner ;

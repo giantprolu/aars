@@ -81,7 +81,7 @@ import java.util.Locale
 import kotlinx.coroutines.launch
 
 /** Deux repas par jour, sept jours : ce que le plan peut porter. */
-/** Quatre moments par jour depuis le 05/10/2026 : matin, midi, soir, collation. */
+/** Quatre repas par jour depuis le 05/10/2026 : petit-déj, déjeuner, dîner, collation. */
 private val SLOTS_PER_WEEK = Meal.planOrder.size * 7
 
 /** Une case vide du plan, en attente d'un plat. */
@@ -304,7 +304,7 @@ private fun PlanGrid(
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Spacer(Modifier.width(36.dp))
             Meal.planOrder.forEach { meal ->
-                Txt(meal.moment, nt(11f, color = Neutrals.muted), Modifier.weight(1f), maxLines = 1)
+                Txt(meal.short, nt(11f, color = Neutrals.muted), Modifier.weight(1f), maxLines = 1)
             }
         }
         (0L until 7L).forEach { offset ->
@@ -447,7 +447,7 @@ private fun RecipesSection(
         textSize = 14f,
     )
     SegmentedPill(
-        options = listOf("Tout") + Meal.planOrder.map { it.moment },
+        options = listOf("Tout") + Meal.planOrder.map { it.short },
         selected = moment,
         onSelect = { moment = it },
         track = kitchen.soft,
@@ -528,7 +528,7 @@ private fun RecipesSection(
 
 /** Ce qu'une carte du catalogue dit sous le nom : moment, calories par part, durée. */
 private fun catalogLine(meal: CatalogMealRow): String = listOfNotNull(
-    Meal.orNull(meal.slot)?.moment,
+    Meal.orNull(meal.slot)?.short,
     if (meal.kcal > 0) "${formatInt(meal.kcal.toDouble())} kcal" else null,
     meal.prepMinutes?.let { "$it min" },
 ).joinToString(" · ")
@@ -647,7 +647,7 @@ fun BoxScope.PlanSlotSheet(
 ) {
     val kitchen = Domains.kitchen
     val scope = rememberCoroutineScope()
-    val title = slot?.let { "${dayLabel(it.date)} · ${it.meal.moment.lowercase()}" } ?: ""
+    val title = slot?.let { "${dayLabel(it.date)} · ${it.meal.label.lowercase()}" } ?: ""
     // Les plats de ce moment d'abord, puis ceux sans moment, puis les autres.
     val ordered = basket.sortedBy { item ->
         when (Meal.orNull(item.meal)) {

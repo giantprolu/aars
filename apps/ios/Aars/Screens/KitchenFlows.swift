@@ -370,7 +370,7 @@ struct RecipeEditorScreen: View {
     @State private var minutes: String
     @State private var steps: String
     @State private var notes = ""
-    /// 0 : aucun moment ; ensuite matin, midi, soir, collation.
+    /// 0 : aucun moment ; ensuite petit-déj, déjeuner, dîner, collation.
     @State private var moment = 0
     @State private var ingredients: [Ingredient]
     @State private var error: String?
@@ -399,7 +399,7 @@ struct RecipeEditorScreen: View {
             }
             Labeled(label: "Moment") {
                 SegmentedPill(
-                    options: ["Aucun"] + Meal.planOrder.map(\.moment),
+                    options: ["Aucun"] + Meal.planOrder.map(\.short),
                     selected: moment,
                     onSelect: { moment = $0 },
                     track: kitchen.soft,

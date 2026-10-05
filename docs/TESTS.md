@@ -57,9 +57,9 @@ production qui touche l'écran concerné.
 - [ ] Pesée, puis la courbe dans Progression
 
 **Cuisine** (tout est gratuit tant que la vente est fermée)
-- [ ] Plan : quatre colonnes Matin, Midi, Soir, Collation, noms lisibles sur un téléphone
-- [ ] « Remplir la semaine » sur le Plan : matins et collations reçoivent des plats du matin
-      et des collations, jamais un plat du soir ; sans badge ni offre Cuisine+
+- [ ] Plan : quatre colonnes Petit-déj, Déjeuner, Dîner, Collation, noms lisibles sur un téléphone
+- [ ] « Remplir la semaine » sur le Plan : petits-déjeuners et collations reçoivent leurs propres
+      plats, jamais un plat du dîner ; sans badge ni offre Cuisine+
 - [ ] Recettes : filtre par moment, bouton « Catalogue de plats »
 - [ ] Éditeur de recette : choisir un moment, le retrouver après enregistrement
 - [ ] Catalogue : filtrer par moment, choisir des plats pour la semaine

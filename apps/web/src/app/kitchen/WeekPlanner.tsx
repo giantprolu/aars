@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { fillWeek, journalMeal, planMeal, reopenMeal, unplanMeal } from '@/lib/client/plan';
-import { MEALS, MEAL_LABELS, type Meal } from '@/lib/meal';
+import { MEALS, MEAL_LABELS, MEAL_SHORT_LABELS, type Meal } from '@/lib/meal';
 import { formatDayMonth, formatDayShort, formatWeekday, shiftDate } from '@/lib/date';
 import { macrosPerServing, type Recipe } from '@/lib/recipe';
 import { formatKcal, scaleMacros } from '@/lib/nutrition';
@@ -173,14 +173,13 @@ export function WeekPlanner({
       ? null
       : scaleMacros(macrosPerServing(selectedRecipe).macros, selected.servings * 100).kcal;
 
-  // Les quatre moments, chacun sa colonne (05/10/2026) : le matin et la
-  // collation ne se cachent plus sous le midi et le soir.
-  const columns: { meal: Meal; label: string }[] = [
-    { meal: 'breakfast', label: 'Matin' },
-    { meal: 'lunch', label: 'Midi' },
-    { meal: 'dinner', label: 'Soir' },
-    { meal: 'snack', label: 'Collation' },
-  ];
+  // Les quatre repas, chacun sa colonne (05/10/2026) : le petit-déjeuner et
+  // la collation ne se cachent plus sous le déjeuner et le dîner. Mêmes mots
+  // que les filtres et les apps.
+  const columns: { meal: Meal; label: string }[] = MEALS.map((meal) => ({
+    meal,
+    label: MEAL_SHORT_LABELS[meal],
+  }));
   const grid = 'grid grid-cols-[40px_repeat(4,minmax(0,1fr))] gap-1';
 
   return (

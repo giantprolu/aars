@@ -27,16 +27,6 @@ enum Meal: String, CaseIterable, Sendable {
         }
     }
 
-    /// Le mot court des colonnes du plan : matin, midi, soir, collation.
-    var moment: String {
-        switch self {
-        case .breakfast: "Matin"
-        case .lunch: "Midi"
-        case .snack: "Collation"
-        case .dinner: "Soir"
-        }
-    }
-
     static func fromApi(_ value: String) -> Meal {
         Meal(rawValue: value) ?? .snack
     }
@@ -46,7 +36,7 @@ enum Meal: String, CaseIterable, Sendable {
         value.flatMap(Meal.init(rawValue:))
     }
 
-    /// L'ordre du plan et des filtres, le même que la PWA : matin, midi, soir, collation.
+    /// L'ordre du plan et des filtres, le même que la PWA : petit-déj, déjeuner, dîner, collation.
     static let planOrder: [Meal] = [.breakfast, .lunch, .dinner, .snack]
 
     /// Le repas que l'heure suggère, mêmes bornes que `mealForHour` (lib/meal.ts).

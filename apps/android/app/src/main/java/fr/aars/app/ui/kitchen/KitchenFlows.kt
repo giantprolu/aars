@@ -413,7 +413,7 @@ fun RecipeEditorScreen(model: AppModel, onClose: () -> Unit, draft: RecipeDraft?
     var minutes by remember { mutableStateOf(draft?.prepMinutes?.toString() ?: "") }
     var steps by remember { mutableStateOf(draft?.steps?.joinToString("\n") ?: "") }
     var notes by remember { mutableStateOf("") }
-    // 0 : aucun moment ; ensuite matin, midi, soir, collation.
+    // 0 : aucun moment ; ensuite petit-déj, déjeuner, dîner, collation.
     var moment by remember { mutableStateOf(0) }
     val ingredients = remember { mutableStateListOf<Ingredient>().apply { draft?.ingredients?.forEach { add(Ingredient(it)) } } }
     var error by remember { mutableStateOf<String?>(null) }
@@ -471,7 +471,7 @@ fun RecipeEditorScreen(model: AppModel, onClose: () -> Unit, draft: RecipeDraft?
         Labeled("Nom") { NutriField(name, { name = it.take(80) }, placeholder = "Curry de lentilles", focusColor = Domains.kitchen.textOnLight) }
         Labeled("Moment") {
             SegmentedPill(
-                options = listOf("Aucun") + Meal.planOrder.map { it.moment },
+                options = listOf("Aucun") + Meal.planOrder.map { it.short },
                 selected = moment,
                 onSelect = { moment = it },
                 track = Domains.kitchen.soft,

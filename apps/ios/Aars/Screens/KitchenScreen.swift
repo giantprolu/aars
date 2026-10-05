@@ -255,7 +255,7 @@ private struct BasketCard: View {
     }
 }
 
-/// Lignes jour × matin, midi, soir, collation. Le passé est barré, le jour même est surligné.
+/// Lignes jour × petit-déj, déjeuner, dîner, collation. Le passé est barré, le jour même est surligné.
 private struct PlanGrid: View {
     let monday: String
     let today: String
@@ -269,7 +269,7 @@ private struct PlanGrid: View {
             HStack(spacing: 4) {
                 Color.clear.frame(width: 36, height: 1)
                 ForEach(Meal.planOrder, id: \.self) { meal in
-                    Text(meal.moment)
+                    Text(meal.short)
                         .textStyle(nt(11, 400, Neutrals.muted))
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -456,7 +456,7 @@ private struct RecipesSection: View {
             textSize: 14
         )
         SegmentedPill(
-            options: ["Tout"] + Meal.planOrder.map(\.moment),
+            options: ["Tout"] + Meal.planOrder.map(\.short),
             selected: moment,
             onSelect: { moment = $0 },
             track: kitchen.soft,
@@ -566,7 +566,7 @@ private struct RecipesSection: View {
 /// Ce qu'une carte du catalogue dit sous le nom : moment, calories par part, durée.
 private func catalogLine(_ meal: CatalogMealRow) -> String {
     [
-        Meal.orNil(meal.slot)?.moment,
+        Meal.orNil(meal.slot)?.short,
         meal.kcal > 0 ? "\(formatInt(Double(meal.kcal))) kcal" : nil,
         meal.prepMinutes.map { "\($0) min" },
     ].compactMap { $0 }.joined(separator: " · ")
@@ -730,7 +730,7 @@ struct PlanSlotSheet: View {
 
     var body: some View {
         let kitchen = Domains.kitchen
-        let title = slot.map { "\(dayLabel($0.date)) · \($0.meal.moment.lowercased())" } ?? ""
+        let title = slot.map { "\(dayLabel($0.date)) · \($0.meal.label.lowercased())" } ?? ""
         NutriSheet(visible: slot != nil, title: title, onDismiss: onDismiss, gap: 10) {
             ForEach(ordered) { item in
                 HStack {
