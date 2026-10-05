@@ -135,6 +135,8 @@ export interface AdminRecipe {
   servings: number;
   createdAt: string;
   imageUrl: string | null;
+  /** Le repas choisi pour la recette, `null` sinon : il oriente le prompt photo. */
+  meal: string | null;
   ingredients: string[];
 }
 
@@ -150,6 +152,7 @@ export async function adminOwnRecipes(): Promise<AdminRecipe[]> {
       servings: schema.recipes.servings,
       createdAt: sql<string>`${schema.recipes.createdAt}::text`,
       imageUrl: schema.recipes.imageUrl,
+      meal: schema.recipes.meal,
       // Noms qualifiés à la main : dans une sous-requête, drizzle écrit les
       // colonnes sans leur table, et « id » y désignerait celui de l'ingrédient.
       ingredients: sql<string[]>`coalesce(
@@ -186,10 +189,12 @@ export interface AdminCatalogMeal {
   name: string;
   imageUrl: string | null;
   estimateKcal: number;
+  /** Les ingrédients tels que le plat les nomme, pour le prompt photo. */
+  ingredients: string[];
 }
 
-export function adminCatalog(): Promise<AdminCatalogMeal[]> {
-  return db()
+export async function adminCatalog(): Promise<AdminCatalogMeal[]> {
+  const rows = await db()
     .select({
       slug: schema.catalogMeals.slug,
       goal: schema.catalogMeals.goal,
@@ -198,9 +203,11 @@ export function adminCatalog(): Promise<AdminCatalogMeal[]> {
       name: schema.catalogMeals.name,
       imageUrl: schema.catalogMeals.imageUrl,
       estimateKcal: schema.catalogMeals.estimateKcal,
+      ingredients: schema.catalogMeals.ingredients,
     })
     .from(schema.catalogMeals)
     .orderBy(asc(schema.catalogMeals.goal), asc(schema.catalogMeals.position), asc(schema.catalogMeals.slug));
+  return rows.map((row) => ({ ...row, ingredients: row.ingredients.map((ingredient) => ingredient.label) }));
 }
 
 /** Pose la photo d'un plat ; rend l'ancienne, `undefined` si le plat n'existe pas. */

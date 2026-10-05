@@ -1,10 +1,12 @@
 import Image from 'next/image';
 import { ImageOffIcon } from 'lucide-react';
+import { CopyButton } from '@/components/CopyButton';
 import { PageTitle } from '@/components/PageTitle';
 import { PhotoUploader } from '@/components/PhotoUploader';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { apiGet } from '@/lib/api';
+import { dishPrompt, fullPrompt } from '@/lib/prompts';
 import type { AdminRecipe } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -25,6 +27,16 @@ export default async function RecipesPage() {
         title="Recettes sans photo"
         description={`${missing} sans photo sur ${recipes.length} recettes écrites ou importées. La photo apparaît aussitôt dans l'app de la personne.`}
       />
+      <Card className="gap-2">
+        <CardHeader>
+          <CardTitle className="text-base">Faire la photo avec Gemini</CardTitle>
+          <CardDescription>
+            1. « Copier le prompt » sur la recette. 2. Le coller dans Gemini (Nano Banana), puis télécharger
+            l&apos;image. 3. « Ajouter une photo » et la choisir : les bords sont rognés à l&apos;envoi, ce qui
+            retire l&apos;étoile de Gemini.
+          </CardDescription>
+        </CardHeader>
+      </Card>
       {recipes.length === 0 ? (
         <p className="text-muted-foreground">Aucune recette écrite ou importée pour l&apos;instant.</p>
       ) : (
@@ -50,8 +62,11 @@ export default async function RecipesPage() {
                 </p>
               </CardHeader>
               <CardContent className="flex flex-col gap-3 px-4">
-                <p className="line-clamp-2 text-sm text-muted-foreground">{recipe.ingredients.join(', ') || 'Aucun ingrédient.'}</p>
-                <PhotoUploader kind="recipe" id={String(recipe.id)} hasPhoto={recipe.imageUrl !== null} removable />
+                <p className="rounded-md bg-muted p-3 text-sm leading-relaxed">{dishPrompt(recipe)}</p>
+                <div className="flex flex-wrap gap-2">
+                  <CopyButton text={fullPrompt(recipe)} />
+                  <PhotoUploader kind="recipe" id={String(recipe.id)} hasPhoto={recipe.imageUrl !== null} removable />
+                </div>
               </CardContent>
             </Card>
           ))}

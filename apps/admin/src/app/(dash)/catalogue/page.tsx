@@ -1,12 +1,14 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { ImageOffIcon } from 'lucide-react';
+import { CopyButton } from '@/components/CopyButton';
 import { PageTitle } from '@/components/PageTitle';
 import { PhotoUploader } from '@/components/PhotoUploader';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { apiGet } from '@/lib/api';
+import { fullPrompt } from '@/lib/prompts';
 import { cn } from '@/lib/utils';
 import { GOAL_LABELS, MEAL_LABELS, type CatalogMeal } from '@/lib/types';
 
@@ -82,7 +84,10 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
                   <TableCell className="hidden md:table-cell">{GOAL_LABELS[meal.goal]}</TableCell>
                   <TableCell className="hidden text-right tabular-nums md:table-cell">{meal.estimateKcal}</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end">
+                    <div className="flex flex-wrap items-start justify-end gap-2">
+                      {meal.imageUrl === null ? (
+                        <CopyButton text={fullPrompt({ name: meal.name, meal: meal.slot, ingredients: meal.ingredients })} label="Prompt" size="sm" />
+                      ) : null}
                       <PhotoUploader kind="catalog" id={meal.slug} hasPhoto={meal.imageUrl !== null} size="sm" />
                     </div>
                   </TableCell>

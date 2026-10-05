@@ -9,20 +9,31 @@ import { Button } from '@/components/ui/button';
 const MAX_SIDE = 1600;
 
 /**
- * Réduit la photo dans le navigateur avant l'envoi : une photo de téléphone
- * pèse souvent plus que ce qu'une requête accepte (4,5 Mo chez Vercel).
+ * Part rognée sur chaque bord : de quoi retirer l'étoile que Gemini pose dans
+ * un coin. Le prompt demande un plat centré avec de la marge, rien ne se perd.
+ */
+const TRIM = 0.06;
+
+/**
+ * Rogne les bords puis réduit la photo dans le navigateur avant l'envoi : une
+ * photo de téléphone pèse souvent plus que ce qu'une requête accepte (4,5 Mo
+ * chez Vercel).
  */
 async function shrink(file: File): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+  const sx = Math.round(bitmap.width * TRIM);
+  const sy = Math.round(bitmap.height * TRIM);
+  const sw = bitmap.width - 2 * sx;
+  const sh = bitmap.height - 2 * sy;
+  const scale = Math.min(1, MAX_SIDE / Math.max(sw, sh));
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
+  canvas.width = Math.round(sw * scale);
+  canvas.height = Math.round(sh * scale);
   const context = canvas.getContext('2d');
   if (!context) {
     throw new Error('canvas');
   }
-  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  context.drawImage(bitmap, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
   bitmap.close();
   return new Promise((resolve, reject) =>
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('toBlob'))), 'image/jpeg', 0.88),

@@ -30,6 +30,7 @@ export interface AdminRecipe {
   servings: number;
   createdAt: string;
   imageUrl: string | null;
+  meal: string | null;
   ingredients: string[];
 }
 
@@ -41,6 +42,7 @@ export interface CatalogMeal {
   name: string;
   imageUrl: string | null;
   estimateKcal: number;
+  ingredients: string[];
 }
 
 export interface Report {

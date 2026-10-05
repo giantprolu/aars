@@ -9,12 +9,17 @@ touche pas à la base : elle parle au serveur Aars par `/api/admin/*`.
 | Vue d'ensemble | comptes, actifs du jour / 7 j / 30 j, recettes, repas planifiés, signalements, abonnés, courbe des actifs |
 | Usage | compteurs par jour (ouvertures, objectifs, Santé, repas par méthode), sur 7, 30 ou 90 jours |
 | Abonnés | abonnés actifs, part des comptes, Cuisine+ (zéro tant que la vente est fermée) |
-| Recettes sans photo | les recettes écrites ou importées, sans dire à qui ; ajouter, changer ou retirer une photo |
-| Catalogue | les 120 plats, ceux sans photo d'abord ; poser une photo |
+| Recettes sans photo | les recettes écrites ou importées, sans dire à qui ; leur prompt Gemini à copier ; ajouter, changer ou retirer une photo |
+| Catalogue | les 120 plats, ceux sans photo d'abord ; prompt Gemini à copier ; poser une photo |
 | Modération | signalements à traiter et clos ; clore, rendre une séance privée |
 | Sécurité | passkeys (ajouter, révoquer), déconnexion |
 
 Supprimer un compte reste à `npm run moderation`, avec sa confirmation.
+
+Les prompts suivent `docs/prompts-photos-plats.md` (`src/lib/prompts.ts`) :
+style commun puis le plat, en un seul texte à coller dans Gemini (Nano
+Banana). À l'envoi, chaque photo perd 6 % sur chaque bord, ce qui retire
+l'étoile que Gemini pose dans un coin.
 
 ## Sécurité
 
