@@ -24,8 +24,8 @@ export function LoginForm() {
     setError(null);
     try {
       const options = await beginPasskey(purpose);
-      if (options === null) {
-        setError('La demande a expiré : recharge la page et recommence.');
+      if ('error' in options) {
+        setError(options.error);
         return;
       }
       const response =
