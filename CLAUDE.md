@@ -57,6 +57,22 @@ fusion. Si l'avance rapide n'est pas possible, s'arrêter et le dire.
 Si une commande échoue deux fois de suite, s'arrêter et écrire le blocage
 dans `BLOCKERS.md` plutôt que de contourner.
 
+## Mise en production (décision du 05/10/2026)
+Des testeurs utilisent la production : pousser `main` ne doit rien leur
+casser, rien leur faire perdre, ne pas les déconnecter.
+- Base : changements additifs seulement (table, colonne nullable ou avec
+  défaut), appliqués sur Neon avant de pousser `main`. Retirer ou renommer
+  une colonne se fait en deux mises en production, une fois que plus rien
+  ne la lit. Aucune migration ne modifie ni n'efface les données des comptes
+- API : on ajoute, on ne retire ni ne renomme une route ou un champ qu'une
+  version installée des apps lit (Android `ignoreUnknownKeys`, iOS `Codable`
+  tolèrent un champ en plus, pas un champ en moins)
+- Sessions : ni nom de cookie, ni secret de signature, ni format de jeton ne
+  changent. Les anciennes adresses (`nutri-rosy-one.vercel.app`) restent
+- Avant de pousser `main` : le déploiement de test de `bmad/dev` est prêt sur
+  Vercel. Après : la production répond, sans erreur dans les journaux ; sinon
+  revenir au déploiement précédent (Vercel › Deployments › Instant Rollback)
+
 ## Interdits
 - Pas de secrets en dur, pas de clé API côté client
 - Pas de `any` en TypeScript
