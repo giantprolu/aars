@@ -19,6 +19,7 @@ import fr.nutriperso.app.data.TodayResponse
 import fr.nutriperso.app.data.HealthAvailability
 import fr.nutriperso.app.data.HealthSync
 import fr.nutriperso.app.data.LunchReminder
+import fr.nutriperso.app.data.PurchaseStore
 import fr.nutriperso.app.data.TokenStore
 import fr.nutriperso.app.ui.components.formatKg
 import java.time.LocalTime
@@ -95,6 +96,16 @@ class AppModel(application: Application) : AndroidViewModel(application) {
     var healthLinkable by mutableStateOf(false)
         private set
 
+    /** L'achat intégré : abonnement et Cuisine+. */
+    val purchases = PurchaseStore(application, api, viewModelScope, ::toast)
+
+    /** Une limite gratuite atteinte : la coquille ouvre l'écran Premium, puis remet à faux. */
+    var paywallRequested by mutableStateOf(false)
+
+    fun requestPaywall() {
+        paywallRequested = true
+    }
+
     /** Un rappel du déjeuner touché : la coquille ouvre la feuille Repas, puis remet à faux. */
     var pendingMealSheet by mutableStateOf(false)
 
@@ -139,6 +150,7 @@ class AppModel(application: Application) : AndroidViewModel(application) {
                         refreshToday()
                         syncHealth()
                         LunchReminder.schedule(getApplication())
+                        purchases.syncPending()
                     }
                 }
                 is ApiResult.Failed -> {
@@ -343,7 +355,10 @@ class AppModel(application: Application) : AndroidViewModel(application) {
                     _toasts.emit(success)
                     refreshToday()
                 }
-                is ApiResult.Failed -> _toasts.emit(result.message)
+                is ApiResult.Failed -> {
+                    _toasts.emit(result.message)
+                    if (result.code == "premium_required") requestPaywall()
+                }
             }
         }
     }

@@ -210,6 +210,16 @@ final class Api {
         await send("POST", "/api/plan", PlanMealBody(planDate: planDate, meal: meal, recipeId: recipeId, servings: servings))
     }
 
+    /// « Remplir la semaine » (Cuisine+).
+    func fillWeek(weekStart: String) async -> ApiResult<FillWeekResponse> {
+        decode(await raw("POST", "/api/plan/auto", body: encode(FillWeekBody(weekStart: weekStart))), as: FillWeekResponse.self)
+    }
+
+    /// Lit une page de recette et rend un brouillon (Cuisine+). Rien n'est enregistré.
+    func importRecipe(url: String) async -> ApiResult<RecipeDraft> {
+        decode(await raw("POST", "/api/recipes/import", body: encode(ImportRecipeBody(url: url))), as: RecipeDraftResponse.self).map(\.draft)
+    }
+
     func addToBasket(weekStart: String, recipeId: Int, servings: Double) async -> ApiResult<Void> {
         await send("POST", "/api/basket", BasketRecipeBody(weekStart: weekStart, recipeId: recipeId, servings: servings))
     }

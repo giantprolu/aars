@@ -1,5 +1,5 @@
 import 'server-only';
-import { canAddRecipe } from './premium';
+import { canAddRecipe, hasKitchenPlus } from './premium';
 import {
   MAX_INGREDIENTS,
   MAX_STEPS,
@@ -140,9 +140,16 @@ export function recipeFor(userId: number, id: number): Promise<Recipe | null> {
   return findRecipe(userId, id);
 }
 
+/**
+ * Crée une recette. `imported` dit qu'elle vient de l'import de Cuisine+ :
+ * celle-là ne bute pas sur la limite gratuite, sans quoi l'achat de l'import
+ * cesserait de servir à la onzième recette. Le drapeau vient du client, mais
+ * il ne vaut que pour un compte qui possède Cuisine+.
+ */
 export async function createRecipe(
   userId: number,
   input: RecipeInput,
+  options: { imported: boolean } = { imported: false },
 ): Promise<CreateRecipeResult> {
   const clean = normalize(input);
   const rejection = await validate(clean);
@@ -151,7 +158,7 @@ export async function createRecipe(
   }
   // Après la validation : une recette mal formée dit d'abord ce qui ne va pas,
   // l'invitation à s'abonner ne doit pas masquer une erreur de saisie.
-  if (!(await canAddRecipe(userId))) {
+  if (!(await canAddRecipe(userId)) && !(options.imported && (await hasKitchenPlus(userId)))) {
     return { kind: 'premium_required' };
   }
   return { kind: 'saved', id: await insertRecipe(userId, clean) };

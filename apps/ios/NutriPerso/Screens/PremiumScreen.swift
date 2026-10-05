@@ -53,6 +53,7 @@ struct PremiumScreen: View {
         return VStack(alignment: .leading, spacing: 10) {
             benefit("Recettes écrites sans limite", "10 en version gratuite")
             benefit("Favoris sans limite", "10 en version gratuite")
+            benefit("Le plan automatique et l'import de recette", "Cuisine+, compris dans l'abonnement")
             benefit("Les prochaines fonctions payantes", "dès leur sortie, sans supplément")
             if usage == nil {
                 Text("Lecture de ton compte…").textStyle(TextStyles.small)

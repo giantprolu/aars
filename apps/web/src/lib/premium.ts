@@ -84,12 +84,12 @@ export const SUBSCRIPTION_PRODUCTS: Record<Store, string> = {
 export const KITCHEN_PLUS_PRODUCT = 'nutriperso_cuisine_plus';
 
 /**
- * Cuisine+ n'est en vente qu'une fois ses deux fonctions écrites : vendre une
- * fonction absente serait refusé à l'examen, et trompeur. Les apps lisent ce
- * drapeau dans `GET /api/billing` et n'affichent pas l'offre tant qu'il est
- * faux.
+ * Cuisine+ en vente dans les apps : ses deux fonctions existent depuis le
+ * 05/10/2026 (`POST /api/plan/auto`, `POST /api/recipes/import`). Les apps
+ * lisent ce drapeau dans `GET /api/billing` ; le remettre à faux retire l'offre
+ * sans retirer les fonctions à ceux qui l'ont achetée.
  */
-export const KITCHEN_PLUS_ON_SALE = false;
+export const KITCHEN_PLUS_ON_SALE = true;
 
 /** États d'un achat unique, dans les termes du serveur. */
 export const PURCHASE_STATES = ['purchased', 'pending', 'refunded'] as const;

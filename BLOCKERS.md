@@ -353,7 +353,13 @@ dossier a été refusée pendant la session et n'a pas été contournée.
 (`rd /s /q`, l'Explorateur refusait), puis `npm run build` passe. C'était bien
 le cache.
 
-## B-16 — Android non compilable sur le Mac — **ouvert le 04/10/2026**
+## B-16 — Android non compilable sur le Mac — **levé le 05/10/2026**
+
+**Levée.** JDK (Homebrew), SDK Android (`~/Library/Android/sdk`) et Gradle
+9.8 installés sur le Mac : `assembleDebug` passe en ligne de commande (voir
+`apps/android/README.md`), sans erreur ni avertissement Kotlin, avec tout ce
+qui suit, plus l'achat Google Play et Cuisine+. Reste non vérifié à l'écran :
+aucun émulateur n'est installé, l'app n'a pas été lancée sur ce poste.
 
 **Constat.** Le dépôt est maintenant travaillé sur un Mac sans Android Studio
 ni SDK Android : `assembleDebug` ne peut pas tourner ici. Les changements

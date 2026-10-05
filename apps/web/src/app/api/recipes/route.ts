@@ -33,7 +33,11 @@ export async function GET(): Promise<Response> {
  * `action` subsiste dans le corps, seule valeur admise, pour ne pas rendre
  * invalides les requêtes déjà en vol au moment du déploiement.
  */
-const postSchema = recipeSchema.extend({ action: z.literal('create') });
+const postSchema = recipeSchema.extend({
+  action: z.literal('create'),
+  // Une recette venue de l'import de Cuisine+ (voir `createRecipe`).
+  imported: z.boolean().nullish(),
+});
 
 export async function POST(request: Request): Promise<Response> {
   const userId = await currentUserId();
@@ -53,15 +57,12 @@ export async function POST(request: Request): Promise<Response> {
     return apiError('invalid_input');
   }
 
-  const { name, servings, steps, prepMinutes, notes, ingredients } = parsed.data;
-  const result = await createRecipe(userId, {
-    name,
-    servings,
-    steps,
-    prepMinutes,
-    notes,
-    ingredients,
-  });
+  const { name, servings, steps, prepMinutes, notes, ingredients, imported } = parsed.data;
+  const result = await createRecipe(
+    userId,
+    { name, servings, steps, prepMinutes, notes, ingredients },
+    { imported: imported === true },
+  );
   if (result.kind === 'invalid') {
     return apiError('invalid_input', REJECTION_MESSAGES[result.reason]);
   }

@@ -197,6 +197,31 @@ class Api(private val tokens: TokenStore) {
         json.encodeToString(PlanMealBody.serializer(), PlanMealBody(planDate, meal, recipeId, servings)),
     )
 
+    /** « Remplir la semaine » (Cuisine+). */
+    suspend fun fillWeek(weekStart: String) = decode(
+        raw("POST", "/api/plan/auto", json.encodeToString(FillWeekBody.serializer(), FillWeekBody(weekStart))),
+        FillWeekResponse.serializer(),
+    )
+
+    /** Lit une page de recette et rend un brouillon (Cuisine+). Rien n'est enregistré. */
+    suspend fun importRecipe(url: String): ApiResult<RecipeDraft> = when (
+        val result = decode(
+            raw("POST", "/api/recipes/import", json.encodeToString(ImportRecipeBody.serializer(), ImportRecipeBody(url))),
+            RecipeDraftResponse.serializer(),
+        )
+    ) {
+        is ApiResult.Ok -> ApiResult.Ok(result.value.draft)
+        is ApiResult.Failed -> result
+    }
+
+    suspend fun billing() = get("/api/billing", BillingResponse.serializer())
+
+    /** Fait vérifier un achat Google Play par le serveur, qui le relit chez Google. */
+    suspend fun verifyGoogle(purchaseToken: String, productId: String?) = decode(
+        raw("POST", "/api/billing/google", json.encodeToString(GooglePurchaseBody.serializer(), GooglePurchaseBody(purchaseToken, productId))),
+        BillingStatus.serializer(),
+    )
+
     suspend fun addToBasket(weekStart: String, recipeId: Long, servings: Double) = send(
         "POST", "/api/basket",
         json.encodeToString(BasketRecipeBody.serializer(), BasketRecipeBody(weekStart = weekStart, recipeId = recipeId, servings = servings)),

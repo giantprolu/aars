@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, asc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import { db, schema } from '../client';
 import { isMeal, type Meal } from '@/lib/meal';
 import type { Recipe } from '@/lib/recipe';
@@ -141,6 +141,54 @@ export async function insertPlannedMeal(
     .returning({ id: schema.mealPlanEntries.id });
 
   return row?.id ?? null;
+}
+
+/**
+ * Pose plusieurs plats d'un coup (plan automatique), et rend le nombre posé.
+ *
+ * Les recettes sont contrôlées en une lecture : une seule qui ne serait pas la
+ * sienne fait retirer sa ligne, pas tout le lot. Une case occupée entre la
+ * lecture du plan et cette écriture (un second appui) est laissée à ce qui
+ * l'occupe.
+ */
+export async function insertPlannedMeals(
+  userId: number,
+  rows: readonly PlanMealInput[],
+): Promise<number> {
+  if (rows.length === 0) {
+    return 0;
+  }
+  const owned = await db()
+    .select({ id: schema.recipes.id })
+    .from(schema.recipes)
+    .where(
+      and(
+        eq(schema.recipes.userId, userId),
+        inArray(schema.recipes.id, [...new Set(rows.map((row) => row.recipeId))]),
+      ),
+    );
+  const ownedIds = new Set(owned.map((row) => row.id));
+  const dates = rows.map((row) => row.planDate).sort();
+  const taken = await listPlannedMeals(userId, dates[0]!, dates[dates.length - 1]!);
+  const occupied = new Set(taken.map((item) => `${item.planDate}|${item.meal}`));
+
+  const values = rows
+    .filter((row) => ownedIds.has(row.recipeId) && !occupied.has(`${row.planDate}|${row.meal}`))
+    .map((row) => ({
+      userId,
+      planDate: row.planDate,
+      meal: row.meal,
+      recipeId: row.recipeId,
+      servings: String(row.servings),
+    }));
+  if (values.length === 0) {
+    return 0;
+  }
+  const inserted = await db()
+    .insert(schema.mealPlanEntries)
+    .values(values)
+    .returning({ id: schema.mealPlanEntries.id });
+  return inserted.length;
 }
 
 export async function deletePlannedMeal(userId: number, id: number): Promise<boolean> {

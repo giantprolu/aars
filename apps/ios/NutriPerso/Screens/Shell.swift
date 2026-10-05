@@ -46,6 +46,7 @@ enum KitchenFlow: Equatable {
     case scanCheck(week: String)
     case addItem(week: String)
     case newRecipe
+    case importRecipe
 }
 
 /// Les écrans plein écran du Sport.
@@ -125,6 +126,9 @@ struct MainShell: View {
             case .newRecipe:
                 RecipeEditorScreen(model: model) { kitchenFlow = nil }
                     .transition(.move(edge: .bottom))
+            case .importRecipe:
+                ImportRecipeScreen(model: model) { kitchenFlow = nil }
+                    .transition(.move(edge: .bottom))
             case nil:
                 EmptyView()
             }
@@ -191,7 +195,8 @@ struct MainShell: View {
                     kitchenFlow = .scanCheck(week: week)
                 },
                 onAddItem: { kitchenFlow = .addItem(week: $0) },
-                onNewRecipe: { kitchenFlow = .newRecipe }
+                onNewRecipe: { kitchenFlow = .newRecipe },
+                onImportRecipe: { kitchenFlow = .importRecipe }
             )
         case .training:
             TrainingScreen(model: model, onMe: openMe) { pick(.session) }

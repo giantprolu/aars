@@ -38,6 +38,9 @@ import {
 } from '../src/lib/energy';
 import { weeklyWeights, weightChange } from '../src/lib/weight';
 import { USAGE_EVENTS, entryMethod, mealEvent } from '../src/lib/usage';
+import { isoMinutes, parseIngredientLine, parseRecipePage, singularTerm } from '../src/lib/recipe-import';
+import { assignPortions, emptySlots, pickCatalogMeals, weekIndexOf } from '../src/lib/plan-auto';
+import { acceptableUrl, isPublicAddress } from '../src/server/clients/recipe-page';
 import {
   cleanDisplayName,
   isSessionVisibility,
@@ -1770,6 +1773,119 @@ assert.equal(
   assert.equal(entryMethod(undefined, 'product'), 'search', 'sans declaration, sinon : recherche');
   assert.equal(USAGE_EVENTS.includes(mealEvent('favorite')), true, 'repas favori dans la liste');
   assert.equal(new Set(USAGE_EVENTS).size, USAGE_EVENTS.length, 'aucun evenement en double');
+}
+
+
+// Import de recette (Cuisine+) : la page, les lignes d'ingredients, les adresses refusees.
+{
+  const page = `<html><head>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Site"}</script>
+    <script type='application/ld+json'>{"@graph":[{"@type":"BreadcrumbList"},{"@type":["Recipe","Thing"],
+      "name":"Quiche lorraine &amp; salade","recipeYield":["6","6 parts"],"prepTime":"PT20M","cookTime":"PT35M",
+      "recipeIngredient":["1 pâte brisée","200 g de lardons","3 œufs","20 cl de crème fraîche","Sel, poivre","1 pincée de muscade"],
+      "recipeInstructions":[{"@type":"HowToSection","itemListElement":[{"@type":"HowToStep","text":"Préchauffer le four.<br>Étaler la pâte."}]},
+        {"@type":"HowToStep","text":"Cuire 35 min."}]}]}</script></head><body></body></html>`;
+  const recipe = parseRecipePage(page);
+  assert.ok(recipe, 'le Recipe est trouve dans @graph, malgre un type en tableau');
+  assert.equal(recipe.name, 'Quiche lorraine & salade', 'entites decodees');
+  assert.equal(recipe.servings, 6, 'parts lues dans un tableau');
+  assert.equal(recipe.prepMinutes, 55, 'preparation + cuisson sans totalTime');
+  assert.deepEqual(recipe.steps, ['Préchauffer le four.', 'Étaler la pâte.', 'Cuire 35 min.'], 'sections et sauts de ligne');
+  assert.equal(recipe.ingredientLines.length, 6, 'toutes les lignes');
+  assert.equal(parseRecipePage('<html><body>Pas de recette</body></html>'), null, 'sans JSON-LD, rien');
+  assert.equal(parseRecipePage('<script type="application/ld+json">{"@type":"Recipe","name":"Vide"}</script>'), null, 'sans ingredients, rien');
+  assert.equal(isoMinutes('PT1H30M'), 90, 'duree ISO');
+  assert.equal(isoMinutes('PT0S'), null, 'duree nulle');
+
+  const line = (raw: string) => parseIngredientLine(raw);
+  assert.deepEqual(line('200 g de farine'), { line: '200 g de farine', term: 'farine', quantityG: 200 });
+  assert.equal(line('1,5 kg de pommes de terre')?.quantityG, 1500, 'virgule decimale, kilo');
+  assert.equal(line('1,5 kg de pommes de terre')?.term, 'pommes de terre', 'de retire en tete seulement');
+  assert.equal(line('3 œufs')?.quantityG, 165, 'œuf a la piece');
+  assert.equal(line('3 œufs')?.term, 'oeufs', 'ligature depliee');
+  assert.equal(line("2 c. à soupe d'huile d'olive")?.quantityG, 30, 'cuillere a soupe');
+  assert.equal(line("2 c. à soupe d'huile d'olive")?.term, "huile d'olive", 'apostrophe gardee');
+  assert.equal(line('1 cuillère à café de sel')?.quantityG, 5, 'cuillere a cafe');
+  assert.equal(line('20 cl de crème fraîche')?.quantityG, 200, 'centilitres');
+  assert.equal(line('1 boîte (400 g) de tomates concassées')?.quantityG, 400, 'poids entre parentheses');
+  assert.equal(line('1 boîte (400 g) de tomates concassées')?.term, 'tomates concassees', 'parenthese retiree');
+  assert.equal(line('½ citron')?.quantityG, 50, 'fraction unicode');
+  assert.equal(line('1 1/2 tasse de lait')?.quantityG, 360, 'fraction mixte');
+  assert.equal(line('2 à 3 gousses d’ail')?.quantityG, 10, 'premiere borne, gousse');
+  assert.equal(line('un demi oignon')?.quantityG, 50, 'nombre en lettres');
+  assert.equal(line('1 pâte brisée')?.quantityG, null, 'piece de poids inconnu : a demander');
+  assert.equal(line('1 pâte brisée')?.term, 'pate brisee', 'mais reconnue');
+  assert.equal(line('Sel, poivre'), null, 'sans quantite : non reprise');
+  assert.equal(line('200 g de beurre, mou, ou de margarine')?.term, 'beurre', 'precisions coupees');
+  assert.equal(line('constructor 2'), null, 'pas de lecture dans le prototype');
+  assert.equal(line('200 g de lardons')?.term, 'lardons', 'de la ne mange pas le debut du mot');
+  assert.equal(line('100 g de la farine')?.term, 'farine', 'de la');
+  assert.equal(line("50 g de l'huile")?.term, 'huile', "de l'");
+  assert.equal(line('300 g d’épinards')?.term, 'epinards', 'apostrophe courbe');
+  assert.equal(singularTerm('lardons fumes'), 'lardon fume', 'singulier mot a mot');
+  assert.equal(singularTerm('poireaux'), 'poireau', 'pluriel en x');
+  assert.equal(singularTerm('riz'), null, 'rien a changer');
+  assert.equal(singularTerm('jus de citron'), null, 'jus reste jus');
+
+  assert.equal(isPublicAddress('93.184.216.34'), true, 'adresse publique');
+  for (const address of ['127.0.0.1', '10.1.2.3', '169.254.169.254', '192.168.1.1', '172.20.0.1', '100.64.0.1', '0.0.0.0', '::1', 'fd00::1', 'fe80::1', '::ffff:127.0.0.1', '::ffff:7f00:1']) {
+    assert.equal(isPublicAddress(address), false, `adresse privee refusee : ${address}`);
+  }
+  assert.ok(acceptableUrl('https://www.marmiton.org/recettes/recette_quiche.aspx'), 'page publique');
+  for (const url of ['ftp://example.com/r', 'http://127.0.0.1/', 'http://2130706433/', 'http://[::1]/', 'http://localhost/', 'https://user:pw@example.com/', 'https://example.com:8443/', 'http://metadata.google.internal/', 'pas une adresse']) {
+    assert.equal(acceptableUrl(url), null, `adresse refusee : ${url}`);
+  }
+}
+
+// Plan automatique (Cuisine+) : cases libres, rotation des plats, repas respectes.
+{
+  const days = ['2026-10-07', '2026-10-08'];
+  const slots = emptySlots(days, [{ planDate: '2026-10-07', meal: 'lunch' }, { planDate: '2026-10-07', meal: 'breakfast' }]);
+  assert.deepEqual(slots, [
+    { date: '2026-10-07', meal: 'dinner' },
+    { date: '2026-10-08', meal: 'lunch' },
+    { date: '2026-10-08', meal: 'dinner' },
+  ], 'midi avant soir, case prise sautee');
+
+  const rotated = assignPortions(slots, [
+    { recipeId: 1, portions: 4, meal: null },
+    { recipeId: 2, portions: 1.5, meal: null },
+  ]);
+  assert.deepEqual(rotated.assigned.map((item) => item.recipeId), [1, 2, 1], 'les plats tournent, une demi-part ne compte pas');
+  assert.equal(rotated.unassigned.length, 0, 'tout est pose');
+
+  const typed = assignPortions(slots, [
+    { recipeId: 10, portions: 2, meal: 'lunch' },
+    { recipeId: 20, portions: 2, meal: 'dinner' },
+  ]);
+  assert.deepEqual(typed.assigned.map((item) => `${item.slot.meal}:${item.recipeId}`), ['dinner:20', 'lunch:10', 'dinner:20'], 'chaque plat a son repas');
+
+  const relaxed = assignPortions(slots, [{ recipeId: 30, portions: 5, meal: 'lunch' }]);
+  assert.equal(relaxed.assigned.length, 3, 'faute de mieux, un plat de midi va au soir');
+
+  const short = assignPortions(slots, [{ recipeId: 40, portions: 1, meal: null }]);
+  assert.equal(short.unassigned.length, 2, 'les cases sans part restent vides');
+
+  const catalog = [
+    { slug: 'l1', slot: 'lunch', servings: 2 },
+    { slug: 'l2', slot: 'lunch', servings: 2 },
+    { slug: 'l3', slot: 'lunch', servings: 2 },
+    { slug: 'd1', slot: 'dinner', servings: 3 },
+    { slug: 'b1', slot: 'breakfast', servings: 1 },
+  ];
+  const picked = pickCatalogMeals(catalog, { lunch: 3, dinner: 1 }, new Set(['l1']), 0);
+  assert.deepEqual([...picked].sort(), ['d1', 'l2', 'l3'], 'assez de parts pour chaque repas, plats du panier sautes');
+  assert.deepEqual(
+    pickCatalogMeals(catalog, { lunch: 2, dinner: 0 }, new Set(), 7),
+    pickCatalogMeals(catalog, { lunch: 2, dinner: 0 }, new Set(), 7),
+    'une meme semaine, les memes plats',
+  );
+  const weekly = new Set(
+    [0, 1, 2, 3, 4, 5].map((week) => pickCatalogMeals(catalog, { lunch: 2, dinner: 0 }, new Set(), week).join()),
+  );
+  assert.ok(weekly.size > 1, 'les semaines ne proposent pas toutes les memes plats');
+  assert.deepEqual(pickCatalogMeals(catalog, { lunch: 0, dinner: 0 }, new Set(), 4), [], 'rien a couvrir, rien de choisi');
+  assert.equal(weekIndexOf('2026-10-12') - weekIndexOf('2026-10-05'), 1, 'semaines consecutives');
 }
 
 console.log('Toutes les verifications pures passent.');

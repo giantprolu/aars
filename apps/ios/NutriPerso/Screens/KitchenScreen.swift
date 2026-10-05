@@ -17,8 +17,10 @@ struct KitchenScreen: View {
     let onScanCheck: (String, [ShoppingItemRow]) -> Void
     let onAddItem: (String) -> Void
     let onNewRecipe: () -> Void
+    let onImportRecipe: () -> Void
 
     @State private var section = 0
+    @State private var filling = false
     @State private var plan = Loaded<PlanResponse>()
     @State private var basket = Loaded<BasketResponse>()
     @State private var shopping = Loaded<ShoppingResponse>()
@@ -52,11 +54,13 @@ struct KitchenScreen: View {
             )
             switch section {
             case 0: planSection(items: items, bought: bought)
-            case 1: RecipesSection(model: model, week: week, onNewRecipe: onNewRecipe)
+            case 1: RecipesSection(model: model, week: week, onNewRecipe: onNewRecipe, onImportRecipe: onImportRecipe)
             default: shoppingSection(items: items)
             }
         }
         .task(id: "\(week)-\(model.revision)-\(reload)") { await load() }
+        // Pour dire, avant le toucher, si Cuisine+ est ouverte sur ce compte.
+        .task { if model.purchases.billing == nil { await model.purchases.load(model.api) } }
     }
 
     private func load() async {
@@ -88,6 +92,17 @@ struct KitchenScreen: View {
                 }
                 .fixedSize(horizontal: false, vertical: true)
                 BasketCard(basket: chosen) { section = 1 }
+                let open = openSlots(planned)
+                if open > 0 {
+                    CuisinePlusAction(
+                        icon: .sparkles,
+                        title: "Remplir la semaine",
+                        detail: "\(open) repas \(open > 1 ? "libres" : "libre") : tes plats d'abord, puis le catalogue",
+                        locked: model.purchases.billing?.kitchenPlus == false,
+                        busy: filling,
+                        action: fillWeek
+                    )
+                }
                 PlanGrid(
                     monday: week,
                     today: today,
@@ -103,6 +118,49 @@ struct KitchenScreen: View {
                 )
             }
         }
+    }
+
+    /// Les midis et soirs encore libres, du jour même à dimanche.
+    private func openSlots(_ planned: [PlannedRow]) -> Int {
+        (0 ..< 7).map { addDays(week, $0) }.filter { $0 >= today }.reduce(0) { count, date in
+            count + [Meal.lunch, Meal.dinner].filter { meal in
+                !planned.contains { $0.planDate == date && Meal.fromApi($0.meal) == meal }
+            }.count
+        }
+    }
+
+    private func fillWeek() {
+        if model.purchases.billing?.kitchenPlus == false {
+            model.paywallRequested = true
+            return
+        }
+        guard !filling else { return }
+        filling = true
+        Task {
+            switch await model.api.fillWeek(weekStart: week) {
+            case .success(let result):
+                if result.placed == 0 {
+                    model.toast(result.empty > 0 ? "Pas assez de plats pour remplir la semaine" : "La semaine est déjà pleine")
+                } else if result.added.isEmpty {
+                    model.toast(placedLabel(result.placed))
+                } else {
+                    let count = result.added.count
+                    model.toast("\(placedLabel(result.placed)), \(count) \(count > 1 ? "plats ajoutés" : "plat ajouté") aux courses")
+                }
+                model.bump()
+            case .failure(let failure):
+                if failure.code == "premium_required" {
+                    model.paywallRequested = true
+                } else {
+                    model.toast(failure.message)
+                }
+            }
+            filling = false
+        }
+    }
+
+    private func placedLabel(_ count: Int) -> String {
+        "\(count) repas \(count > 1 ? "placés" : "placé")"
     }
 
     // MARK: Courses.
@@ -284,6 +342,43 @@ private struct PlanCell: View {
     }
 }
 
+/// Une action de Cuisine+, avec le badge tant qu'elle n'est pas ouverte sur ce compte.
+private struct CuisinePlusAction: View {
+    let icon: Lucide
+    let title: String
+    let detail: String
+    let locked: Bool
+    let busy: Bool
+    let action: () -> Void
+
+    var body: some View {
+        let kitchen = Domains.kitchen
+        HStack(spacing: 12) {
+            LucideIcon(icon, 18, kitchen.textOnFill)
+                .frame(width: 36, height: 36)
+                .background(kitchen.fill, in: Circle())
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 6) {
+                    Text(title).textStyle(nt(14.5, 600))
+                    if locked {
+                        Badge(text: "Cuisine+", background: kitchen.fill, foreground: kitchen.textOnFill, size: 10)
+                    }
+                }
+                Text(busy ? "Un instant…" : detail).textStyle(TextStyles.small).lineLimit(2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            LucideIcon(.chevronRight, 16, kitchen.textOnLight)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .tinted(kitchen.soft, radius: Radius.tile)
+        .opacity(busy ? 0.6 : 1)
+        .tap { if !busy { action() } }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
 /// Petite tuile chiffrée, avec mini-barre facultative.
 struct StatTile: View {
     let label: String
@@ -319,6 +414,7 @@ private struct RecipesSection: View {
     let model: AppModel
     let week: String
     let onNewRecipe: () -> Void
+    let onImportRecipe: () -> Void
 
     @State private var recipes = Loaded<RecipesResponse>()
     @State private var query = ""
@@ -337,14 +433,34 @@ private struct RecipesSection: View {
             leadingTint: kitchen.textOnLight,
             textSize: 14
         )
-        HStack(spacing: 6) {
-            LucideIcon(.plus, 16, kitchen.textOnLight)
-            Text("Nouvelle recette").textStyle(nt(14, 600, kitchen.textOnLight))
+        HStack(spacing: 8) {
+            HStack(spacing: 6) {
+                LucideIcon(.plus, 16, kitchen.textOnLight)
+                Text("Nouvelle recette").textStyle(nt(14, 600, kitchen.textOnLight)).lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(12)
+            .tinted(kitchen.soft, radius: Radius.tile)
+            .tap(onNewRecipe)
+            HStack(spacing: 6) {
+                LucideIcon(.link, 16, kitchen.textOnLight)
+                Text("Importer").textStyle(nt(14, 600, kitchen.textOnLight)).lineLimit(1)
+                if model.purchases.billing?.kitchenPlus == false {
+                    Badge(text: "Cuisine+", background: kitchen.fill, foreground: kitchen.textOnFill, size: 10)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(12)
+            .tinted(kitchen.soft, radius: Radius.tile)
+            .tap {
+                if model.purchases.billing?.kitchenPlus == false {
+                    model.paywallRequested = true
+                } else {
+                    onImportRecipe()
+                }
+            }
+            .accessibilityLabel("Importer une recette depuis un lien")
         }
-        .frame(maxWidth: .infinity)
-        .padding(12)
-        .tinted(kitchen.soft, radius: Radius.tile)
-        .tap(onNewRecipe)
         LoadedGate(loaded: recipes, onRetry: { reload += 1 }) { response in
             list(response.recipes)
         }

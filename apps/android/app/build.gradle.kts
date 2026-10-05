@@ -107,6 +107,7 @@ dependencies {
     // Photos des plats, servies par Vercel Blob. Le module réseau réutilise OkHttp.
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    implementation(libs.play.billing)
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
 }

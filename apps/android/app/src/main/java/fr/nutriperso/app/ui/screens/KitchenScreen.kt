@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -47,6 +49,7 @@ import fr.nutriperso.app.data.BasketRow
 import fr.nutriperso.app.data.PlannedRow
 import fr.nutriperso.app.data.RecipeRow
 import fr.nutriperso.app.data.ShoppingItemRow
+import fr.nutriperso.app.ui.components.Badge
 import fr.nutriperso.app.ui.components.DomainBadge
 import fr.nutriperso.app.ui.components.DomainHeader
 import fr.nutriperso.app.ui.components.Icon
@@ -91,10 +94,15 @@ fun KitchenScreen(
     onScanCheck: (String, List<ShoppingItemRow>) -> Unit,
     onAddItem: (String) -> Unit,
     onNewRecipe: () -> Unit,
+    onImportRecipe: () -> Unit,
 ) {
     val kitchen = Domains.kitchen
     val scope = rememberCoroutineScope()
     var section by rememberSaveable { mutableStateOf(0) }
+    var filling by remember { mutableStateOf(false) }
+    // Pour dire, avant le toucher, si Cuisine+ est ouverte sur ce compte.
+    LaunchedEffect(Unit) { if (model.purchases.billing == null) model.purchases.load() }
+    val locked = model.purchases.billing?.kitchenPlus == false
     val today = model.today?.today?.let(LocalDate::parse) ?: LocalDate.now()
     val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
     val week = monday.toString()
@@ -136,6 +144,47 @@ fun KitchenScreen(
                     StatTile("Courses", "$bought", " / ${items.size}", if (items.isEmpty()) 0f else bought / items.size.toFloat(), Modifier.weight(1f))
                 }
                 BasketCard(chosen, onChoose = { section = 1 })
+                val open = (0L until 7L).map { monday.plusDays(it) }.filter { it >= today }.sumOf { date ->
+                    listOf(Meal.Lunch, Meal.Dinner).count { meal ->
+                        planned.none { it.planDate == date.toString() && Meal.fromApi(it.meal) == meal }
+                    }
+                }
+                if (open > 0) {
+                    CuisinePlusAction(
+                        R.drawable.lucide_sparkles,
+                        "Remplir la semaine",
+                        "$open repas ${if (open > 1) "libres" else "libre"} : tes plats d'abord, puis le catalogue",
+                        locked = locked,
+                        busy = filling,
+                    ) {
+                        if (locked) {
+                            model.requestPaywall()
+                        } else if (!filling) {
+                            filling = true
+                            scope.launch {
+                                when (val result = model.api.fillWeek(week)) {
+                                    is ApiResult.Ok -> {
+                                        val done = result.value
+                                        val placed = "${done.placed} repas ${if (done.placed > 1) "placés" else "placé"}"
+                                        val added = done.added.size
+                                        model.toast(
+                                            when {
+                                                done.placed == 0 && done.empty > 0 -> "Pas assez de plats pour remplir la semaine"
+                                                done.placed == 0 -> "La semaine est déjà pleine"
+                                                added == 0 -> placed
+                                                else -> "$placed, $added ${if (added > 1) "plats ajoutés" else "plat ajouté"} aux courses"
+                                            },
+                                        )
+                                        model.bump()
+                                    }
+                                    is ApiResult.Failed ->
+                                        if (result.code == "premium_required") model.requestPaywall() else model.toast(result.message)
+                                }
+                                filling = false
+                            }
+                        }
+                    }
+                }
                 PlanGrid(
                     monday, today, planned,
                     onEat = { row -> model.eatPlanned(row.id, row.recipeName) },
@@ -148,7 +197,7 @@ fun KitchenScreen(
                     },
                 )
             }
-            1 -> RecipesSection(model, week, onNewRecipe)
+            1 -> RecipesSection(model, week, onNewRecipe, onImport = { if (locked) model.requestPaywall() else onImportRecipe() }, locked = locked)
             else -> if (LoadedGate(shopping)) {
                 if (shopping.value?.list == null) {
                     EmptyCard("Pas encore de liste", "Elle se compose à partir des plats choisis pour la semaine.")
@@ -296,6 +345,37 @@ private fun PlanCell(
     }
 }
 
+/** Une action de Cuisine+, avec le badge tant qu'elle n'est pas ouverte sur ce compte. */
+@Composable
+private fun CuisinePlusAction(
+    icon: Int,
+    title: String,
+    detail: String,
+    locked: Boolean,
+    busy: Boolean,
+    onClick: () -> Unit,
+) {
+    val kitchen = Domains.kitchen
+    Row(
+        Modifier.fillMaxWidth().tinted(kitchen.soft, Radius.tile).tap(enabled = !busy, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(Modifier.size(36.dp).clip(CircleShape).background(kitchen.fill), contentAlignment = Alignment.Center) {
+            Icon(icon, 18.dp, kitchen.textOnFill)
+        }
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Txt(title, nt(14.5f, 600))
+                if (locked) Badge("Cuisine+", kitchen.fill, kitchen.textOnFill, size = 10f)
+            }
+            Txt(if (busy) "Un instant…" else detail, Type.small, maxLines = 2)
+        }
+        Icon(R.drawable.lucide_chevron_right, 16.dp, kitchen.textOnLight)
+    }
+}
+
 /** Petite tuile chiffrée, avec mini-barre facultative. */
 @Composable
 fun StatTile(
@@ -325,7 +405,7 @@ fun StatTile(
 
 /** Les recettes de l'utilisateur ; un toucher ajoute deux parts au panier de la semaine. */
 @Composable
-private fun RecipesSection(model: AppModel, week: String, onNewRecipe: () -> Unit) {
+private fun RecipesSection(model: AppModel, week: String, onNewRecipe: () -> Unit, onImport: () -> Unit, locked: Boolean) {
     val kitchen = Domains.kitchen
     val scope = rememberCoroutineScope()
     val recipes = rememberLoaded(model.revision) { model.api.recipes() }
@@ -342,14 +422,29 @@ private fun RecipesSection(model: AppModel, week: String, onNewRecipe: () -> Uni
         focusColor = kitchen.textOnLight,
         textSize = 14f,
     )
-    Row(
-        Modifier.fillMaxWidth().tinted(kitchen.soft, Radius.tile).tap(onClick = onNewRecipe).padding(12.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(R.drawable.lucide_plus, 16.dp, kitchen.textOnLight)
-        Spacer(Modifier.width(6.dp))
-        Txt("Nouvelle recette", nt(14f, 600, kitchen.textOnLight))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            Modifier.weight(1f).tinted(kitchen.soft, Radius.tile).tap(onClick = onNewRecipe).padding(12.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(R.drawable.lucide_plus, 16.dp, kitchen.textOnLight)
+            Spacer(Modifier.width(6.dp))
+            Txt("Nouvelle recette", nt(14f, 600, kitchen.textOnLight), maxLines = 1)
+        }
+        Row(
+            Modifier.weight(1f).tinted(kitchen.soft, Radius.tile).tap(onClick = onImport).padding(12.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(R.drawable.lucide_link, 16.dp, kitchen.textOnLight)
+            Spacer(Modifier.width(6.dp))
+            Txt("Importer", nt(14f, 600, kitchen.textOnLight), maxLines = 1)
+            if (locked) {
+                Spacer(Modifier.width(6.dp))
+                Badge("Cuisine+", kitchen.fill, kitchen.textOnFill, size = 10f)
+            }
+        }
     }
     if (!LoadedGate(recipes)) return
     val shown = recipes.value?.recipes.orEmpty().filter { query.isBlank() || it.name.contains(query.trim(), ignoreCase = true) }

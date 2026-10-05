@@ -44,9 +44,9 @@ commit dans `apps/web/src/app/legal/privacy/page.tsx` et dans
 4. `git push origin bmad/dev`
 5. Marquer la story comme terminée dans le sprint status BMAD
 
-Pour `apps/android`, le point 1 devient : le projet se synchronise et
-`assembleDebug` passe dans Android Studio (aucun SDK Android n'est installé
-hors d'Android Studio sur ce poste).
+Pour `apps/android`, le point 1 devient : `assembleDebug` passe sans erreur
+ni avertissement Kotlin (SDK et JDK installés sur ce poste depuis le
+05/10/2026, commande dans `apps/android/README.md`).
 Pour `apps/ios`, le point 1 devient : `xcodebuild … build` vers un simulateur
 passe sans erreur ni avertissement (commande dans `apps/ios/README.md`).
 

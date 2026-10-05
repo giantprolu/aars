@@ -112,11 +112,13 @@ Deux façons de payer (décision du 05/10/2026), les mêmes que sur Android :
 | Produit | Type App Store | Ce qu'il ouvre |
 |---|---|---|
 | `nutriperso_premium_mensuel` | abonnement renouvelable, 1 mois, groupe « NutriPerso Premium » | tout : recettes et favoris au-delà de 10, et Cuisine+ |
-| `nutriperso_cuisine_plus` | non consommable | le plan automatique et l'import de recette, à vie |
+| `nutriperso_cuisine_plus` | non consommable | le plan automatique de la semaine et l'import de recette, à vie |
 
-Cuisine+ n'est à créer qu'une fois ces deux fonctions écrites :
-`KITCHEN_PLUS_ON_SALE` (`apps/web/src/lib/premium.ts`) la met alors en vente
-dans l'app. Les prix se règlent dans App Store Connect, pas dans le code.
+Cuisine+ est en vente (`KITCHEN_PLUS_ON_SALE`, `apps/web/src/lib/premium.ts`) :
+l'offre s'affiche dès que le produit existe dans App Store Connect. Ses deux
+fonctions sont dans Cuisine : « Remplir la semaine » sur le Plan, « Importer »
+dans Recettes. Pour l'examen, la capture de Cuisine+ montre le Plan rempli.
+Les prix se règlent dans App Store Connect, pas dans le code.
 
 Comment ça marche : l'app achète avec StoreKit 2 en passant
 l'`appAccountToken` du compte, envoie l'identifiant de transaction à
@@ -132,7 +134,8 @@ Dans App Store Connect, dans l'ordre :
    renseigner le compte bancaire. Sans lui, aucun achat ne se vend.
 2. **Produits** : *Abonnements* › groupe « NutriPerso Premium » › produit
    `nutriperso_premium_mensuel`, durée 1 mois, prix, nom et description en
-   français, capture de l'écran Premium pour l'examen.
+   français, capture de l'écran Premium pour l'examen. Puis *Achats intégrés*
+   › `nutriperso_cuisine_plus`, non consommable, prix, capture du Plan.
 3. **Clé d'API** : *Utilisateurs et accès* › *Intégrations* › *Achat
    intégré* › générer une clé. Dans Vercel : `APPLE_IAP_KEY_ID`,
    `APPLE_IAP_ISSUER_ID`, `APPLE_IAP_PRIVATE_KEY` (le contenu du `.p8`,

@@ -17,8 +17,16 @@ Icônes Lucide converties en vector drawables, police Instrument Sans embarquée
 3. Choisir un émulateur ou un téléphone, puis *Run*.
 
 Le dépôt ne contient pas `gradle-wrapper.jar` : Android Studio n'en a pas
-besoin. Pour compiler en ligne de commande, le régénérer une fois avec
-`gradle wrapper`.
+besoin. En ligne de commande, sur le Mac du projet (depuis le 05/10/2026) :
+SDK dans `~/Library/Android/sdk` (`sdk.dir` dans `local.properties`), JDK 25
+de Homebrew (`openjdk@25`) pour le démon Gradle, et une distribution Gradle
+9.8 lancée depuis ce dossier :
+
+```
+JAVA_HOME=/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home \
+  gradle -Porg.gradle.java.installations.paths=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home \
+  assembleDebug
+```
 
 ## Serveur visé
 
@@ -49,6 +57,11 @@ Branché :
 - Aujourd'hui, bouton + (Repas, Séance, Pesée), scanner caméra, Moi, Progression ;
 - historique et détail d'un jour ;
 - Cuisine : plan, recettes (création comprise), courses générées, cochables au scanner ;
+- Cuisine+ : « Remplir la semaine » sur le Plan, « Importer » une recette
+  depuis un lien dans Recettes (brouillon relu dans l'éditeur) ;
+- achats : Moi › Abonnement, ou toute limite gratuite atteinte, ouvre l'écran
+  Premium (Google Play Billing 9, `data/Purchases.kt`) : abonnement mensuel
+  et Cuisine+, restauration, gestion de l'abonnement dans Google Play ;
 - Sport : semaine, séance en cours plein écran, séance libre, composer ;
 - Communauté : suivis, recherche, demandes, classement, fil, bravos ;
   signaler ou bloquer depuis « … », bloqués à débloquer dans Personnes ;

@@ -174,20 +174,28 @@ Deux façons de payer (décision du 05/10/2026), les mêmes que sur iPhone :
 - l'abonnement mensuel `nutriperso_premium`, qui ouvre tout : recettes et
   favoris au-delà de 10, et Cuisine+ ;
 - l'achat unique `nutriperso_cuisine_plus` (produit intégré, non
-  consommable) : le plan automatique et l'import de recette, à vie. À créer
-  seulement quand ces deux fonctions existeront : `KITCHEN_PLUS_ON_SALE`
-  (`apps/web/src/lib/premium.ts`) le met alors en vente dans les apps.
+  consommable) : le plan automatique de la semaine (« Remplir la semaine »)
+  et l'import de recette depuis un lien, à vie. En vente
+  (`KITCHEN_PLUS_ON_SALE`, `apps/web/src/lib/premium.ts`) : l'offre s'affiche
+  dès que le produit existe dans la Play Console.
 
-**L'app Android n'a pas encore d'écran d'achat** (Google Play Billing) : le
-serveur est prêt, le client reste à écrire, sur le modèle de
-`apps/ios/NutriPerso/Data/PurchaseStore.swift`. Les notifications Pub/Sub
-relisent aussi les achats uniques (`oneTimeProductNotification`).
+L'écran d'achat (Moi › Abonnement, ou toute limite gratuite atteinte) passe
+par Google Play Billing 9 (`data/Purchases.kt`) : l'achat porte l'`accountRef`
+du compte (`setObfuscatedAccountId`), l'app n'en confirme aucun elle-même, et
+rattache au démarrage ce qui serait resté non confirmé. Les notifications
+Pub/Sub relisent aussi les achats uniques (`oneTimeProductNotification`).
+
+L'import de recette fait lire au serveur la page dont on donne le lien ;
+l'adresse n'est pas conservée et rien n'est enregistré avant validation dans
+l'éditeur : rien à déclarer de plus dans la Sécurité des données.
 
 1. **Profil de paiement** : Play Console › *Paramètres* › *Profil de
    paiement*, avec le SIRET. Sans lui, aucun produit payant ne se crée.
-2. **Produit** : *Monétiser* › *Abonnements* › créer `nutriperso_premium`,
-   avec deux forfaits de base, `mensuel` et `annuel`. L'essai gratuit se règle
-   ici, comme offre sur un forfait, sans rien changer au code.
+2. **Produits** : *Monétiser* › *Abonnements* › créer `nutriperso_premium`,
+   avec un forfait de base mensuel (l'app prend l'offre de base, sans offre
+   promotionnelle). L'essai gratuit se règle ici, comme offre sur le forfait,
+   sans rien changer au code. Puis *Monétiser* › *Produits intégrés* › créer
+   `nutriperso_cuisine_plus`, achat unique, avec son prix.
 3. **Compte de service** : Google Cloud › *IAM* › *Comptes de service*, en
    créer un et télécharger sa clé JSON. Play Console › *Utilisateurs et
    autorisations* › l'inviter avec les droits « Afficher les données

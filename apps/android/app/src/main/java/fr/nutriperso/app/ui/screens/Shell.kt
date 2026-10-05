@@ -62,6 +62,7 @@ import fr.nutriperso.app.data.ApiResult
 import fr.nutriperso.app.data.QuickSession
 import fr.nutriperso.app.data.SearchHit
 import fr.nutriperso.app.ui.kitchen.AddItemScreen
+import fr.nutriperso.app.ui.kitchen.ImportRecipeScreen
 import fr.nutriperso.app.ui.kitchen.RecipeEditorScreen
 import fr.nutriperso.app.ui.kitchen.ScanCheckScreen
 import fr.nutriperso.app.ui.onboarding.OnboardingFlow
@@ -96,7 +97,7 @@ enum class Tab(val label: String, @DrawableRes val icon: Int, val active: Color)
 }
 
 /** Écrans poussés par-dessus la coquille, avec un retour. */
-enum class Pushed { Me, Progress, History, People, Account, Health }
+enum class Pushed { Me, Progress, History, People, Account, Health, Premium }
 
 enum class AddSheet { Meal, Session, Weigh, Scan }
 
@@ -168,6 +169,16 @@ fun MainShell(model: AppModel) {
         }
     }
 
+    // Une limite gratuite atteinte : l'écran Premium, par-dessus ce qu'on faisait.
+    LaunchedEffect(model.paywallRequested) {
+        if (model.paywallRequested) {
+            model.paywallRequested = false
+            closeAll()
+            kitchenFlow = null
+            if (stack.lastOrNull() != Pushed.Premium) stack = stack + Pushed.Premium
+        }
+    }
+
     BackHandler(enabled = fabOpen || sheet != null || planSlot != null || moderation != null || stack.isNotEmpty()) {
         when {
             sheet != null || fabOpen || planSlot != null || moderation != null -> closeAll()
@@ -198,6 +209,7 @@ fun MainShell(model: AppModel) {
                     onScanCheck = { week, items -> kitchenFlow = KitchenFlow.ScanCheck(week, items) },
                     onAddItem = { week -> kitchenFlow = KitchenFlow.AddItem(week) },
                     onNewRecipe = { kitchenFlow = KitchenFlow.NewRecipe },
+                    onImportRecipe = { kitchenFlow = KitchenFlow.ImportRecipe },
                 )
                 Tab.Training -> TrainingScreen(model, onMe = openMe, onStart = { pick(AddSheet.Session) })
                 Tab.Community -> CommunityScreen(
@@ -231,10 +243,12 @@ fun MainShell(model: AppModel) {
                     onWeigh = { pick(AddSheet.Weigh) },
                     onAccount = { stack = listOf(Pushed.Me, Pushed.Account) },
                     onHealth = { stack = listOf(Pushed.Me, Pushed.Health) },
+                    onPremium = { stack = listOf(Pushed.Me, Pushed.Premium) },
                 )
                 Pushed.Progress -> ProgressScreen(model, onBack = { stack = listOf(Pushed.Me) })
                 Pushed.Account -> AccountScreen(model, onBack = { stack = listOf(Pushed.Me) }, onEditGoal = { editingGoal = true })
                 Pushed.Health -> HealthScreen(model, onBack = { stack = listOf(Pushed.Me) })
+                Pushed.Premium -> PremiumScreen(model, onBack = { stack = stack.dropLast(1) })
                 Pushed.People -> PeopleScreen(model, onBack = { stack = emptyList() }, onModerate = { moderation = it })
                 Pushed.History -> HistoryScreen(model, onBack = { stack = emptyList() }, onDay = { historyDate = it })
                 null -> Box(Modifier.fillMaxSize())
@@ -302,6 +316,7 @@ fun MainShell(model: AppModel) {
             is KitchenFlow.ScanCheck -> ScanCheckScreen(model, current.week, current.items, onClose = { kitchenFlow = null })
             is KitchenFlow.AddItem -> AddItemScreen(model, current.week, onClose = { kitchenFlow = null })
             KitchenFlow.NewRecipe -> RecipeEditorScreen(model, onClose = { kitchenFlow = null })
+            KitchenFlow.ImportRecipe -> ImportRecipeScreen(model, onClose = { kitchenFlow = null })
             null -> Unit
         }
 
@@ -340,6 +355,7 @@ sealed interface KitchenFlow {
     data class ScanCheck(val week: String, val items: List<fr.nutriperso.app.data.ShoppingItemRow>) : KitchenFlow
     data class AddItem(val week: String) : KitchenFlow
     data object NewRecipe : KitchenFlow
+    data object ImportRecipe : KitchenFlow
 }
 
 /** La barre d'onglets : 58 de haut, fond crème à 96 %, filet en haut, place vide au centre pour le +. */

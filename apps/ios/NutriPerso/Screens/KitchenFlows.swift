@@ -262,30 +262,56 @@ private struct Ingredient: Identifiable {
     let id = UUID()
     let hit: SearchHit
     var grams: String
+    /// La ligne de la page d'origine, pour une recette importée.
+    var line: String?
 
     init(_ hit: SearchHit) {
         self.hit = hit
         grams = defaultGrams(hit)
     }
+
+    /// Un ingrédient du brouillon : sans poids connu, le champ reste vide et sera réclamé.
+    init(_ draft: DraftIngredient) {
+        hit = draft.hit
+        grams = draft.quantityG.map { String(Int($0.rounded())) } ?? ""
+        line = draft.line
+    }
 }
 
 /// Écrire une recette : nom, parts, ingrédients trouvés par la recherche, étapes.
+/// Avec un brouillon (import de Cuisine+), tout arrive rempli, à relire.
 struct RecipeEditorScreen: View {
     let model: AppModel
+    let draft: RecipeDraft?
     let onClose: () -> Void
 
-    @State private var name = ""
-    @State private var servings = "2"
-    @State private var minutes = ""
-    @State private var steps = ""
+    @State private var name: String
+    @State private var servings: String
+    @State private var minutes: String
+    @State private var steps: String
     @State private var notes = ""
-    @State private var ingredients: [Ingredient] = []
+    @State private var ingredients: [Ingredient]
     @State private var error: String?
     @State private var busy = false
 
+    init(model: AppModel, draft: RecipeDraft? = nil, onClose: @escaping () -> Void) {
+        self.model = model
+        self.draft = draft
+        self.onClose = onClose
+        _name = State(initialValue: draft?.name ?? "")
+        _servings = State(initialValue: draft.map { formatServings($0.servings) } ?? "2")
+        _minutes = State(initialValue: draft?.prepMinutes.map(String.init) ?? "")
+        _steps = State(initialValue: draft?.steps.joined(separator: "\n") ?? "")
+        _ingredients = State(initialValue: draft?.ingredients.map(Ingredient.init) ?? [])
+    }
+
     var body: some View {
         let kitchen = Domains.kitchen
-        FlowScaffold(title: "Nouvelle recette", onClose: onClose) {
+        FlowScaffold(title: draft == nil ? "Nouvelle recette" : "Recette importée", onClose: onClose) {
+            if draft != nil {
+                Text("Relis les ingrédients : chaque ligne de la page a été rapprochée d'un aliment, et les poids sont des ordres de grandeur.")
+                    .textStyle(TextStyles.secondary)
+            }
             Labeled(label: "Nom") {
                 NutriField(text: $name, placeholder: "Curry de lentilles", focusColor: kitchen.textOnLight).filtered($name, maxLength(80))
             }
@@ -300,7 +326,13 @@ struct RecipeEditorScreen: View {
             Text("Ingrédients").textStyle(nt(13, 500))
             ForEach($ingredients) { $item in
                 HStack(spacing: 10) {
-                    Text(item.hit.name).textStyle(nt(14, 500)).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(item.hit.name).textStyle(nt(14, 500)).lineLimit(2)
+                        if let line = item.line {
+                            Text("« \(line) »").textStyle(TextStyles.small).lineLimit(1)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     GramsField(value: $item.grams)
                     LucideIcon(.x, 16, Neutrals.muted)
                         .tap { ingredients.removeAll { $0.id == item.id } }
@@ -309,6 +341,17 @@ struct RecipeEditorScreen: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .card(radius: Radius.tile)
+            }
+            if let unmatched = draft?.unmatched, !unmatched.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Non repris, à ajouter si besoin").textStyle(nt(13, 600))
+                    ForEach(Array(unmatched.enumerated()), id: \.offset) { _, line in
+                        Text("· \(line)").textStyle(TextStyles.secondary)
+                    }
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .tinted(Domains.kitchen.soft, radius: Radius.tile)
             }
             FoodSearch(model: model) { ingredients.append(Ingredient($0)) }
             Labeled(label: "Étapes, une par ligne") {
@@ -355,7 +398,8 @@ struct RecipeEditorScreen: View {
             notes: trimmedNotes.isEmpty ? nil : trimmedNotes,
             ingredients: zip(ingredients, quantities).map { item, grams in
                 IngredientBody(refKind: item.hit.kind, refValue: item.hit.ref, label: String(item.hit.name.prefix(120)), quantityG: grams ?? 0)
-            }
+            },
+            imported: draft == nil ? nil : true
         )
         busy = true
         Task {
@@ -367,6 +411,59 @@ struct RecipeEditorScreen: View {
             case .failure(let failure):
                 error = failure.message
                 if failure.code == "premium_required" { model.paywallRequested = true }
+            }
+            busy = false
+        }
+    }
+}
+
+/// Importer une recette depuis un lien (Cuisine+) : le lien, puis le brouillon dans l'éditeur.
+struct ImportRecipeScreen: View {
+    let model: AppModel
+    let onClose: () -> Void
+
+    @State private var url = ""
+    @State private var draft: RecipeDraft?
+    @State private var busy = false
+    @State private var error: String?
+
+    var body: some View {
+        let kitchen = Domains.kitchen
+        if let draft {
+            RecipeEditorScreen(model: model, draft: draft, onClose: onClose)
+        } else {
+            FlowScaffold(title: "Importer une recette", onClose: onClose) {
+                Text("Colle le lien d'une page de recette, d'un site ou d'un blog de cuisine. Tu relis tout avant d'enregistrer.")
+                    .textStyle(TextStyles.secondary)
+                Labeled(label: "Lien de la page") {
+                    NutriField(text: $url, placeholder: "https://…", kind: .url, submitLabel: .go, onSubmit: read, focusColor: kitchen.textOnLight)
+                        .filtered($url, maxLength(2000))
+                }
+                if let error { Text(error).textStyle(nt(13, 500, Macros.protein.text)) }
+            } footer: {
+                PrimaryButton(
+                    text: "Lire la recette", colors: kitchen, height: 52,
+                    enabled: !url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, busy: busy, action: read
+                )
+            }
+        }
+    }
+
+    private func read() {
+        let link = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !busy, !link.isEmpty else { return }
+        busy = true
+        error = nil
+        Task {
+            switch await model.api.importRecipe(url: link) {
+            case .success(let found):
+                draft = found
+            case .failure(let failure):
+                if failure.code == "premium_required" {
+                    model.paywallRequested = true
+                } else {
+                    error = failure.message
+                }
             }
             busy = false
         }

@@ -692,7 +692,65 @@ data class RecipeCreateBody(
     val prepMinutes: Int?,
     val notes: String?,
     val ingredients: List<IngredientBody>,
+    /** Vrai pour une recette venue de l'import (Cuisine+) : elle ne compte pas dans la limite gratuite. */
+    val imported: Boolean? = null,
 )
+
+// Cuisine+.
+
+@Serializable
+data class FillWeekBody(val weekStart: String)
+
+/** « Remplir la semaine » : ce qui a été posé, et ce qui a rejoint le panier pour y parvenir. */
+@Serializable
+data class FillWeekResponse(val placed: Int, val added: List<String> = emptyList(), val empty: Int = 0)
+
+@Serializable
+data class ImportRecipeBody(val url: String)
+
+/** Un ingrédient du brouillon : la ligne de la page, la fiche trouvée, le poids s'il est connu. */
+@Serializable
+data class DraftIngredient(val line: String, val hit: SearchHit, val quantityG: Double? = null)
+
+/** Une recette lue sur une page, à relire dans l'éditeur avant de l'enregistrer. */
+@Serializable
+data class RecipeDraft(
+    val name: String,
+    val servings: Double,
+    val prepMinutes: Int? = null,
+    val steps: List<String> = emptyList(),
+    val ingredients: List<DraftIngredient> = emptyList(),
+    val unmatched: List<String> = emptyList(),
+)
+
+@Serializable
+data class RecipeDraftResponse(val draft: RecipeDraft)
+
+// Achats.
+
+@Serializable
+data class BillingProducts(
+    /** L'abonnement mensuel, par magasin : `google_play` pour Android. */
+    val subscription: Map<String, String> = emptyMap(),
+    val kitchenPlus: String? = null,
+    val kitchenPlusOnSale: Boolean = false,
+)
+
+@Serializable
+data class BillingResponse(
+    val premium: Boolean = false,
+    val kitchenPlus: Boolean = false,
+    val expiresAt: String? = null,
+    /** À passer à Google Play au moment de l'achat : il lie l'achat au compte. */
+    val accountRef: String? = null,
+    val products: BillingProducts? = null,
+)
+
+@Serializable
+data class BillingStatus(val premium: Boolean = false, val kitchenPlus: Boolean = false, val expiresAt: String? = null)
+
+@Serializable
+data class GooglePurchaseBody(val purchaseToken: String, val productId: String?)
 
 // Compte.
 

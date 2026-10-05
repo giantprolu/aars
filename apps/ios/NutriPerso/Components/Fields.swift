@@ -8,6 +8,7 @@ enum FieldKind {
     case newPassword
     case decimal
     case number
+    case url
 }
 
 /**
@@ -95,6 +96,12 @@ struct NutriField: View {
             TextField("", text: $text).keyboardType(.decimalPad)
         case .number:
             TextField("", text: $text).keyboardType(.numberPad)
+        case .url:
+            TextField("", text: $text)
+                .keyboardType(.URL)
+                .textContentType(.URL)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
         case .text:
             TextField("", text: $text)
         }

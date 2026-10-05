@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -91,6 +92,7 @@ fun MeScreen(
     onWeigh: () -> Unit,
     onAccount: () -> Unit,
     onHealth: () -> Unit,
+    onPremium: () -> Unit,
 ) {
     val body = Domains.body
     val training = Domains.training
@@ -100,6 +102,9 @@ fun MeScreen(
     val context = LocalContext.current
     var reminderOn by remember { mutableStateOf(LunchReminder.isEnabled(context)) }
     var notificationsAllowed by remember { mutableStateOf(LunchReminder.canNotify(context)) }
+
+    // L'état de l'abonnement, pour le badge de la ligne Abonnement.
+    LaunchedEffect(Unit) { if (model.purchases.billing == null) model.purchases.load() }
 
     // Revenir des réglages du téléphone peut avoir coupé les notifications.
     LifecycleResumeEffect(Unit) {
@@ -265,6 +270,17 @@ fun MeScreen(
                             "active" -> Badge("Actif", training.soft, training.textOnLight)
                             "pending" -> Badge("En attente", Neutrals.chip, Neutrals.muted)
                             else -> Badge("Inactif", Neutrals.chip, Neutrals.muted)
+                        }
+                        Icon(R.drawable.lucide_chevron_right, 16.dp, Neutrals.faint)
+                    }
+                }
+                SettingDivider()
+                SettingRow(R.drawable.lucide_star, "Abonnement", onClick = onPremium) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (model.purchases.premium) {
+                            Badge("Premium", Domains.nutrition.fill, Domains.nutrition.textOnFill)
+                        } else {
+                            Badge("Gratuit", Neutrals.chip, Neutrals.muted)
                         }
                         Icon(R.drawable.lucide_chevron_right, 16.dp, Neutrals.faint)
                     }

@@ -46,8 +46,10 @@ import androidx.core.content.ContextCompat
 import fr.nutriperso.app.AppModel
 import fr.nutriperso.app.R
 import fr.nutriperso.app.data.ApiResult
+import fr.nutriperso.app.data.DraftIngredient
 import fr.nutriperso.app.data.IngredientBody
 import fr.nutriperso.app.data.RecipeCreateBody
+import fr.nutriperso.app.data.RecipeDraft
 import fr.nutriperso.app.data.ScanMatch
 import fr.nutriperso.app.data.SearchHit
 import fr.nutriperso.app.data.ShoppingItemRow
@@ -311,20 +313,32 @@ fun ScanCheckScreen(model: AppModel, weekStart: String, items: List<ShoppingItem
     }
 }
 
-private class Ingredient(val hit: SearchHit) {
-    var grams by mutableStateOf(Math.round(hit.servingSizeG ?: 100.0).toString())
+/** Un ingrédient de la recette en cours ; [line] est la ligne de la page d'origine, pour une recette importée. */
+private class Ingredient(val hit: SearchHit, grams: String, val line: String? = null) {
+    var grams by mutableStateOf(grams)
+
+    constructor(hit: SearchHit) : this(hit, Math.round(hit.servingSizeG ?: 100.0).toString())
+
+    /** Sans poids connu, le champ reste vide et sera réclamé. */
+    constructor(draft: DraftIngredient) : this(draft.hit, draft.quantityG?.let { Math.round(it).toString() } ?: "", draft.line)
 }
 
-/** Écrire une recette : nom, parts, ingrédients trouvés par la recherche, étapes. */
+private fun formatParts(value: Double): String =
+    if (value % 1.0 == 0.0) value.toLong().toString() else value.toString().replace('.', ',')
+
+/**
+ * Écrire une recette : nom, parts, ingrédients trouvés par la recherche, étapes.
+ * Avec un brouillon (import de Cuisine+), tout arrive rempli, à relire.
+ */
 @Composable
-fun RecipeEditorScreen(model: AppModel, onClose: () -> Unit) {
+fun RecipeEditorScreen(model: AppModel, onClose: () -> Unit, draft: RecipeDraft? = null) {
     val scope = rememberCoroutineScope()
-    var name by remember { mutableStateOf("") }
-    var servings by remember { mutableStateOf("2") }
-    var minutes by remember { mutableStateOf("") }
-    var steps by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(draft?.name ?: "") }
+    var servings by remember { mutableStateOf(draft?.servings?.let(::formatParts) ?: "2") }
+    var minutes by remember { mutableStateOf(draft?.prepMinutes?.toString() ?: "") }
+    var steps by remember { mutableStateOf(draft?.steps?.joinToString("\n") ?: "") }
     var notes by remember { mutableStateOf("") }
-    val ingredients = remember { mutableStateListOf<Ingredient>() }
+    val ingredients = remember { mutableStateListOf<Ingredient>().apply { draft?.ingredients?.forEach { add(Ingredient(it)) } } }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
 
@@ -348,6 +362,7 @@ fun RecipeEditorScreen(model: AppModel, onClose: () -> Unit) {
             ingredients = ingredients.mapIndexed { index, item ->
                 IngredientBody(item.hit.kind, item.hit.ref, item.hit.name.take(120), quantities[index] ?: 0)
             },
+            imported = if (draft == null) null else true,
         )
         busy = true
         scope.launch {
@@ -357,15 +372,24 @@ fun RecipeEditorScreen(model: AppModel, onClose: () -> Unit) {
                     model.toast("Recette « ${body.name} » créée")
                     onClose()
                 }
-                is ApiResult.Failed -> error = result.message
+                is ApiResult.Failed -> {
+                    error = result.message
+                    if (result.code == "premium_required") model.requestPaywall()
+                }
             }
             busy = false
         }
     }
 
-    Screen("Nouvelle recette", onClose, footer = {
+    Screen(if (draft == null) "Nouvelle recette" else "Recette importée", onClose, footer = {
         PrimaryButton("Enregistrer la recette", Domains.kitchen, ::save, height = 52.dp, busy = busy)
     }) {
+        if (draft != null) {
+            Txt(
+                "Relis les ingrédients : chaque ligne de la page a été rapprochée d'un aliment, et les poids sont des ordres de grandeur.",
+                Type.secondary,
+            )
+        }
         Labeled("Nom") { NutriField(name, { name = it.take(80) }, placeholder = "Curry de lentilles", focusColor = Domains.kitchen.textOnLight) }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(Modifier.weight(1f)) {
@@ -382,9 +406,22 @@ fun RecipeEditorScreen(model: AppModel, onClose: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Txt(item.hit.name, nt(14f, 500), Modifier.weight(1f), maxLines = 2)
+                Column(Modifier.weight(1f)) {
+                    Txt(item.hit.name, nt(14f, 500), maxLines = 2)
+                    item.line?.let { Txt("« $it »", Type.small, maxLines = 1) }
+                }
                 GramsField(item.grams, { item.grams = it })
                 Icon(R.drawable.lucide_x, 16.dp, Neutrals.muted, Modifier.tap { ingredients.removeAt(index) })
+            }
+        }
+        val unmatched = draft?.unmatched.orEmpty()
+        if (unmatched.isNotEmpty()) {
+            Column(
+                Modifier.fillMaxWidth().tinted(Domains.kitchen.soft, Radius.tile).padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Txt("Non repris, à ajouter si besoin", nt(13f, 600))
+                unmatched.forEach { Txt("· $it", Type.secondary) }
             }
         }
         FoodSearch(model) { ingredients.add(Ingredient(it)) }
@@ -404,3 +441,50 @@ fun RecipeEditorScreen(model: AppModel, onClose: () -> Unit) {
     }
 }
 
+
+/** Importer une recette depuis un lien (Cuisine+) : le lien, puis le brouillon dans l'éditeur. */
+@Composable
+fun ImportRecipeScreen(model: AppModel, onClose: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    var url by remember { mutableStateOf("") }
+    var draft by remember { mutableStateOf<RecipeDraft?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    draft?.let {
+        RecipeEditorScreen(model, onClose, it)
+        return
+    }
+
+    fun read() {
+        val link = url.trim()
+        if (busy || link.isEmpty()) return
+        busy = true
+        error = null
+        scope.launch {
+            when (val result = model.api.importRecipe(link)) {
+                is ApiResult.Ok -> draft = result.value
+                is ApiResult.Failed -> if (result.code == "premium_required") model.requestPaywall() else error = result.message
+            }
+            busy = false
+        }
+    }
+
+    Screen("Importer une recette", onClose, footer = {
+        PrimaryButton("Lire la recette", Domains.kitchen, ::read, height = 52.dp, busy = busy, enabled = url.isNotBlank())
+    }) {
+        Txt("Colle le lien d'une page de recette, d'un site ou d'un blog de cuisine. Tu relis tout avant d'enregistrer.", Type.secondary)
+        Labeled("Lien de la page") {
+            NutriField(
+                url,
+                { url = it.take(2000) },
+                placeholder = "https://…",
+                keyboardType = KeyboardType.Uri,
+                imeAction = ImeAction.Go,
+                onDone = ::read,
+                focusColor = Domains.kitchen.textOnLight,
+            )
+        }
+        error?.let { Txt(it, nt(13f, 500, Macros.protein.text)) }
+    }
+}

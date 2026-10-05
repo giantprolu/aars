@@ -78,6 +78,8 @@ Branché :
 - Cuisine : plan de la semaine (placer un plat, manger), plats choisis,
   recettes (photo, ajout au panier, création), courses par rayon cochables,
   un article, scanner pour cocher en rayon ;
+- Cuisine+ : « Remplir la semaine » sur le Plan, « Importer » une recette
+  depuis un lien dans Recettes (brouillon relu dans l'éditeur) ;
 - Sport : semaine, séance du jour, programme, dernières séances ;
 - Communauté : suivis, classement de la semaine, fil et bravos, identifiant
   à choisir ; Personnes (chercher, suivre, demandes, abonnés, bloqués) ;
@@ -110,9 +112,9 @@ signale à la signature si ce n'est pas le cas.
 
 ## Achats
 
-L'abonnement mensuel (et Cuisine+ quand elle sera en vente) s'achète dans
-Moi › Abonnement, ou s'ouvre de lui-même dès qu'une action bute sur une
-limite gratuite. StoreKit 2, transaction rattachée au compte par le serveur
+L'abonnement mensuel et Cuisine+ s'achètent dans
+Moi › Abonnement ; l'écran s'ouvre aussi de lui-même dès qu'une action bute
+sur une limite gratuite ou sur une fonction de Cuisine+. StoreKit 2, transaction rattachée au compte par le serveur
 avant d'être terminée (`Data/PurchaseStore.swift`). Pour essayer sans App
 Store Connect : le fichier `Config/NutriPerso.storekit`, à choisir dans le
 schéma (voir `APP_STORE.md`, *Achat intégré*).

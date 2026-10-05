@@ -853,6 +853,46 @@ struct RecipeCreateBody: Codable, Sendable {
     @Nullable var prepMinutes: Int?
     @Nullable var notes: String?
     let ingredients: [IngredientBody]
+    /// Vrai pour une recette venue de l'import (Cuisine+) : elle ne compte pas dans la limite gratuite.
+    var imported: Bool?
+}
+
+// MARK: Cuisine+.
+
+struct FillWeekBody: Codable, Sendable {
+    let weekStart: String
+}
+
+/// « Remplir la semaine » : ce qui a été posé, et ce qui a rejoint le panier pour y parvenir.
+struct FillWeekResponse: Codable, Sendable {
+    let placed: Int
+    @Default<Empty<String>> var added: [String]
+    let empty: Int
+}
+
+struct ImportRecipeBody: Codable, Sendable {
+    let url: String
+}
+
+/// Un ingrédient du brouillon : la ligne de la page, la fiche trouvée, le poids s'il est connu.
+struct DraftIngredient: Codable, Sendable {
+    let line: String
+    let hit: SearchHit
+    let quantityG: Double?
+}
+
+/// Une recette lue sur une page, à relire dans l'éditeur avant de l'enregistrer.
+struct RecipeDraft: Codable, Sendable {
+    let name: String
+    let servings: Double
+    let prepMinutes: Int?
+    @Default<Empty<String>> var steps: [String]
+    @Default<Empty<DraftIngredient>> var ingredients: [DraftIngredient]
+    @Default<Empty<String>> var unmatched: [String]
+}
+
+struct RecipeDraftResponse: Codable, Sendable {
+    let draft: RecipeDraft
 }
 
 // MARK: Achats.

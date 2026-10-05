@@ -67,6 +67,15 @@ export default function PrivacyPage() {
         estimer le contenu, puis oubliée : elle n&apos;est pas conservée.
       </p>
 
+      <h2>Import de recette</h2>
+      <p>
+        Avec Cuisine+, tu peux importer une recette depuis un lien. Notre serveur lit alors la
+        page à cette adresse, comme le ferait un navigateur, pour en tirer le nom, les ingrédients
+        et les étapes : le site voit une visite de notre serveur, pas la tienne. L&apos;adresse
+        n&apos;est pas conservée, et la recette n&apos;est enregistrée que si tu la valides dans
+        l&apos;éditeur, comme une recette écrite à la main.
+      </p>
+
       <h2>Sous-traitants</h2>
       <ul>
         <li>Vercel (hébergement de l&apos;application et de l&apos;API).</li>
