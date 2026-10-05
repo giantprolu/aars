@@ -30,7 +30,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 
 ## Serveur visé
 
-Par défaut, la production (`https://nutri-rosy-one.vercel.app`). Pour le
+Par défaut, la production (`https://aars-app.vercel.app`). Pour le
 serveur de dev, dans `Config/Local.xcconfig` (non versionné) :
 
 ```

@@ -19,7 +19,7 @@ donnée ou un sous-traitant change, mettre à jour ce fichier **et**
 | Caméra : texte d'usage | `NSCameraUsageDescription` |
 | HealthKit : capacité et texte d'usage, lecture seule | `Config/Aars.entitlements`, `NSHealthShareUsageDescription` |
 | Suppression du compte dans l'app | Moi › Compte et données |
-| Politique de confidentialité publique | `https://nutri-rosy-one.vercel.app/legal/privacy` |
+| Politique de confidentialité publique | `https://aars-app.vercel.app/legal/privacy` |
 | Icône 1024 | `Resources/Assets.xcassets/AppIcon.appiconset` |
 | Aucun SDK tiers (analyse, publicité, plantages) | aucune dépendance |
 
@@ -59,7 +59,7 @@ ajuster ta cible. »
 **Catégorie** : Santé et forme (secondaire : Forme et alimentation selon ce
 que propose App Store Connect). **URL d'assistance** : obligatoire, une page
 qui donne l'adresse `LEGAL_CONTACT_EMAIL`. **URL de confidentialité** :
-`https://nutri-rosy-one.vercel.app/legal/privacy`.
+`https://aars-app.vercel.app/legal/privacy`.
 
 ## Examen (App Review)
 
@@ -149,7 +149,7 @@ Dans App Store Connect, dans l'ordre :
    `fr.aars.app`.
 4. **Notifications** : *App* › *Informations sur l'app* › *Notifications du
    serveur App Store*, version 2, production et bac à sable :
-   `https://nutri-rosy-one.vercel.app/api/billing/apple/notify?secret=<APPLE_NOTIFY_SECRET>`,
+   `https://aars-app.vercel.app/api/billing/apple/notify?secret=<APPLE_NOTIFY_SECRET>`,
    avec `APPLE_NOTIFY_SECRET` (32 caractères aléatoires) dans Vercel.
 5. **Base** : `npm run db:migrate` pour `store_purchases` (migration 0023).
 6. **Essai** : en local, Xcode › *Product* › *Scheme* › *Edit Scheme…* ›

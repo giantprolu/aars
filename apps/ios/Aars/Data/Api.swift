@@ -39,7 +39,7 @@ final class Api {
         let configured = Bundle.main.object(forInfoDictionaryKey: "NutriAPIBaseURL") as? String
         var base = configured?.trimmingCharacters(in: .whitespaces) ?? ""
         while base.hasSuffix("/") { base.removeLast() }
-        baseURL = base.isEmpty ? "https://nutri-rosy-one.vercel.app" : base
+        baseURL = base.isEmpty ? "https://aars-app.vercel.app" : base
 
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = 30

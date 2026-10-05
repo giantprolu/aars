@@ -30,7 +30,7 @@ JAVA_HOME=/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home \
 
 ## Serveur visé
 
-Par défaut, la production (`https://nutri-rosy-one.vercel.app`). Pour le
+Par défaut, la production (`https://aars-app.vercel.app`). Pour le
 serveur de dev, dans `local.properties` (non versionné) :
 
 ```

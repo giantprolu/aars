@@ -15,7 +15,7 @@ val localProperties = Properties().apply {
     if (file.exists()) file.inputStream().use(::load)
 }
 val apiUrl: String = localProperties.getProperty("aars.apiUrl")
-    ?: "https://nutri-rosy-one.vercel.app"
+    ?: "https://aars-app.vercel.app"
 
 // Signature de publication : jamais dans le dépôt. `keystore.properties` (non
 // versionné, à côté de `local.properties`) ou les variables d'environnement

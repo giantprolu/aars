@@ -16,8 +16,8 @@ donnée ou un sous-traitant change, mettre à jour ce fichier **et**
 | Aucune sauvegarde des données de l'app | `allowBackup=false`, `data_extraction_rules.xml` |
 | HTTP en clair interdit en release | config réseau en debug seulement |
 | Suppression du compte dans l'app | Moi › Compte et données |
-| Suppression du compte sans l'app | `https://nutri-rosy-one.vercel.app/legal/account-deletion` |
-| Politique de confidentialité publique | `https://nutri-rosy-one.vercel.app/legal/privacy` |
+| Suppression du compte sans l'app | `https://aars-app.vercel.app/legal/account-deletion` |
+| Politique de confidentialité publique | `https://aars-app.vercel.app/legal/privacy` |
 | Health Connect : permissions, écran d'explication | `AndroidManifest.xml`, `HealthRationaleActivity` |
 | Icône 512 et bannière 1024 × 500 | `store/` |
 
@@ -97,7 +97,7 @@ la même que `LEGAL_CONTACT_EMAIL` côté serveur.
 
 ## Contenu de l'app
 
-- **Politique de confidentialité** : `https://nutri-rosy-one.vercel.app/legal/privacy`
+- **Politique de confidentialité** : `https://aars-app.vercel.app/legal/privacy`
 - **Accès à l'app** : la connexion est requise. Fournir un compte de test
   (adresse et mot de passe) avec un profil déjà rempli, sinon l'examen échoue.
 - **Annonces** : non.
@@ -112,7 +112,7 @@ la même que `LEGAL_CONTACT_EMAIL` côté serveur.
 - **Applications de santé** (déclaration obligatoire depuis 2025) : cocher
   « Nutrition et alimentation » et « Activité physique et remise en forme ».
   Pas d'appareil médical.
-- **Suppression des données** : URL `https://nutri-rosy-one.vercel.app/legal/account-deletion`,
+- **Suppression des données** : URL `https://aars-app.vercel.app/legal/account-deletion`,
   suppression depuis l'app : oui.
 - **Health Connect** : formulaire de déclaration des types de données, voir
   ci-dessous. Sans validation de Google, les permissions ne sont pas
@@ -210,7 +210,7 @@ l'éditeur : rien à déclarer de plus dans la Sécurité des données.
 4. **Notifications** : Google Cloud › *Pub/Sub*, créer un sujet, donner le rôle
    *Éditeur Pub/Sub* à `google-play-developer-notifications@system.gserviceaccount.com`,
    puis un abonnement *push* vers
-   `https://nutri-rosy-one.vercel.app/api/billing/google/notify?secret=<GOOGLE_PLAY_RTDN_SECRET>`.
+   `https://aars-app.vercel.app/api/billing/google/notify?secret=<GOOGLE_PLAY_RTDN_SECRET>`.
    Play Console › *Monétiser* › *Configuration de la monétisation* : nommer le
    sujet, puis *Envoyer une notification de test*.
 5. **Vercel** : `GOOGLE_PLAY_SERVICE_ACCOUNT` (la clé JSON entière, sur une
