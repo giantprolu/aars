@@ -8,7 +8,7 @@ mêmes noms de modèles, la même surface d'API et la même interface. La
 maquette (`Annexe/mobile`) le demande : une seule UI, identique sur iOS et
 Android, faite de composants maison. Aucun composant système visible
 (`List`, `NavigationStack`, `TabView`, `.sheet`…) ; seuls les services restent
-natifs : trousseau, haptique, et plus tard caméra, Santé et notifications.
+natifs : trousseau, haptique, caméra, Santé et notifications locales.
 
 ## Ouvrir et lancer
 
@@ -88,7 +88,12 @@ Branché :
 - Santé : HealthKit lu au premier plan, à chaque retour dans l'app (au plus
   une fois par heure) et à la demande depuis Moi › Santé. Un seul type lu,
   l'énergie active, un total par jour sur trente jours, poussé sur
-  `POST /api/activity`. Rien n'est écrit dans Santé.
+  `POST /api/activity`. Rien n'est écrit dans Santé. Relié en un toucher
+  depuis la tuile Activité d'Aujourd'hui (« Relier Santé ») ;
+- rappel du déjeuner (interrupteur dans Moi) : notifications locales posées
+  pour quatorze jours à 14 h à Paris, celle du jour retirée dès que l'app voit
+  un déjeuner ou un dîner noté. Pas d'APNs. Un repas noté sur un autre
+  appareil n'est vu qu'à la prochaine ouverture de l'app iPhone.
 
 Les écrans poussés (Moi, Historique, Personnes…) s'empilent et se ferment
 aussi d'un glissé depuis le bord gauche.
@@ -106,5 +111,5 @@ signale à la signature si ce n'est pas le cas.
 ## Publication
 
 Voir `APP_STORE.md` : signature, envoi, fiche, examen, étiquettes de
-confidentialité, et trois points à trancher avant le premier envoi
-(abonnement, signalement dans la Communauté, notifications).
+confidentialité, et le point encore à trancher avant le premier envoi :
+l'abonnement.

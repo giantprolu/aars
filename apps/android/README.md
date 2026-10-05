@@ -54,10 +54,15 @@ Branché :
   signaler ou bloquer depuis « … », bloqués à débloquer dans Personnes ;
 - Compte et données : objectif, code de secours, export, suppression ;
 - Santé : Health Connect, lu au premier plan à chaque ouverture (30 jours),
-  poussé sur `POST /api/activity` avec le jeton de session (écran Moi › Santé).
+  poussé sur `POST /api/activity` avec le jeton de session. Relié en un
+  toucher depuis la tuile Activité d'Aujourd'hui (« Relier Santé »), détails
+  dans Moi › Santé ;
+- rappel du déjeuner (interrupteur dans Moi) : une alarme à 14 h à Paris lit
+  `/api/today` et ne prévient que si ni déjeuner ni dîner n'est noté. Pas de
+  FCM : rien n'est envoyé au serveur pour programmer le rappel.
 
-Pas encore faits, sans bloquer la publication : photo de l'assiette,
-notifications (FCM), cache hors ligne, mode sombre (seul le clair est dessiné).
+Pas encore faits, sans bloquer la publication : photo de l'assiette, cache
+hors ligne, mode sombre (seul le clair est dessiné).
 
 ## Publication
 
