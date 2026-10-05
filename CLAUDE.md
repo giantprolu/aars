@@ -72,6 +72,8 @@ casser, rien leur faire perdre, ne pas les déconnecter.
 - Avant de pousser `main` : le déploiement de test de `bmad/dev` est prêt sur
   Vercel. Après : la production répond, sans erreur dans les journaux ; sinon
   revenir au déploiement précédent (Vercel › Deployments › Instant Rollback)
+- Recette : `docs/TESTS.md`, d'abord `npm run smoke:prod -w @nutri/web`
+  (compte jetable, supprimé à la fin), puis la liste à faire à la main
 
 ## Interdits
 - Pas de secrets en dur, pas de clé API côté client

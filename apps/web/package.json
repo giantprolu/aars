@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.sw.json",
     "verify": "tsx scripts/verify-pure.ts",
+    "smoke:prod": "tsx scripts/smoke-prod.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "import:ciqual": "tsx scripts/import-ciqual.ts",
