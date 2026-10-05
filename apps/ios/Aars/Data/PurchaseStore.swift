@@ -27,6 +27,9 @@ final class PurchaseStore {
 
     var premium: Bool { billing?.premium ?? false }
 
+    /// La vente ouverte par le serveur : sans elle, la ligne Abonnement disparaît de Moi.
+    var salesOpen: Bool { billing?.products?.salesOpen ?? false }
+
     /// Cuisine+ ne se montre que si le serveur la met en vente et qu'Apple la connaît.
     var kitchenPlusOffer: Product? {
         billing?.products?.kitchenPlusOnSale == true && billing?.kitchenPlus != true ? kitchenPlus : nil

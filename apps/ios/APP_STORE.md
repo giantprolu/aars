@@ -120,6 +120,12 @@ fonctions sont dans Cuisine : « Remplir la semaine » sur le Plan, « Importer 
 dans Recettes. Pour l'examen, la capture de Cuisine+ montre le Plan rempli.
 Les prix se règlent dans App Store Connect, pas dans le code.
 
+**Vente fermée pour l'instant** (`SALES_OPEN = false`, même fichier,
+décision du 05/10/2026) : tant que l'éditeur n'est pas immatriculé, l'app ne
+montre ni Abonnement ni offre, et tout ce que les achats ouvrent l'est pour
+tous, sans limite gratuite. Passer la valeur à `true` et déployer rouvre la
+vente, rien d'autre à changer.
+
 Comment ça marche : l'app achète avec StoreKit 2 en passant
 l'`appAccountToken` du compte, envoie l'identifiant de transaction à
 `POST /api/billing/apple`, et ne termine la transaction qu'une fois le serveur

@@ -199,15 +199,17 @@ struct MeScreen: View {
                     LucideIcon(.chevronRight, 16, Neutrals.faint)
                 }
             }
-            Hairline()
-            SettingRow(icon: .star, label: "Abonnement", action: onPremium) {
-                HStack(spacing: 8) {
-                    if model.purchases.premium {
-                        Badge(text: "Premium", background: Domains.nutrition.fill, foreground: Domains.nutrition.textOnFill)
-                    } else {
-                        Badge(text: "Gratuit", background: Neutrals.chip, foreground: Neutrals.muted)
+            if model.purchases.salesOpen {
+                Hairline()
+                SettingRow(icon: .star, label: "Abonnement", action: onPremium) {
+                    HStack(spacing: 8) {
+                        if model.purchases.premium {
+                            Badge(text: "Premium", background: Domains.nutrition.fill, foreground: Domains.nutrition.textOnFill)
+                        } else {
+                            Badge(text: "Gratuit", background: Neutrals.chip, foreground: Neutrals.muted)
+                        }
+                        LucideIcon(.chevronRight, 16, Neutrals.faint)
                     }
-                    LucideIcon(.chevronRight, 16, Neutrals.faint)
                 }
             }
             Hairline()

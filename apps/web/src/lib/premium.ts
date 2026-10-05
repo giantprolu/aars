@@ -91,6 +91,14 @@ export const KITCHEN_PLUS_PRODUCT = 'aars_cuisine_plus';
  */
 export const KITCHEN_PLUS_ON_SALE = true;
 
+/**
+ * La vente dans les apps. Fermée tant que l'éditeur n'est pas immatriculé
+ * (décision du 05/10/2026) : les apps ne proposent rien, et ce qu'ouvrent
+ * l'abonnement et Cuisine+ l'est pour tous, sans limite gratuite. La rouvrir
+ * rend aux achats et aux limites leur effet, sans rien d'autre à changer.
+ */
+export const SALES_OPEN = false;
+
 /** États d'un achat unique, dans les termes du serveur. */
 export const PURCHASE_STATES = ['purchased', 'pending', 'refunded'] as const;
 

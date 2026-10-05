@@ -1,6 +1,6 @@
 import { apiError } from '@/server/errors';
 import { currentUserId } from '@/server/guard';
-import { KITCHEN_PLUS_ON_SALE, KITCHEN_PLUS_PRODUCT, SUBSCRIPTION_PRODUCTS } from '@/lib/premium';
+import { KITCHEN_PLUS_ON_SALE, KITCHEN_PLUS_PRODUCT, SALES_OPEN, SUBSCRIPTION_PRODUCTS } from '@/lib/premium';
 import { accountRef, appAccountToken, premiumStatus } from '@/server/services/premium';
 
 export const runtime = 'nodejs';
@@ -11,7 +11,8 @@ export const runtime = 'nodejs';
  *
  * `accountRef` est ce que l'app Android passe à Google Play au moment de
  * l'achat (`setObfuscatedAccountId`), `appAccountToken` ce que l'app iOS passe
- * à l'App Store : l'achat reste lié à ce compte.
+ * à l'App Store : l'achat reste lié à ce compte. `salesOpen` à faux, les apps
+ * ne montrent ni abonnement ni offre.
  */
 export async function GET(): Promise<Response> {
   const userId = await currentUserId();
@@ -35,7 +36,8 @@ export async function GET(): Promise<Response> {
     products: {
       subscription: SUBSCRIPTION_PRODUCTS,
       kitchenPlus: KITCHEN_PLUS_PRODUCT,
-      kitchenPlusOnSale: KITCHEN_PLUS_ON_SALE,
+      kitchenPlusOnSale: SALES_OPEN && KITCHEN_PLUS_ON_SALE,
+      salesOpen: SALES_OPEN,
     },
   });
 }

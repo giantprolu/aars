@@ -3,6 +3,7 @@ import {
   FREE_FAVORITE_LIMIT,
   FREE_RECIPE_LIMIT,
   KITCHEN_PLUS_PRODUCT,
+  SALES_OPEN,
   SUBSCRIPTION_PRODUCTS,
   entitlementsFrom,
   grantsPremium,
@@ -57,6 +58,10 @@ export interface PremiumStatus {
 }
 
 export async function isPremium(userId: number, now: Date = new Date()): Promise<boolean> {
+  // Vente fermée : rien ne s'achète, donc rien ne se refuse.
+  if (!SALES_OPEN) {
+    return true;
+  }
   const subscriptions = await subscriptionsFor(userId);
   return subscriptions.some((item) => grantsPremium(item.state, item.expiresAt, now));
 }
@@ -79,7 +84,7 @@ export async function premiumStatus(userId: number, now: Date = new Date()): Pro
     countFavorites(userId),
   ]);
   const granting = subscriptions.find((item) => grantsPremium(item.state, item.expiresAt, now));
-  const rights = entitlementsFrom(granting !== undefined, ownsKitchenPlus(purchases));
+  const rights = entitlementsFrom(!SALES_OPEN || granting !== undefined, ownsKitchenPlus(purchases));
   return {
     premium: rights.premium,
     kitchenPlus: rights.kitchenPlus,

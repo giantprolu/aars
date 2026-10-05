@@ -903,6 +903,8 @@ struct BillingProducts: Codable, Sendable {
     let kitchenPlus: String
     /// Cuisine+ n'est proposée qu'une fois ses fonctions écrites.
     @Default<False> var kitchenPlusOnSale: Bool
+    /// Faux : rien n'est en vente, ni abonnement ni offre ne s'affichent.
+    @Default<False> var salesOpen: Bool
 }
 
 struct BillingResponse: Codable, Sendable {

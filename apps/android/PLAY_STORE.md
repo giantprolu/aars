@@ -179,6 +179,12 @@ Deux façons de payer (décision du 05/10/2026), les mêmes que sur iPhone :
   (`KITCHEN_PLUS_ON_SALE`, `apps/web/src/lib/premium.ts`) : l'offre s'affiche
   dès que le produit existe dans la Play Console.
 
+**Vente fermée pour l'instant** (`SALES_OPEN = false`, même fichier,
+décision du 05/10/2026) : tant que l'éditeur n'est pas immatriculé, l'app ne
+montre ni Abonnement ni offre, et tout ce que les achats ouvrent l'est pour
+tous, sans limite gratuite. Passer la valeur à `true` et déployer rouvre la
+vente, rien d'autre à changer.
+
 L'écran d'achat (Moi › Abonnement, ou toute limite gratuite atteinte) passe
 par Google Play Billing 9 (`data/Purchases.kt`) : l'achat porte l'`accountRef`
 du compte (`setObfuscatedAccountId`), l'app n'en confirme aucun elle-même, et

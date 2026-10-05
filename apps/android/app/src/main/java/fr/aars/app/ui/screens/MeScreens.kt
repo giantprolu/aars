@@ -274,15 +274,17 @@ fun MeScreen(
                         Icon(R.drawable.lucide_chevron_right, 16.dp, Neutrals.faint)
                     }
                 }
-                SettingDivider()
-                SettingRow(R.drawable.lucide_star, "Abonnement", onClick = onPremium) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (model.purchases.premium) {
-                            Badge("Premium", Domains.nutrition.fill, Domains.nutrition.textOnFill)
-                        } else {
-                            Badge("Gratuit", Neutrals.chip, Neutrals.muted)
+                if (model.purchases.salesOpen) {
+                    SettingDivider()
+                    SettingRow(R.drawable.lucide_star, "Abonnement", onClick = onPremium) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (model.purchases.premium) {
+                                Badge("Premium", Domains.nutrition.fill, Domains.nutrition.textOnFill)
+                            } else {
+                                Badge("Gratuit", Neutrals.chip, Neutrals.muted)
+                            }
+                            Icon(R.drawable.lucide_chevron_right, 16.dp, Neutrals.faint)
                         }
-                        Icon(R.drawable.lucide_chevron_right, 16.dp, Neutrals.faint)
                     }
                 }
                 SettingDivider()

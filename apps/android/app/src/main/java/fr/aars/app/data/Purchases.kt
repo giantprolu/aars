@@ -50,6 +50,9 @@ class PurchaseStore(
 
     val premium: Boolean get() = billing?.premium == true
 
+    /** La vente ouverte par le serveur : sans elle, la ligne Abonnement disparaît de Moi. */
+    val salesOpen: Boolean get() = billing?.products?.salesOpen == true
+
     /** Cuisine+ ne se montre que si le serveur la met en vente et que Google la connaît. */
     val kitchenPlusOffer: ProductDetails?
         get() = if (billing?.products?.kitchenPlusOnSale == true && billing?.kitchenPlus != true) kitchenPlus else null

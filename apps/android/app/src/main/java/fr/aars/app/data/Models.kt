@@ -734,6 +734,8 @@ data class BillingProducts(
     val subscription: Map<String, String> = emptyMap(),
     val kitchenPlus: String? = null,
     val kitchenPlusOnSale: Boolean = false,
+    /** Faux : rien n'est en vente, ni abonnement ni offre ne s'affichent. */
+    val salesOpen: Boolean = false,
 )
 
 @Serializable
