@@ -108,8 +108,16 @@ dans l'app Santé (Parcourir › Activité › Énergie en activité). Sur un
 iPhone, l'équipe de signature doit accepter la capacité HealthKit : Xcode le
 signale à la signature si ce n'est pas le cas.
 
+## Achats
+
+L'abonnement mensuel (et Cuisine+ quand elle sera en vente) s'achète dans
+Moi › Abonnement, ou s'ouvre de lui-même dès qu'une action bute sur une
+limite gratuite. StoreKit 2, transaction rattachée au compte par le serveur
+avant d'être terminée (`Data/PurchaseStore.swift`). Pour essayer sans App
+Store Connect : le fichier `Config/NutriPerso.storekit`, à choisir dans le
+schéma (voir `APP_STORE.md`, *Achat intégré*).
+
 ## Publication
 
 Voir `APP_STORE.md` : signature, envoi, fiche, examen, étiquettes de
-confidentialité, et le point encore à trancher avant le premier envoi :
-l'abonnement.
+confidentialité et achat intégré.

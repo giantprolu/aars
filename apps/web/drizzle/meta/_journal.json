@@ -162,6 +162,13 @@
       "when": 1791146927103,
       "tag": "0022_social_safety",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791184519050,
+      "tag": "0023_store_purchases",
+      "breakpoints": true
     }
   ]
 }

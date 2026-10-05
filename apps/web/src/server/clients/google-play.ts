@@ -1,6 +1,6 @@
 import 'server-only';
 import { z } from 'zod';
-import { parseStoreState, type StoreState } from '@/lib/premium';
+import { googlePurchaseState, parseStoreState, type PurchaseState, type StoreState } from '@/lib/premium';
 import { env, requireEnv } from '../env';
 
 /**
@@ -198,6 +198,82 @@ export async function acknowledgeSubscription(
     const token = await accessToken();
     const response = await fetch(
       `${API}/${encodeURIComponent(env.googlePlayPackageName)}/purchases/subscriptions/${encodeURIComponent(productId)}/tokens/${encodeURIComponent(purchaseToken)}:acknowledge`,
+      {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+        body: '{}',
+      },
+    );
+    if (!response.ok) {
+      console.error(`[billing] accuse de reception refuse : HTTP ${response.status}`);
+    }
+    return response.ok;
+  } catch (error) {
+    console.error('[billing] accuse de reception impossible :', error instanceof Error ? error.message : error);
+    return false;
+  }
+}
+
+/** Un achat unique (Cuisine+), dans les termes du serveur. */
+export interface StoreOneTime {
+  productId: string;
+  state: PurchaseState;
+  acknowledged: boolean;
+  accountRef: string | null;
+}
+
+const productSchema = z.object({
+  purchaseState: z.number().optional(),
+  acknowledgementState: z.number().optional(),
+  obfuscatedExternalAccountId: z.string().optional(),
+});
+
+/** L'état d'un achat unique, tel que Google le connaît. */
+export async function lookupProduct(
+  productId: string,
+  purchaseToken: string,
+): Promise<{ kind: 'found'; purchase: StoreOneTime } | { kind: 'not_found' } | { kind: 'unavailable' }> {
+  let response: Response;
+  try {
+    const token = await accessToken();
+    response = await fetch(
+      `${API}/${encodeURIComponent(env.googlePlayPackageName)}/purchases/products/${encodeURIComponent(productId)}/tokens/${encodeURIComponent(purchaseToken)}`,
+      { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(TIMEOUT_MS) },
+    );
+  } catch (error) {
+    console.error('[billing] lecture Google impossible :', error instanceof Error ? error.message : error);
+    return { kind: 'unavailable' };
+  }
+  if (response.status === 404 || response.status === 400 || response.status === 410) {
+    return { kind: 'not_found' };
+  }
+  if (!response.ok) {
+    console.error(`[billing] lecture Google refusee : HTTP ${response.status}`);
+    return { kind: 'unavailable' };
+  }
+  const parsed = productSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    console.error('[billing] reponse Google inattendue (achat unique)');
+    return { kind: 'unavailable' };
+  }
+  return {
+    kind: 'found',
+    purchase: {
+      productId,
+      state: googlePurchaseState(parsed.data.purchaseState),
+      acknowledged: parsed.data.acknowledgementState === 1,
+      accountRef: parsed.data.obfuscatedExternalAccountId ?? null,
+    },
+  };
+}
+
+/** Accuse réception d'un achat unique : même obligation que pour l'abonnement. */
+export async function acknowledgeProduct(productId: string, purchaseToken: string): Promise<boolean> {
+  try {
+    const token = await accessToken();
+    const response = await fetch(
+      `${API}/${encodeURIComponent(env.googlePlayPackageName)}/purchases/products/${encodeURIComponent(productId)}/tokens/${encodeURIComponent(purchaseToken)}:acknowledge`,
       {
         method: 'POST',
         headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },

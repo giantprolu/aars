@@ -1,25 +1,22 @@
 import { z } from 'zod';
 import { apiError } from '@/server/errors';
 import { currentUserId } from '@/server/guard';
-import { verifyGooglePurchase } from '@/server/services/premium';
+import { verifyAppleTransaction } from '@/server/services/premium';
 
 export const runtime = 'nodejs';
 
 const bodySchema = z.object({
-  // Les jetons Google font quelques centaines de caractères ; la borne évite
-  // seulement qu'un corps démesuré parte vers l'API de Google.
-  purchaseToken: z.string().min(10).max(4096),
-  /** Absent pour l'abonnement ; `nutriperso_cuisine_plus` pour l'achat unique. */
-  productId: z.string().max(100).nullish(),
+  // Un identifiant de transaction App Store : des chiffres.
+  transactionId: z.string().regex(/^\d{1,40}$/),
 });
 
 /**
- * Rattache un achat Google Play au compte (abonnement).
+ * Rattache un achat App Store au compte : l'abonnement mensuel ou Cuisine+.
  *
- * L'app l'appelle après chaque achat et à chaque démarrage pour les achats en
- * attente. Le serveur ne croit pas le téléphone : il fait lire le jeton à
- * Google, puis confirme l'achat, faute de quoi Google le rembourserait sous
- * trois jours.
+ * L'app l'appelle après chaque achat, à chaque transaction reçue au démarrage
+ * (renouvellement, achat fait sur un autre appareil) et à la restauration. Le
+ * serveur ne croit pas le téléphone : il fait relire la transaction à Apple.
+ * L'app ne termine la transaction qu'après cette réponse.
  */
 export async function POST(request: Request): Promise<Response> {
   const userId = await currentUserId();
@@ -38,7 +35,7 @@ export async function POST(request: Request): Promise<Response> {
     return apiError('invalid_input');
   }
 
-  const result = await verifyGooglePurchase(userId, parsed.data.purchaseToken, parsed.data.productId ?? null);
+  const result = await verifyAppleTransaction(userId, parsed.data.transactionId);
   switch (result.kind) {
     case 'invalid':
       return apiError('purchase_invalid');

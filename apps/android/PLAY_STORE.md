@@ -134,7 +134,7 @@ agissant pour notre compte ne comptent pas comme un partage).
 | Santé et remise en forme | Informations sur la remise en forme (séances, énergie active) | Oui | Non | Fonctionnalités de l'app |
 | Activité dans l'app | Autre contenu généré (recettes, listes de courses, signalements et leur note) | Oui | Non | Fonctionnalités de l'app, sécurité et conformité (modération) |
 | Activité dans l'app | Interactions avec l'appli (compteurs par jour : ouvertures, repas ajoutés et leur moyen de saisie, limites gratuites atteintes) | Oui | Oui | Analyses |
-| Infos financières | Historique des achats (offre, état, échéance de l'abonnement) | Oui | Non | Fonctionnalités de l'app, gestion du compte |
+| Infos financières | Historique des achats (offre, état, échéance de l'abonnement ou de l'achat unique Cuisine+) | Oui | Non | Fonctionnalités de l'app, gestion du compte |
 
 Photos : l'app Android n'envoie pas encore de photo d'assiette (le scanner
 lit le code-barres sur le téléphone, sans rien envoyer). Le jour où
@@ -164,11 +164,24 @@ deux intentions exigées (`ACTION_SHOW_PERMISSIONS_RATIONALE`,
 ## Abonnement (freemium)
 
 Le serveur décide seul de qui est abonné : l'app envoie le jeton d'achat à
-`POST /api/billing/google`, le serveur le fait lire à Google, puis confirme
-l'achat (sans confirmation sous trois jours, Google rembourse). Gratuit pour
-toujours : le journal, l'export et la suppression du compte. Payant : recettes
-et favoris au-delà de 10, puis le plan automatique, l'import de recette et le
-sport adaptatif.
+`POST /api/billing/google` (avec `productId` pour un achat unique), le serveur
+le fait lire à Google, puis confirme l'achat (sans confirmation sous trois
+jours, Google rembourse). Gratuit pour toujours : le journal, l'export et la
+suppression du compte.
+
+Deux façons de payer (décision du 05/10/2026), les mêmes que sur iPhone :
+
+- l'abonnement mensuel `nutriperso_premium`, qui ouvre tout : recettes et
+  favoris au-delà de 10, et Cuisine+ ;
+- l'achat unique `nutriperso_cuisine_plus` (produit intégré, non
+  consommable) : le plan automatique et l'import de recette, à vie. À créer
+  seulement quand ces deux fonctions existeront : `KITCHEN_PLUS_ON_SALE`
+  (`apps/web/src/lib/premium.ts`) le met alors en vente dans les apps.
+
+**L'app Android n'a pas encore d'écran d'achat** (Google Play Billing) : le
+serveur est prêt, le client reste à écrire, sur le modèle de
+`apps/ios/NutriPerso/Data/PurchaseStore.swift`. Les notifications Pub/Sub
+relisent aussi les achats uniques (`oneTimeProductNotification`).
 
 1. **Profil de paiement** : Play Console › *Paramètres* › *Profil de
    paiement*, avec le SIRET. Sans lui, aucun produit payant ne se crée.

@@ -24,6 +24,7 @@ struct MeScreen: View {
     let onWeigh: () -> Void
     let onAccount: () -> Void
     let onHealth: () -> Void
+    let onPremium: () -> Void
 
     @State private var me = Loaded<MeResponse>()
     @State private var reload = 0
@@ -59,7 +60,10 @@ struct MeScreen: View {
                 settings(data)
             }
         }
-        .task(id: "\(model.revision)-\(reload)") { me.take(await model.api.me()) }
+        .task(id: "\(model.revision)-\(reload)") {
+            me.take(await model.api.me())
+            await model.purchases.load(model.api)
+        }
         .task(id: scenePhase) {
             reminderOn = model.reminders.enabled
             notificationsAllowed = await model.reminders.allowed()
@@ -191,6 +195,17 @@ struct MeScreen: View {
                     case "active": Badge(text: "Actif", background: training.soft, foreground: training.textOnLight)
                     case "pending": Badge(text: "En attente", background: Neutrals.chip, foreground: Neutrals.muted)
                     default: Badge(text: "Inactif", background: Neutrals.chip, foreground: Neutrals.muted)
+                    }
+                    LucideIcon(.chevronRight, 16, Neutrals.faint)
+                }
+            }
+            Hairline()
+            SettingRow(icon: .star, label: "Abonnement", action: onPremium) {
+                HStack(spacing: 8) {
+                    if model.purchases.premium {
+                        Badge(text: "Premium", background: Domains.nutrition.fill, foreground: Domains.nutrition.textOnFill)
+                    } else {
+                        Badge(text: "Gratuit", background: Neutrals.chip, foreground: Neutrals.muted)
                     }
                     LucideIcon(.chevronRight, 16, Neutrals.faint)
                 }

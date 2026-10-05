@@ -33,7 +33,7 @@ export default function PrivacyPage() {
         <li>Communauté : pseudonyme, nom affiché, abonnements, les séances que tu choisis de partager, les comptes que tu bloques et les signalements que tu fais (motif, note facultative). Un signalement est lu par l&apos;équipe qui modère, qui peut rendre une séance privée ou supprimer un compte qui enfreint les règles ; la personne signalée ne sait pas qui l&apos;a signalée.</li>
         <li>Notifications : l&apos;adresse d&apos;abonnement du navigateur si tu actives le rappel du déjeuner sur le web. Sur Android et iPhone, le rappel est programmé sur le téléphone : rien n&apos;est envoyé au serveur ni conservé par lui.</li>
         <li>Mesure d&apos;usage : pour chaque jour, combien de fois tu as ouvert l&apos;accueil, ajouté un repas (et par quel moyen : recherche, scan, favori…), enregistré ton profil, synchronisé ta dépense ou atteint une limite de la version gratuite. Rien sur ce que tu manges. Ces compteurs servent seulement à savoir ce qui est utilisé et ce qui ne l&apos;est pas, restent dans notre base (aucun outil d&apos;analyse externe), et sont effacés au bout de treize mois.</li>
-        <li>Abonnement, si tu en prends un : l&apos;offre choisie, son état, sa date d&apos;échéance et le jeton d&apos;achat de Google Play. Aucune donnée de paiement : la carte et l&apos;adresse de facturation restent chez Google.</li>
+        <li>Abonnement et achats, si tu en fais : l&apos;offre choisie (abonnement mensuel ou achat unique), son état, sa date d&apos;échéance et la référence d&apos;achat de Google Play ou de l&apos;App Store. Aucune donnée de paiement : la carte et l&apos;adresse de facturation restent chez Google ou chez Apple.</li>
       </ul>
 
       <h2>Health Connect</h2>
@@ -73,7 +73,8 @@ export default function PrivacyPage() {
         <li>Neon (base de données Postgres).</li>
         <li>Mistral AI ou Google (reconnaissance d&apos;une photo d&apos;assiette, seulement quand tu en envoies une).</li>
         <li>Resend (envoi du courriel de réinitialisation du mot de passe, si tu le demandes, et de l&apos;alerte qui prévient l&apos;équipe d&apos;un signalement : identifiants publics, motif et note, jamais d&apos;adresse).</li>
-        <li>Google (Google Play encaisse l&apos;abonnement ; le serveur lui demande l&apos;état d&apos;un achat à partir de son jeton, avec un identifiant de compte opaque qui ne contient ni ton adresse ni ton nom).</li>
+        <li>Google (Google Play encaisse l&apos;abonnement et les achats sur Android ; le serveur lui demande l&apos;état d&apos;un achat à partir de son jeton, avec un identifiant de compte opaque qui ne contient ni ton adresse ni ton nom).</li>
+        <li>Apple (l&apos;App Store encaisse l&apos;abonnement et les achats sur iPhone ; le serveur lui demande l&apos;état d&apos;un achat à partir de sa référence, avec un identifiant de compte opaque, sans ton adresse ni ton nom).</li>
         <li>Open Food Facts reçoit seulement le code-barres d&apos;un produit, jamais ton identité.</li>
       </ul>
 

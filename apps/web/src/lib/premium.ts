@@ -61,3 +61,98 @@ export function grantsPremium(state: StoreState, expiresAt: Date | null, now: Da
 export function underFreeLimit(count: number, limit: number): boolean {
   return count < limit;
 }
+
+/*
+ * Catalogue des produits (décision du 05/10/2026) : un abonnement mensuel qui
+ * ouvre tout, et un achat unique, Cuisine+, qui ouvre à vie le plan
+ * automatique de la semaine et l'import de recette. Les identifiants sont
+ * ceux des magasins : à créer à l'identique dans la Play Console et App Store
+ * Connect.
+ */
+
+export const STORES = ['google_play', 'app_store'] as const;
+
+export type Store = (typeof STORES)[number];
+
+/** L'abonnement mensuel. Google range les durées en forfaits d'un même produit, Apple en produits distincts. */
+export const SUBSCRIPTION_PRODUCTS: Record<Store, string> = {
+  google_play: 'nutriperso_premium',
+  app_store: 'nutriperso_premium_mensuel',
+};
+
+/** Cuisine+ : le même identifiant dans les deux magasins. */
+export const KITCHEN_PLUS_PRODUCT = 'nutriperso_cuisine_plus';
+
+/**
+ * Cuisine+ n'est en vente qu'une fois ses deux fonctions écrites : vendre une
+ * fonction absente serait refusé à l'examen, et trompeur. Les apps lisent ce
+ * drapeau dans `GET /api/billing` et n'affichent pas l'offre tant qu'il est
+ * faux.
+ */
+export const KITCHEN_PLUS_ON_SALE = false;
+
+/** États d'un achat unique, dans les termes du serveur. */
+export const PURCHASE_STATES = ['purchased', 'pending', 'refunded'] as const;
+
+export type PurchaseState = (typeof PURCHASE_STATES)[number];
+
+export function parsePurchaseState(raw: string | undefined): PurchaseState {
+  return (PURCHASE_STATES as readonly string[]).includes(raw ?? '') ? (raw as PurchaseState) : 'pending';
+}
+
+/** Un achat unique ouvre son droit tant qu'il est payé et pas remboursé. */
+export function grantsPurchase(state: PurchaseState): boolean {
+  return state === 'purchased';
+}
+
+/**
+ * Google Play, `purchases.products` : 0 acheté, 1 annulé (remboursé ou
+ * révoqué), 2 en attente de paiement.
+ */
+export function googlePurchaseState(purchaseState: number | undefined): PurchaseState {
+  if (purchaseState === 0) return 'purchased';
+  if (purchaseState === 1) return 'refunded';
+  return 'pending';
+}
+
+/**
+ * L'état d'un abonnement App Store, ramené aux états Google que le serveur
+ * connaît déjà. Statuts de l'App Store Server API : 1 actif, 2 expiré,
+ * 3 nouvel essai de facturation (plus d'accès), 4 délai de grâce (accès),
+ * 5 révoqué. Un abonnement actif dont le renouvellement est coupé est
+ * « résilié » : payé jusqu'à l'échéance.
+ */
+export function appleSubscriptionState(status: number, autoRenewing: boolean): StoreState {
+  switch (status) {
+    case 1:
+      return autoRenewing ? 'active' : 'canceled';
+    case 3:
+      return 'on_hold';
+    case 4:
+      return 'in_grace_period';
+    case 2:
+    case 5:
+      return 'expired';
+    default:
+      return 'unspecified';
+  }
+}
+
+/** Les droits d'un compte. L'abonnement ouvre tout, Cuisine+ comprise. */
+export interface Entitlements {
+  premium: boolean;
+  kitchenPlus: boolean;
+}
+
+export function entitlementsFrom(premium: boolean, ownsKitchenPlus: boolean): Entitlements {
+  return { premium, kitchenPlus: premium || ownsKitchenPlus };
+}
+
+/**
+ * Un UUID tiré d'une empreinte hexadécimale : l'`appAccountToken` que l'app
+ * passe à l'App Store au moment de l'achat, qui exige ce format.
+ */
+export function uuidFromHex(hex: string): string {
+  const h = hex.toLowerCase().replace(/[^0-9a-f]/g, '').padEnd(32, '0').slice(0, 32);
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
+}

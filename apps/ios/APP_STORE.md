@@ -73,7 +73,9 @@ qui donne l'adresse `LEGAL_CONTACT_EMAIL`. **URL de confidentialité** :
   Moi › Santé. Suppression du compte : Moi › Compte et données.
   Communauté : on ne voit que les personnes qu'on suit, avec leur accord.
   « … » sur une séance du fil ou une personne permet de la signaler ou de la
-  bloquer ; les signalements sont traités sous 24 heures. »
+  bloquer ; les signalements sont traités sous 24 heures.
+  Abonnement : Moi › Abonnement, ou dès qu'on dépasse 10 recettes ou
+  10 favoris. »
 - **Classification par âge** : répondre au questionnaire. Contenu généré par
   les utilisateurs : oui (Communauté : noms de séances et identifiants vus par
   les abonnés acceptés). Viser au moins 16 ans, comme la politique.
@@ -95,22 +97,65 @@ marche pas.
 | Contenu utilisateur | Autre contenu | recettes, plans, listes de courses, signalements et leur note | Fonctionnalités de l'app |
 | Données d'utilisation | Interactions avec le produit | compteurs par jour (ouvertures, repas ajoutés et leur moyen, limites atteintes), effacés après treize mois | Analyses |
 | Autres données | Autres types de données | date de naissance, sexe (calcul de la cible) | Fonctionnalités de l'app |
+| Achats | Historique des achats | abonnement ou Cuisine+ : offre, état, échéance | Fonctionnalités de l'app |
 
 Non collectés : position, contacts, historique de recherche ou de navigation
 (une recherche d'aliment n'est pas conservée), photos (le scanner lit le
-code-barres sur le téléphone et n'envoie que le nombre), achats, diagnostics
-et plantages, identifiants publicitaires.
+code-barres sur le téléphone et n'envoie que le nombre), informations de
+paiement (elles restent chez Apple), diagnostics et plantages, identifiants
+publicitaires.
+
+## Achat intégré
+
+Deux façons de payer (décision du 05/10/2026), les mêmes que sur Android :
+
+| Produit | Type App Store | Ce qu'il ouvre |
+|---|---|---|
+| `nutriperso_premium_mensuel` | abonnement renouvelable, 1 mois, groupe « NutriPerso Premium » | tout : recettes et favoris au-delà de 10, et Cuisine+ |
+| `nutriperso_cuisine_plus` | non consommable | le plan automatique et l'import de recette, à vie |
+
+Cuisine+ n'est à créer qu'une fois ces deux fonctions écrites :
+`KITCHEN_PLUS_ON_SALE` (`apps/web/src/lib/premium.ts`) la met alors en vente
+dans l'app. Les prix se règlent dans App Store Connect, pas dans le code.
+
+Comment ça marche : l'app achète avec StoreKit 2 en passant
+l'`appAccountToken` du compte, envoie l'identifiant de transaction à
+`POST /api/billing/apple`, et ne termine la transaction qu'une fois le serveur
+d'accord. Le serveur relit la transaction chez Apple (production, puis bac à
+sable pour TestFlight et l'examen), vérifie l'app et le compte, et range
+l'achat. Les renouvellements, expirations et remboursements arrivent par les
+notifications App Store Server.
+
+Dans App Store Connect, dans l'ordre :
+
+1. **Accords, taxes et banque** : signer l'accord des apps payantes et
+   renseigner le compte bancaire. Sans lui, aucun achat ne se vend.
+2. **Produits** : *Abonnements* › groupe « NutriPerso Premium » › produit
+   `nutriperso_premium_mensuel`, durée 1 mois, prix, nom et description en
+   français, capture de l'écran Premium pour l'examen.
+3. **Clé d'API** : *Utilisateurs et accès* › *Intégrations* › *Achat
+   intégré* › générer une clé. Dans Vercel : `APPLE_IAP_KEY_ID`,
+   `APPLE_IAP_ISSUER_ID`, `APPLE_IAP_PRIVATE_KEY` (le contenu du `.p8`,
+   sensible) ; `APPLE_BUNDLE_ID` seulement s'il diffère de
+   `fr.nutriperso.app`.
+4. **Notifications** : *App* › *Informations sur l'app* › *Notifications du
+   serveur App Store*, version 2, production et bac à sable :
+   `https://nutri-rosy-one.vercel.app/api/billing/apple/notify?secret=<APPLE_NOTIFY_SECRET>`,
+   avec `APPLE_NOTIFY_SECRET` (32 caractères aléatoires) dans Vercel.
+5. **Base** : `npm run db:migrate` pour `store_purchases` (migration 0023).
+6. **Essai** : en local, Xcode › *Product* › *Scheme* › *Edit Scheme…* ›
+   *Run* › *Options* › *StoreKit Configuration* › `Config/NutriPerso.storekit`
+   (prix fictifs). Un achat local n'est pas connu d'Apple : le serveur le
+   refuse, c'est normal. Pour le circuit complet, un testeur bac à sable et
+   TestFlight.
 
 ## Points ouverts, à trancher avant l'envoi
 
-1. **Abonnement** : l'app iOS n'a pas d'achat intégré. Le serveur applique les
-   limites gratuites (10 recettes, 10 favoris, réponse « Réservé aux
-   abonnés. ») sans renvoyer vers un achat ailleurs, ce qui reste conforme. Mais
-   un abonné Google Play qui se connecte sur iPhone y retrouve ses avantages :
-   la règle 3.1.3 (b) d'Apple ne l'admet que si l'abonnement s'achète aussi
-   dans l'app iOS. Soit ajouter StoreKit et une vérification serveur
-   (`POST /api/billing/apple`, comme `billing/google`), soit publier sans
-   avantages hors iOS.
+1. ~~**Abonnement**~~ (règle 3.1.3 b) : réglé. L'abonnement s'achète dans
+   l'app iOS (voir *Achat intégré*), un abonnement pris sur Android y est donc
+   admis. L'écran Premium porte les mentions qu'Apple demande : prix et
+   durée, renouvellement et résiliation, conditions d'utilisation (celles
+   d'Apple), confidentialité, restauration et gestion de l'abonnement.
 2. ~~**Contenu généré par les utilisateurs** (règle 1.2)~~ : réglé.
    - Filtrer : on ne voit que ceux qu'on suit, et suivre s'accepte.
    - Signaler : « … » sur une séance du fil ou une personne, avec un motif

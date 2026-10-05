@@ -855,6 +855,35 @@ struct RecipeCreateBody: Codable, Sendable {
     let ingredients: [IngredientBody]
 }
 
+// MARK: Achats.
+
+struct BillingProducts: Codable, Sendable {
+    /// L'abonnement mensuel, par magasin : `app_store` pour l'iPhone.
+    let subscription: [String: String]
+    let kitchenPlus: String
+    /// Cuisine+ n'est proposée qu'une fois ses fonctions écrites.
+    @Default<False> var kitchenPlusOnSale: Bool
+}
+
+struct BillingResponse: Codable, Sendable {
+    let premium: Bool
+    @Default<False> var kitchenPlus: Bool
+    let expiresAt: String?
+    /// À passer à l'App Store au moment de l'achat : il lie l'achat au compte.
+    let appAccountToken: String?
+    let products: BillingProducts?
+}
+
+struct BillingStatus: Codable, Sendable {
+    let premium: Bool
+    @Default<False> var kitchenPlus: Bool
+    let expiresAt: String?
+}
+
+struct AppleTransactionBody: Codable, Sendable {
+    let transactionId: String
+}
+
 // MARK: Compte.
 
 struct RecoverBody: Codable, Sendable {

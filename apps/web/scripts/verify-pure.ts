@@ -13,7 +13,18 @@ import {
 } from '../src/lib/date';
 import { buildQuantityShortcuts } from '../src/lib/shortcuts';
 import { parseItems } from '../src/lib/vision-parse';
-import { FREE_RECIPE_LIMIT, grantsPremium, parseStoreState, underFreeLimit } from '../src/lib/premium';
+import {
+  FREE_RECIPE_LIMIT,
+  appleSubscriptionState,
+  entitlementsFrom,
+  googlePurchaseState,
+  grantsPremium,
+  grantsPurchase,
+  parsePurchaseState,
+  parseStoreState,
+  underFreeLimit,
+  uuidFromHex,
+} from '../src/lib/premium';
 import { isValidBarcode } from '../src/lib/client/scanner';
 import { mapColumns, parseNutrient, isCompleteRow, normalizeHeader } from './ciqual-parse';
 import {
@@ -245,6 +256,29 @@ assert.equal(grantsPremium('active', null, billingNow), false, 'sans echeance');
 assert.equal(grantsPremium('on_hold', nextMonth, billingNow), false, 'suspendu');
 assert.equal(grantsPremium('pending', nextMonth, billingNow), false, 'paiement en attente');
 assert.equal(grantsPremium('expired', nextMonth, billingNow), false, 'expire');
+// Achats uniques et App Store (05/10/2026).
+assert.equal(googlePurchaseState(0), 'purchased', 'Google : achete');
+assert.equal(googlePurchaseState(1), 'refunded', 'Google : annule');
+assert.equal(googlePurchaseState(2), 'pending', 'Google : en attente');
+assert.equal(googlePurchaseState(undefined), 'pending', 'Google : inconnu');
+assert.equal(grantsPurchase('purchased'), true, 'achat paye');
+assert.equal(grantsPurchase('refunded'), false, 'achat rembourse');
+assert.equal(grantsPurchase('pending'), false, 'achat en attente');
+assert.equal(parsePurchaseState('refunded'), 'refunded', 'etat lu');
+assert.equal(parsePurchaseState('nimporte'), 'pending', 'etat inconnu');
+assert.equal(appleSubscriptionState(1, true), 'active', 'Apple : actif');
+assert.equal(appleSubscriptionState(1, false), 'canceled', 'Apple : actif sans renouvellement');
+assert.equal(appleSubscriptionState(3, true), 'on_hold', 'Apple : nouvel essai de facturation');
+assert.equal(appleSubscriptionState(4, true), 'in_grace_period', 'Apple : delai de grace');
+assert.equal(appleSubscriptionState(2, false), 'expired', 'Apple : expire');
+assert.equal(appleSubscriptionState(5, false), 'expired', 'Apple : revoque');
+assert.equal(grantsPremium(appleSubscriptionState(1, false), nextMonth, billingNow), true, 'Apple resilie : paye jusqu a l echeance');
+assert.equal(grantsPremium(appleSubscriptionState(3, true), nextMonth, billingNow), false, 'Apple facturation en echec : plus d acces');
+assert.deepEqual(entitlementsFrom(true, false), { premium: true, kitchenPlus: true }, 'l abonnement ouvre Cuisine+');
+assert.deepEqual(entitlementsFrom(false, true), { premium: false, kitchenPlus: true }, 'Cuisine+ seule');
+assert.deepEqual(entitlementsFrom(false, false), { premium: false, kitchenPlus: false }, 'gratuit');
+assert.match(uuidFromHex('a'.repeat(64)), /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, 'UUID bien forme');
+assert.equal(uuidFromHex('0123456789abcdef0123456789abcdefFFFF'), '01234567-89ab-cdef-0123-456789abcdef', 'UUID tire de l empreinte');
 assert.equal(underFreeLimit(FREE_RECIPE_LIMIT - 1, FREE_RECIPE_LIMIT), true, 'une place gratuite');
 assert.equal(underFreeLimit(FREE_RECIPE_LIMIT, FREE_RECIPE_LIMIT), false, 'limite atteinte');
 

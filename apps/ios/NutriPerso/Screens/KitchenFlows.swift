@@ -366,6 +366,7 @@ struct RecipeEditorScreen: View {
                 onClose()
             case .failure(let failure):
                 error = failure.message
+                if failure.code == "premium_required" { model.paywallRequested = true }
             }
             busy = false
         }

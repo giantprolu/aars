@@ -17,6 +17,7 @@ import {
 import { sql } from 'drizzle-orm';
 import { USAGE_EVENTS } from '../../lib/usage';
 import { REPORT_REASONS } from '../../lib/social';
+import { PURCHASE_STATES, STORES } from '../../lib/premium';
 import type { CatalogIngredient } from '../../lib/meal-catalog';
 
 /**
@@ -1273,15 +1274,16 @@ export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
 /**
  * Les abonnements achetés dans un magasin d'applications, un par achat.
  *
- * Le jeton d'achat est unique : c'est l'identité de l'achat chez Google, et
- * le premier compte qui le présente le garde. Un même jeton envoyé depuis un
- * autre compte est refusé, sans quoi un abonnement se partagerait en se
+ * Le jeton d'achat est unique : c'est l'identité de l'achat chez Google (le
+ * jeton d'achat) ou chez Apple (l'identifiant de la transaction d'origine),
+ * et le premier compte qui le présente le garde. Un même jeton envoyé depuis
+ * un autre compte est refusé, sans quoi un abonnement se partagerait en se
  * passant le jeton.
  *
- * L'état et l'échéance sont recopiés depuis Google, jamais depuis le
- * téléphone : chaque écriture suit une lecture de l'API Google Play
- * Developer. La ligne survit à l'expiration, elle sert de trace et permet de
- * reconnaître un renouvellement.
+ * L'état et l'échéance sont recopiés depuis le magasin, jamais depuis le
+ * téléphone : chaque écriture suit une lecture de l'API Google Play Developer
+ * ou de l'App Store Server API. La ligne survit à l'expiration, elle sert de
+ * trace et permet de reconnaître un renouvellement.
  */
 export const storeSubscriptions = pgTable(
   'store_subscriptions',
@@ -1290,7 +1292,7 @@ export const storeSubscriptions = pgTable(
     userId: bigint('user_id', { mode: 'number' })
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    /** `google_play` seulement pour l'instant ; l'App Store viendra. */
+    /** `Store`, voir `@/lib/premium`. */
     store: text('store').notNull().default('google_play'),
     productId: text('product_id').notNull(),
     purchaseToken: text('purchase_token').notNull().unique(),
@@ -1304,11 +1306,54 @@ export const storeSubscriptions = pgTable(
   },
   (table) => [
     index('store_subscriptions_user_idx').on(table.userId, table.expiresAt),
-    check('store_subscriptions_store_check', sql`${table.store} in ('google_play')`),
+    check(
+      'store_subscriptions_store_check',
+      sql`${table.store} in (${sql.raw(STORES.map((store) => `'${store}'`).join(', '))})`,
+    ),
   ],
 );
 
 export type StoreSubscriptionRow = typeof storeSubscriptions.$inferSelect;
+
+/**
+ * Les achats uniques (Cuisine+, décision du 05/10/2026), un par achat.
+ *
+ * Mêmes règles que les abonnements : la référence d'achat est unique et le
+ * premier compte qui la présente la garde ; l'état est recopié depuis le
+ * magasin. Un remboursement passe l'état à `refunded`, ce qui retire le droit
+ * sans effacer la trace.
+ */
+export const storePurchases = pgTable(
+  'store_purchases',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    userId: bigint('user_id', { mode: 'number' })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** `Store`, voir `@/lib/premium`. */
+    store: text('store').notNull(),
+    productId: text('product_id').notNull(),
+    purchaseToken: text('purchase_token').notNull().unique(),
+    /** `PurchaseState`, voir `@/lib/premium`. */
+    state: text('state').notNull(),
+    acknowledged: boolean('acknowledged').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('store_purchases_user_idx').on(table.userId),
+    check(
+      'store_purchases_store_check',
+      sql`${table.store} in (${sql.raw(STORES.map((store) => `'${store}'`).join(', '))})`,
+    ),
+    check(
+      'store_purchases_state_check',
+      sql`${table.state} in (${sql.raw(PURCHASE_STATES.map((state) => `'${state}'`).join(', '))})`,
+    ),
+  ],
+);
+
+export type StorePurchaseRow = typeof storePurchases.$inferSelect;
 
 /**
  * Mesure d'usage (étape « mesurer », 01/10/2026). Une ligne par compte, par

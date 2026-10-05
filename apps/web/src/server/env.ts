@@ -82,6 +82,18 @@ const schema = z.object({
   GOOGLE_PLAY_PACKAGE_NAME: z.string().min(1).default('fr.nutriperso.app'),
   GOOGLE_PLAY_SERVICE_ACCOUNT: z.string().min(1).optional(),
   GOOGLE_PLAY_RTDN_SECRET: z.string().min(16).optional(),
+  /**
+   * App Store (achat intégré iOS, 05/10/2026). La clé « In-App Purchase »
+   * d'App Store Connect (Utilisateurs et accès › Intégrations) : son
+   * identifiant, celui de l'émetteur, et le contenu du fichier `.p8`. Sans
+   * elles, aucun achat iOS n'est rattaché, et l'app reste gratuite sur iPhone
+   * comme ailleurs. Le secret protège l'URL des notifications App Store.
+   */
+  APPLE_BUNDLE_ID: z.string().min(1).default('fr.nutriperso.app'),
+  APPLE_IAP_ISSUER_ID: z.string().min(1).optional(),
+  APPLE_IAP_KEY_ID: z.string().min(1).optional(),
+  APPLE_IAP_PRIVATE_KEY: z.string().min(1).optional(),
+  APPLE_NOTIFY_SECRET: z.string().min(16).optional(),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   OFF_USER_AGENT: z
     .string()
@@ -179,6 +191,12 @@ export const env = {
   get googlePlayRtdnSecret(): string | undefined {
     return read().GOOGLE_PLAY_RTDN_SECRET;
   },
+  get appleBundleId(): string {
+    return read().APPLE_BUNDLE_ID;
+  },
+  get appleNotifySecret(): string | undefined {
+    return read().APPLE_NOTIFY_SECRET;
+  },
   /** Vrai sur Vercel, faux sous `next dev`. Sert aux attributs du cookie. */
   get isProduction(): boolean {
     return read().NODE_ENV === 'production';
@@ -195,7 +213,10 @@ export function requireEnv(
     | 'SESSION_SECRET'
     | 'MISTRAL_API_KEY'
     | 'GEMINI_API_KEY'
-    | 'GOOGLE_PLAY_SERVICE_ACCOUNT',
+    | 'GOOGLE_PLAY_SERVICE_ACCOUNT'
+    | 'APPLE_IAP_ISSUER_ID'
+    | 'APPLE_IAP_KEY_ID'
+    | 'APPLE_IAP_PRIVATE_KEY',
 ): string {
   const value = read()[name];
   if (!value) {

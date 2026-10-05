@@ -375,3 +375,9 @@ ce qui rendrait la vérification possible ici.
 signalements arrivent par courriel (sans eux, ils restent lisibles par
 `npm run moderation`).
 
+**Avant de déployer l'achat intégré iOS.** Appliquer aussi la migration
+`0023_store_purchases`, et suivre `apps/ios/APP_STORE.md`, *Achat intégré*
+(produits, clé d'API et secret des notifications dans Vercel). L'app Android
+n'a pas d'écran d'achat : le serveur est prêt, le client Google Play Billing
+reste à écrire.
+

@@ -45,6 +45,7 @@ export async function exportUserData(userId: number) {
     reports,
     subscriptions,
     storeSubscriptions,
+    storePurchases,
     usage,
   ] = await Promise.all([
     database
@@ -131,7 +132,7 @@ export async function exportUserData(userId: number) {
       .from(schema.pushSubscriptions)
       .where(eq(schema.pushSubscriptions.userId, userId)),
     // Le jeton d'achat est omis : il ne dit rien à la personne, et il suffit
-    // à interroger Google sur son achat.
+    // à interroger le magasin sur son achat.
     database
       .select({
         store: schema.storeSubscriptions.store,
@@ -143,6 +144,15 @@ export async function exportUserData(userId: number) {
       })
       .from(schema.storeSubscriptions)
       .where(eq(schema.storeSubscriptions.userId, userId)),
+    database
+      .select({
+        store: schema.storePurchases.store,
+        productId: schema.storePurchases.productId,
+        state: schema.storePurchases.state,
+        createdAt: schema.storePurchases.createdAt,
+      })
+      .from(schema.storePurchases)
+      .where(eq(schema.storePurchases.userId, userId)),
     usageFor(userId),
   ]);
 
@@ -191,7 +201,7 @@ export async function exportUserData(userId: number) {
     },
     community: { follows, kudosGiven: kudos, blocks, reportsMade: reports },
     notifications: { devices: subscriptions.length },
-    billing: { subscriptions: storeSubscriptions },
+    billing: { subscriptions: storeSubscriptions, purchases: storePurchases },
     usage,
   };
 }

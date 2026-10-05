@@ -37,7 +37,7 @@ enum AddSheet {
 
 /// Écrans poussés par-dessus la coquille, avec un retour.
 enum Pushed: Hashable {
-    case me, progress, account, health, history, people
+    case me, progress, account, health, history, people, premium
     case day(String)
 }
 
@@ -153,6 +153,14 @@ struct MainShell: View {
         }
         .animation(.easeInOut(duration: 0.25), value: editingGoal)
         .animation(.easeOut(duration: 0.32), value: stack)
+        // Une limite gratuite atteinte : l'écran Premium, par-dessus ce qu'on faisait.
+        .onChange(of: model.paywallRequested) { _, requested in
+            guard requested else { return }
+            model.paywallRequested = false
+            closeAll()
+            kitchenFlow = nil
+            if stack.last != .premium { stack.append(.premium) }
+        }
         // Un rappel du déjeuner touché : droit à la feuille Repas.
         .onChange(of: model.pendingMealSheet, initial: true) { _, pending in
             guard pending else { return }
@@ -202,12 +210,15 @@ struct MainShell: View {
                 onProgress: { stack.append(.progress) },
                 onWeigh: { pick(.weigh) },
                 onAccount: { stack.append(.account) },
-                onHealth: { stack.append(.health) }
+                onHealth: { stack.append(.health) },
+                onPremium: { stack.append(.premium) }
             )
         case .progress:
             ProgressScreen(model: model, onBack: back)
         case .health:
             HealthScreen(model: model, onBack: back)
+        case .premium:
+            PremiumScreen(model: model, onBack: back)
         case .account:
             AccountScreen(model: model, onBack: back) { editingGoal = true }
         case .history:

@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { env } from '@/server/env';
-import { refreshFromNotification } from '@/server/services/premium';
+import { refreshFromNotification, refreshOneTimeFromNotification } from '@/server/services/premium';
 
 export const runtime = 'nodejs';
 
@@ -25,6 +25,7 @@ const pushSchema = z.object({
 
 const notificationSchema = z.object({
   subscriptionNotification: z.object({ purchaseToken: z.string().min(1) }).optional(),
+  oneTimeProductNotification: z.object({ purchaseToken: z.string().min(1), sku: z.string().min(1) }).optional(),
 });
 
 function secretMatches(given: string | null, expected: string): boolean {
@@ -47,23 +48,31 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   let token: string | undefined;
+  let oneTime: { purchaseToken: string; sku: string } | undefined;
   try {
     const push = pushSchema.parse(await request.json());
     const decoded: unknown = JSON.parse(
       Buffer.from(push.message.data ?? '', 'base64').toString('utf8') || '{}',
     );
-    token = notificationSchema.parse(decoded).subscriptionNotification?.purchaseToken;
+    const notification = notificationSchema.parse(decoded);
+    token = notification.subscriptionNotification?.purchaseToken;
+    oneTime = notification.oneTimeProductNotification;
   } catch {
     return new Response(null, { status: 204 });
   }
 
-  // Message de test de la Play Console, ou notification d'un achat unique.
-  if (token === undefined) {
+  // Message de test de la Play Console.
+  if (token === undefined && oneTime === undefined) {
     return new Response(null, { status: 204 });
   }
 
   try {
-    await refreshFromNotification(token);
+    if (token !== undefined) {
+      await refreshFromNotification(token);
+    }
+    if (oneTime !== undefined) {
+      await refreshOneTimeFromNotification(oneTime.purchaseToken, oneTime.sku);
+    }
   } catch (error) {
     console.error('[billing] notification non traitee :', error instanceof Error ? error.message : error);
     return new Response(null, { status: 503 });

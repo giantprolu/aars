@@ -149,6 +149,12 @@ final class Api {
     }
 
     func me() async -> ApiResult<MeResponse> { await get("/api/me") }
+    func billing() async -> ApiResult<BillingResponse> { await get("/api/billing") }
+
+    /// Fait vérifier une transaction App Store par le serveur, qui la relit chez Apple.
+    func verifyApple(transactionId: String) async -> ApiResult<BillingStatus> {
+        decode(await raw("POST", "/api/billing/apple", body: encode(AppleTransactionBody(transactionId: transactionId))), as: BillingStatus.self)
+    }
     func plan(weekStart: String) async -> ApiResult<PlanResponse> { await get("/api/plan?from=\(weekStart)") }
     func basket(weekStart: String) async -> ApiResult<BasketResponse> { await get("/api/basket?weekStart=\(weekStart)") }
     func shopping(weekStart: String) async -> ApiResult<ShoppingResponse> { await get("/api/shopping?from=\(weekStart)") }

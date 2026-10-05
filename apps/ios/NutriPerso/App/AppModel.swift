@@ -63,6 +63,10 @@ final class AppModel {
     let toasts = ToastCenter()
     let health = HealthSync()
     let reminders = LunchReminder()
+    let purchases = PurchaseStore()
+
+    /// Une action a buté sur une limite gratuite : la coquille ouvre Premium, puis remet à faux.
+    var paywallRequested = false
 
     /// Faux tant que l'accès à Santé n'a pas été demandé : Aujourd'hui propose de le relier.
     private(set) var healthLinked: Bool?
@@ -115,6 +119,7 @@ final class AppModel {
                 gate = .onboarding
             } else {
                 gate = .ready
+                purchases.listen(api)
                 await refreshToday()
                 syncHealth()
             }
@@ -290,6 +295,7 @@ final class AppModel {
                 await refreshToday()
             case .failure(let failure):
                 toasts.show(failure.message)
+                if failure.code == "premium_required" { paywallRequested = true }
             }
         }
     }

@@ -1,14 +1,17 @@
 import { apiError } from '@/server/errors';
 import { currentUserId } from '@/server/guard';
-import { accountRef, premiumStatus } from '@/server/services/premium';
+import { KITCHEN_PLUS_ON_SALE, KITCHEN_PLUS_PRODUCT, SUBSCRIPTION_PRODUCTS } from '@/lib/premium';
+import { accountRef, appAccountToken, premiumStatus } from '@/server/services/premium';
 
 export const runtime = 'nodejs';
 
 /**
- * L'abonnement du compte : actif ou non, limites gratuites et usage.
+ * Les achats du compte : abonnement actif ou non, Cuisine+, limites gratuites
+ * et usage, et ce que les apps proposent à la vente.
  *
- * `accountRef` est ce que l'app passe à Google Play au moment de l'achat
- * (`setObfuscatedAccountId`), pour que l'achat reste lié à ce compte.
+ * `accountRef` est ce que l'app Android passe à Google Play au moment de
+ * l'achat (`setObfuscatedAccountId`), `appAccountToken` ce que l'app iOS passe
+ * à l'App Store : l'achat reste lié à ce compte.
  */
 export async function GET(): Promise<Response> {
   const userId = await currentUserId();
@@ -16,12 +19,23 @@ export async function GET(): Promise<Response> {
     return apiError('unauthorized');
   }
 
-  const [status, ref] = await Promise.all([premiumStatus(userId), accountRef(userId)]);
+  const [status, ref, token] = await Promise.all([
+    premiumStatus(userId),
+    accountRef(userId),
+    appAccountToken(userId),
+  ]);
   return Response.json({
     premium: status.premium,
+    kitchenPlus: status.kitchenPlus,
     expiresAt: status.expiresAt?.toISOString() ?? null,
     limits: status.limits,
     usage: status.usage,
     accountRef: ref,
+    appAccountToken: token,
+    products: {
+      subscription: SUBSCRIPTION_PRODUCTS,
+      kitchenPlus: KITCHEN_PLUS_PRODUCT,
+      kitchenPlusOnSale: KITCHEN_PLUS_ON_SALE,
+    },
   });
 }
