@@ -4,7 +4,7 @@ import { Contact, LegalPage } from '../LegalPage';
 
 export const metadata: Metadata = { title: 'Mentions légales · Aars' };
 
-/** « 13112164200014 » devient « 131 121 642 00014 » : le SIREN par groupes de trois, puis le NIC. */
+/** « 12345678900012 » devient « 123 456 789 00012 » : le SIREN par groupes de trois, puis le NIC. */
 function formatSiret(siret: string): string {
   return `${siret.slice(0, 3)} ${siret.slice(3, 6)} ${siret.slice(6, 9)} ${siret.slice(9)}`;
 }
