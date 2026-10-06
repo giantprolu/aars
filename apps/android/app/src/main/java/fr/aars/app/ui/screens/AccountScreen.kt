@@ -55,9 +55,12 @@ import kotlinx.coroutines.withContext
 /** La politique de confidentialité, publiée par l'app web. */
 val PRIVACY_URL: String = BuildConfig.API_BASE_URL + "/legal/privacy"
 
+/** Les mentions légales : éditeur, hébergeurs, sources des données. */
+private val NOTICE_URL: String = BuildConfig.API_BASE_URL + "/legal/notice"
+
 /**
  * Compte et données : objectif, code de secours, export, politique de
- * confidentialité, déconnexion, suppression du compte (exigée par Google Play
+ * confidentialité, mentions légales, déconnexion, suppression du compte (exigée par Google Play
  * pour une app qui crée des comptes).
  */
 @Composable
@@ -119,6 +122,10 @@ fun AccountScreen(model: AppModel, onBack: () -> Unit, onEditGoal: () -> Unit) {
                 RowDivider()
                 AccountRow(R.drawable.lucide_lock, "Politique de confidentialité", onClick = {
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_URL)))
+                })
+                RowDivider()
+                AccountRow(R.drawable.lucide_info, "Mentions légales", onClick = {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(NOTICE_URL)))
                 })
                 RowDivider()
                 AccountRow(R.drawable.lucide_log_out, "Se déconnecter", onClick = model::signOut)

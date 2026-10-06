@@ -20,6 +20,7 @@ donnée ou un sous-traitant change, mettre à jour ce fichier **et**
 | HealthKit : capacité et texte d'usage, lecture seule | `Config/Aars.entitlements`, `NSHealthShareUsageDescription` |
 | Suppression du compte dans l'app | Moi › Compte et données |
 | Politique de confidentialité publique | `https://aars-app.vercel.app/legal/privacy` |
+| Mentions légales (éditeur, hébergeurs), liées dans Compte et données | `https://aars-app.vercel.app/legal/notice`, identité dans les variables `LEGAL_PUBLISHER_*` de Vercel |
 | Icône 1024 | `Resources/Assets.xcassets/AppIcon.appiconset` |
 | Aucun SDK tiers (analyse, publicité, plantages) | aucune dépendance |
 

@@ -197,7 +197,7 @@ struct ExportDocument: FileDocument {
 
 /**
  Compte et données : objectif, code de secours, export, politique de
- confidentialité, déconnexion, suppression du compte (exigée par l'App Store
+ confidentialité, mentions légales, déconnexion, suppression du compte (exigée par l'App Store
  pour une app qui crée des comptes).
  */
 struct AccountScreen: View {
@@ -227,6 +227,10 @@ struct AccountScreen: View {
                 Hairline()
                 AccountRow(icon: .lock, label: "Politique de confidentialité") {
                     if let url = URL(string: model.api.baseURL + "/legal/privacy") { openURL(url) }
+                }
+                Hairline()
+                AccountRow(icon: .info, label: "Mentions légales") {
+                    if let url = URL(string: model.api.baseURL + "/legal/notice") { openURL(url) }
                 }
                 Hairline()
                 AccountRow(icon: .logOut, label: "Se déconnecter", action: model.signOut)

@@ -18,6 +18,7 @@ donnée ou un sous-traitant change, mettre à jour ce fichier **et**
 | Suppression du compte dans l'app | Moi › Compte et données |
 | Suppression du compte sans l'app | `https://aars-app.vercel.app/legal/account-deletion` |
 | Politique de confidentialité publique | `https://aars-app.vercel.app/legal/privacy` |
+| Mentions légales (éditeur, hébergeurs), liées dans Compte et données | `https://aars-app.vercel.app/legal/notice`, identité dans les variables `LEGAL_PUBLISHER_*` de Vercel |
 | Health Connect : permissions, écran d'explication | `AndroidManifest.xml`, `HealthRationaleActivity` |
 | Icône 512 et bannière 1024 × 500 | `store/` |
 

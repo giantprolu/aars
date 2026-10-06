@@ -54,6 +54,22 @@ const schema = z.object({
    * les pages renvoient vers le formulaire du compte sans adresse.
    */
   LEGAL_CONTACT_EMAIL: z.string().email().optional(),
+  /**
+   * L'éditeur, que les mentions légales doivent nommer (loi pour la confiance
+   * dans l'économie numérique, art. 6) et que la politique de confidentialité
+   * désigne comme responsable du traitement. Lus ici plutôt qu'écrits dans le
+   * dépôt, qui est public : une adresse change sans commit. Le SIRET s'écrit
+   * avec ou sans espaces. Sans nom, adresse et SIRET, les deux pages se
+   * contentent du contact.
+   */
+  LEGAL_PUBLISHER_NAME: z.string().min(2).optional(),
+  LEGAL_PUBLISHER_ADDRESS: z.string().min(5).optional(),
+  LEGAL_PUBLISHER_SIRET: z
+    .string()
+    .transform((value) => value.replace(/\s/g, ''))
+    .pipe(z.string().regex(/^\d{14}$/, '14 chiffres attendus'))
+    .optional(),
+  LEGAL_PUBLISHER_PHONE: z.string().min(6).optional(),
   MAIL_FROM: z.string().min(3).optional(),
   APP_URL: z.string().url().optional(),
   /**
@@ -110,6 +126,15 @@ const schema = z.object({
 });
 
 type Env = z.infer<typeof schema>;
+
+/** L'éditeur de l'application, une personne physique (entrepreneur individuel). */
+export type LegalPublisher = {
+  name: string;
+  address: string;
+  /** 14 chiffres, sans espace. */
+  siret: string;
+  phone: string | undefined;
+};
 
 let cached: Env | null = null;
 
@@ -175,6 +200,16 @@ export const env = {
   },
   get legalContactEmail(): string | undefined {
     return read().LEGAL_CONTACT_EMAIL;
+  },
+  /** L'éditeur des mentions légales, ou `null` tant que nom, adresse et SIRET ne sont pas tous posés. */
+  get legalPublisher(): LegalPublisher | null {
+    const {
+      LEGAL_PUBLISHER_NAME: name,
+      LEGAL_PUBLISHER_ADDRESS: address,
+      LEGAL_PUBLISHER_SIRET: siret,
+      LEGAL_PUBLISHER_PHONE: phone,
+    } = read();
+    return name && address && siret ? { name, address, siret, phone } : null;
   },
   /** La configuration du courriel, ou `null` si elle est incomplète. */
   get mail(): { apiKey: string; from: string; appUrl: string } | null {

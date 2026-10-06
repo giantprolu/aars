@@ -3,7 +3,7 @@ import UIKit
 
 /// Les icônes Lucide de la maquette (Assets.xcassets/Lucide), en SVG.
 enum Lucide: String {
-    case activity, ban, bell, camera, check, clock, database, download, dumbbell, ellipsis, flag, flame, footprints, heart, history, lock
+    case activity, ban, bell, camera, check, clock, database, download, dumbbell, ellipsis, flag, flame, footprints, heart, history, info, lock
     case link, minus, moon, pause, pencil, play, plus, scale, search, settings, sparkles, star, sun, target, timer, users, utensils, x, zap
     case arrowRight = "arrow-right"
     case calendarDays = "calendar-days"

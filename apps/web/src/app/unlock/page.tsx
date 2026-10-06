@@ -1,5 +1,6 @@
 import { LeafIcon } from 'lucide-react';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { UnlockForm } from './UnlockForm';
 
 export const metadata: Metadata = { title: 'Aars' };
@@ -22,6 +23,14 @@ export default function UnlockPage() {
         Chacun son compte, son journal et sa cible. Connecte-toi, ou crée le tien.
       </p>
       <UnlockForm />
+      <p className="mt-8 flex justify-center gap-4 text-[12.5px] text-muted-foreground">
+        <Link href="/legal/privacy" className="underline-offset-2 hover:underline">
+          Confidentialité
+        </Link>
+        <Link href="/legal/notice" className="underline-offset-2 hover:underline">
+          Mentions légales
+        </Link>
+      </p>
     </div>
   );
 }

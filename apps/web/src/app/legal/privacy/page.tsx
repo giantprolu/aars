@@ -13,14 +13,24 @@ export const metadata: Metadata = { title: 'Confidentialité · Aars' };
  */
 export default function PrivacyPage() {
   const contact = env.legalContactEmail;
+  const publisher = env.legalPublisher;
   return (
-    <LegalPage title="Politique de confidentialité" updated="5 octobre 2026">
+    <LegalPage title="Politique de confidentialité" updated="7 octobre 2026">
       <p>
         Aars est un journal alimentaire et sportif. Cette page dit quelles données
         l&apos;application (web, Android et iOS) conserve, pourquoi, avec qui elles sont partagées et
         comment les effacer. Certaines sont des données de santé : elles ne servent qu&apos;à te
         rendre le service, ne sont jamais vendues, jamais utilisées pour de la publicité et
         jamais cédées à des courtiers en données.
+      </p>
+
+      <h2>Responsable du traitement</h2>
+      <p>
+        {publisher === null
+          ? "L'éditeur d'Aars"
+          : `${publisher.name}, entrepreneur individuel, ${publisher.address}, qui édite l'application`}{' '}
+        (voir <a href="/legal/notice">les mentions légales</a>). Pour le joindre :{' '}
+        <Contact email={contact} />.
       </p>
 
       <h2>Données conservées</h2>

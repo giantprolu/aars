@@ -103,7 +103,7 @@ function mondayOf(isoDate: string): string {
 
 async function publicChecks(): Promise<void> {
   for (const base of [BASE, OLD_BASE]) {
-    for (const path of ['/unlock', '/legal/privacy', '/legal/account-deletion', '/recover', '/manifest.json']) {
+    for (const path of ['/unlock', '/legal/privacy', '/legal/account-deletion', '/legal/notice', '/recover', '/manifest.json']) {
       const reply = await call('GET', path, undefined, base);
       if (reply.status === 200) record('ok', `public ${base.replace('https://', '')}${path}`);
       else record('échec', `public ${base.replace('https://', '')}${path}`, String(reply.status));

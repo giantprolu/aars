@@ -4,8 +4,10 @@ import {
   ChevronRightIcon,
   DatabaseIcon,
   DownloadIcon,
+  InfoIcon,
   KeyRoundIcon,
   LockIcon,
+  ShieldCheckIcon,
   SmartphoneIcon,
   SunMoonIcon,
   TargetIcon,
@@ -270,6 +272,18 @@ export default async function SettingsPage() {
             <dd className="tabular text-muted-foreground">{ciqual.lastImport}</dd>
           </div>
         </dl>
+      </Card>
+
+      <h2 className="mt-5 mb-2 text-[12.5px] text-muted-foreground">Informations légales</h2>
+      <Card className="gap-0 overflow-hidden py-0">
+        <ul>
+          <LinkRow
+            href="/legal/privacy"
+            icon={<ShieldCheckIcon />}
+            label="Politique de confidentialité"
+          />
+          <LinkRow href="/legal/notice" icon={<InfoIcon />} label="Mentions légales" />
+        </ul>
       </Card>
 
       <h2 className="mt-5 mb-2 text-[12.5px] text-muted-foreground">Session</h2>
